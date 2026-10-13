@@ -1,0 +1,7 @@
+# Geheimnisse und lokale Daten gehören nie ins Repository
+.env
+.env.*
+!.env.example
+daten/
+node_modules/
+*.tmp

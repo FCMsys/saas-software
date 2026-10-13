@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC-M:Sys</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(180deg, #eef3fb 0, #f7f9fd 340px) fixed; color: #0f172a; -webkit-font-smoothing: antialiased; }
+        ::selection { background: #bfdbfe; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .tab-btn { color: #64748b; border-bottom: 2px solid transparent; }
+        .tab-btn:hover { color: #1e3a8a; }
+        .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; }
+        .card { background: #fff; border: 1px solid #e3e9f4; border-radius: 1rem; box-shadow: 0 1px 2px rgba(30,58,138,.04), 0 8px 24px -12px rgba(30,58,138,.10); }
+        .fade-in { animation: fade .18s ease-out; }
+        @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+        /* ===================== FUT-STYLE PLAYER CARD ===================== */
+        .fut-card {
+            --fs: 14px; font-size: var(--fs); width: 20em; height: 28.5em; position: relative;
+            color: var(--ink); user-select: none; flex-shrink: 0;
+            filter: drop-shadow(0 .5em .9em rgba(15,23,42,.28));
+        }
+        .fut-shape, .fut-inner {
+            clip-path: polygon(50% 0, 86% 3.5%, 100% 11%, 100% 85%, 93% 92%, 50% 100%, 7% 92%, 0 85%, 0 11%, 14% 3.5%);
+        }
+        .fut-shape { position: absolute; inset: 0; background: linear-gradient(145deg, var(--edge1), var(--edge2) 45%, var(--edge1) 75%, var(--edge2)); }
+        .fut-inner {
+            position: absolute; inset: .32em; overflow: hidden;
+            background:
+                radial-gradient(110% 70% at 28% 8%, var(--c1), transparent 62%),
+                linear-gradient(165deg, var(--c1), var(--c2) 55%, var(--c3));
+        }
+        .fut-pattern {
+            position: absolute; inset: 0; opacity: .55;
+            background:
+                repeating-linear-gradient(62deg, rgba(255,255,255,.10) 0 .12em, transparent .12em 1.3em),
+                radial-gradient(60% 40% at 80% 30%, rgba(255,255,255,.25), transparent 70%);
+        }
+        .fut-rating { position: absolute; left: 1.5em; top: 3.7em; width: 4em; text-align: center; line-height: 1; }
+        .fut-rating .num { display: block; font-size: 3.1em; font-weight: 800; letter-spacing: -.04em; text-shadow: 0 .04em .1em rgba(0,0,0,.18); }
+        .fut-rating .pos { display: block; font-size: 1.25em; font-weight: 700; margin-top: .15em; letter-spacing: .04em; }
+        .fut-rating .bar { display: block; width: 2.4em; height: .1em; background: var(--ink); opacity: .45; margin: .5em auto 0; border-radius: 1em; }
+        .fut-photo {
+            position: absolute; right: .9em; top: 2.4em; width: 11.6em; height: 14em; display: flex; align-items: center; justify-content: center;
+            -webkit-mask-image: radial-gradient(ellipse 70% 72% at 50% 44%, #000 58%, transparent 100%);
+                    mask-image: radial-gradient(ellipse 70% 72% at 50% 44%, #000 58%, transparent 100%);
+        }
+        .fut-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; }
+        .fut-photo i { font-size: 8em; color: var(--ink); opacity: .22; }
+        .fut-name { position: absolute; left: .65em; right: .65em; top: 10.5em; text-align: center; text-transform: uppercase; font-size: 1.55em; font-weight: 800; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+        .fut-line { position: absolute; left: 3.2em; right: 3.2em; top: 19em; height: .1em; background: var(--ink); opacity: .35; border-radius: 1em; }
+        .fut-stats { position: absolute; left: 3.1em; right: 3.1em; top: 19.5em; display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column; column-gap: 1.2em; row-gap: .15em; }
+        .fut-stats::before { content: ''; position: absolute; left: 50%; top: .2em; bottom: .2em; width: .1em; background: var(--ink); opacity: .3; }
+        .fut-stats div { display: flex; align-items: baseline; justify-content: center; gap: .45em; line-height: 1.25; }
+        .fut-stats b { font-size: 1.45em; font-weight: 800; min-width: 1.3em; text-align: right; }
+        .fut-stats i { font-style: normal; font-size: 1.05em; font-weight: 600; opacity: .8; letter-spacing: .04em; }
+        .fut-elo { position: absolute; left: 0; right: 0; top: 30.9em; text-align: center; font-size: .85em; font-weight: 700; letter-spacing: .12em; opacity: .6; }
+
+        /* Dauerhaftes Schimmern + Maus-Glanz + Hologramm */
+        .fut-shine, .fut-glare, .fut-holo { position: absolute; inset: 0; pointer-events: none; }
+        .fut-shine {
+            background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.65) 48%, rgba(255,255,255,.2) 53%, transparent 62%);
+            background-size: 300% 100%; background-position: 160% 0; animation: shine 5.5s ease-in-out infinite; animation-delay: var(--shine-delay, 0s);
+        }
+        @keyframes shine { 0%, 52% { background-position: 160% 0; } 100% { background-position: -60% 0; } }
+        .fut-glare { background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(255,255,255,.55), transparent 48%); opacity: var(--glare, 0); transition: opacity .25s; mix-blend-mode: soft-light; }
+        .fut-holo { display: none; mix-blend-mode: color-dodge; opacity: .28; background: linear-gradient(115deg, #ff2bd6, #22d3ee, #a3e635, #facc15, #ff2bd6); background-size: 300% 300%; animation: holo 7s linear infinite; }
+        @keyframes holo { to { background-position: 300% 300%; } }
+        .tier-ikone .fut-holo { display: block; }
+
+        /* Stufen */
+        .tier-bronze { --c1: #f1c9a0; --c2: #c98a55; --c3: #8a5528; --edge1: #fbe1c3; --edge2: #9a6232; --ink: #3a2310; --glow: 205, 133, 63; }
+        .tier-silber { --c1: #ffffff; --c2: #cbd5e1; --c3: #8795a6; --edge1: #ffffff; --edge2: #8c9aab; --ink: #1e293b; --glow: 186, 200, 220; }
+        .tier-gold   { --c1: #fff4b0; --c2: #f5c93a; --c3: #b9830b; --edge1: #fff8cc; --edge2: #b88308; --ink: #4a3100; --glow: 252, 211, 77; }
+        .tier-ikone  { --c1: #6d4bd8; --c2: #2b2a82; --c3: #0b1740; --edge1: #67e8f9; --edge2: #c026d3; --ink: #ffffff; --glow: 120, 130, 255; }
+
+        /* Karten-Raster */
+        .card-tile { cursor: pointer; transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+        .card-tile:hover { transform: translateY(-.5rem) scale(1.04) rotate(-.6deg); }
+
+        /* ===================== KARTEN-ENTHÜLLUNG ===================== */
+        #cardModal { --glow: 252, 211, 77; }
+        #cardModal.tier-bronze { --glow: 205, 133, 63; } #cardModal.tier-silber { --glow: 186, 200, 220; }
+        #cardModal.tier-gold { --glow: 252, 211, 77; } #cardModal.tier-ikone { --glow: 120, 130, 255; }
+        .reveal-bg { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, rgba(var(--glow), .18), transparent 55%), rgba(6, 10, 25, .93); backdrop-filter: blur(6px); animation: fade-bg .6s ease-out both; }
+        @keyframes fade-bg { from { opacity: 0; } to { opacity: 1; } }
+        .reveal-rays { position: absolute; left: 50%; top: 45%; width: 190vmax; height: 190vmax; margin: -95vmax 0 0 -95vmax; pointer-events: none; opacity: 0;
+            background: repeating-conic-gradient(rgba(var(--glow), .22) 0 3deg, transparent 3deg 15deg);
+            -webkit-mask-image: radial-gradient(circle, #000 0, transparent 42%); mask-image: radial-gradient(circle, #000 0, transparent 42%);
+            animation: rays-in 1.6s ease-out 1.3s both, rays-spin 50s linear infinite; }
+        @keyframes rays-in { to { opacity: 1; } }
+        @keyframes rays-spin { from { rotate: 0deg; } to { rotate: 360deg; } }
+        .reveal-glow { position: absolute; left: 50%; top: 45%; width: 34em; height: 34em; margin: -17em 0 0 -17em; border-radius: 50%; pointer-events: none; font-size: 1rem;
+            background: radial-gradient(circle, rgba(var(--glow), .55), transparent 65%); filter: blur(10px); opacity: 0; animation: glow-in 1.4s ease-out 1.5s both, glow-pulse 3.5s ease-in-out 3s infinite; }
+        @keyframes glow-in { to { opacity: 1; } }
+        @keyframes glow-pulse { 50% { transform: scale(1.12); opacity: .75; } }
+        .reveal-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; perspective: 1500px; padding-bottom: 4.5rem; }
+        .reveal-bob.idle { animation: bob 4.5s ease-in-out infinite; }
+        @keyframes bob { 50% { transform: translateY(-.55rem); } }
+        .reveal-tilt { transform-style: preserve-3d; transition: transform .12s ease-out; }
+        .reveal-flipper { transform-style: preserve-3d; position: relative; }
+        .reveal-flipper.play { animation: spin-in 2.5s cubic-bezier(.12,.75,.2,1) both; }
+        @keyframes spin-in {
+            0%   { transform: translateY(160px) scale(.25) rotateY(1260deg); opacity: 0; }
+            12%  { opacity: 1; }
+            72%  { transform: translateY(-14px) scale(1.07) rotateY(24deg); }
+            100% { transform: none; }
+        }
+        .reveal-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .reveal-back { position: absolute; inset: 0; transform: rotateY(180deg); }
+        .back-art { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: .8em; color: var(--ink); }
+        .back-art i { font-size: 6em; opacity: .55; }
+        .back-art span { font-weight: 800; letter-spacing: .3em; font-size: 1.1em; opacity: .6; }
+        .reveal-flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, #fff, rgba(var(--glow), .6) 30%, transparent 62%); opacity: 0; pointer-events: none; }
+        .reveal-flash.play { animation: flash 2.5s linear both; }
+        @keyframes flash { 0%, 64% { opacity: 0; } 72% { opacity: .95; } 100% { opacity: 0; } }
+        .reveal-shine-once { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.9) 50%, transparent 70%); background-size: 250% 100%; }
+        .reveal-shine-once.play { animation: shine-once 1.5s ease-in-out 2.35s both; }
+        @keyframes shine-once { 0% { background-position: 160% 0; opacity: 1; } 100% { background-position: -60% 0; opacity: 1; } }
+        .reveal-particles { position: absolute; left: 50%; top: 45%; width: 0; height: 0; pointer-events: none; }
+        .reveal-particles span { position: absolute; width: var(--sz); height: var(--sz); margin: calc(var(--sz) / -2); border-radius: 50%; opacity: 0;
+            background: radial-gradient(circle, #fff, rgb(var(--glow)) 55%, transparent 70%); animation: burst var(--dur) cubic-bezier(.1,.7,.3,1) var(--delay) both; }
+        @keyframes burst { 0% { transform: translate(0, 0) scale(.2); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) {
+            .reveal-flipper.play, .reveal-flash.play, .reveal-shine-once.play, .reveal-bob.idle, .fut-shine, .fut-holo, .reveal-rays { animation: none; }
+            .reveal-rays { opacity: 1; }
+        }
+        /* Rollen: Spieler sehen keine Bearbeiten-Funktionen (der Server erzwingt das zusätzlich) */
+        .role-player .admin-only { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen antialiased">
+
+    <!-- HEADER -->
+    <header class="bg-white/80 backdrop-blur-md border-b border-blue-100/70 sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3 shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-800 flex items-center justify-center text-white text-lg shadow-md shadow-blue-600/25">
+                    <i class="fa-solid fa-futbol"></i>
+                </div>
+                <h1 class="text-base font-extrabold tracking-tight text-slate-900 hidden sm:block">FC-M<span class="text-blue-600">:Sys</span></h1>
+            </div>
+
+            <nav class="flex items-stretch h-16 gap-1 sm:gap-3 text-sm font-semibold">
+                <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="players"><i class="fa-solid fa-users"></i><span class="hidden sm:inline">Spieler</span></button>
+                <button class="tab-btn admin-only px-2 sm:px-3 flex items-center gap-2 transition" data-tab="match"><i class="fa-solid fa-futbol"></i><span class="hidden sm:inline">Aktuelles Spiel</span></button>
+                <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="history"><i class="fa-solid fa-chart-line"></i><span class="hidden sm:inline">Historie</span></button>
+                <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="payments"><i class="fa-solid fa-euro-sign"></i><span class="hidden sm:inline">Zahlungen</span></button>
+            </nav>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+                <span id="saveStatus" class="hidden lg:flex items-center gap-1.5 text-[11px] text-slate-500 mr-1"></span>
+                <button id="exportJsonBtn" title="Backup als JSON herunterladen" class="admin-only w-8 h-8 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition"><i class="fa-solid fa-download"></i></button>
+                <button id="importJsonBtn" title="Backup (JSON) einlesen" class="admin-only w-8 h-8 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition"><i class="fa-solid fa-upload"></i></button>
+                <input type="file" id="importFileInput" accept=".json" class="hidden">
+                <button id="resetDataBtn" title="Alles zurücksetzen" class="admin-only w-8 h-8 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-rotate-left"></i></button>
+                <span id="userChip" class="hidden items-center gap-2 pl-2 ml-1 border-l border-slate-200 text-xs">
+                    <span class="hidden md:flex flex-col leading-tight text-right"><b id="userName" class="font-semibold text-slate-700"></b><span id="userRole" class="text-[10px] uppercase tracking-wider text-slate-400"></span></span>
+                    <a href="/logout" title="Abmelden" class="w-8 h-8 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition flex items-center justify-center"><i class="fa-solid fa-right-from-bracket"></i></a>
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- TOAST -->
+    <div id="toast" class="hidden fixed top-20 right-4 z-[80] max-w-sm w-[calc(100%-2rem)] rounded-xl border shadow-lg p-3.5 fade-in">
+        <div class="flex items-start gap-3">
+            <div id="toastIcon" class="mt-0.5"></div>
+            <div class="flex-1 min-w-0">
+                <h4 id="toastTitle" class="font-semibold text-sm"></h4>
+                <p id="toastDesc" class="text-xs mt-0.5 opacity-80"></p>
+            </div>
+            <button id="closeToastBtn" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+
+        <!-- ================= TAB 1: SPIELER ================= -->
+        <section id="tab-players" class="tab-panel space-y-5 fade-in">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h2 class="text-xl font-bold tracking-tight">Spieler-Datenbank</h2>
+                    <p class="text-sm text-slate-500">Alle Spieler mit Rating-Card, aktueller Elo und Bilanz.</p>
+                </div>
+                <div class="flex rounded-lg border border-slate-300 bg-white overflow-hidden text-sm font-semibold">
+                    <button id="viewCardsBtn" class="px-3 py-2 transition"><i class="fa-solid fa-id-card mr-1.5"></i>Karten</button>
+                    <button id="viewListBtn" class="px-3 py-2 transition border-l border-slate-300"><i class="fa-solid fa-list mr-1.5"></i>Liste</button>
+                </div>
+                <form id="addPlayerForm" class="admin-only flex gap-2">
+                    <input type="text" id="playerNameInput" placeholder="Neuer Spieler…" required
+                           class="w-44 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none transition">
+                    <input type="number" id="playerEloInput" value="1500" min="100" max="3000" title="Start-Elo"
+                           class="w-20 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none transition">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 rounded-lg text-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Hinzufügen
+                    </button>
+                </form>
+            </div>
+
+            <div id="playerCards" class="grid gap-x-4 gap-y-7 justify-items-center py-2" style="grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));"></div>
+
+            <div id="playerListView" class="card overflow-hidden hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
+                            <tr>
+                                <th class="text-left font-semibold px-4 py-3 w-12">#</th>
+                                <th class="text-left font-semibold px-4 py-3">Spieler</th>
+                                <th class="text-right font-semibold px-4 py-3">Elo</th>
+                                <th class="text-right font-semibold px-4 py-3">Zuletzt</th>
+                                <th class="text-right font-semibold px-4 py-3 hidden sm:table-cell">Spiele</th>
+                                <th class="text-right font-semibold px-4 py-3 hidden sm:table-cell">S / U / N</th>
+                                <th class="px-4 py-3 hidden md:table-cell">Verlauf</th>
+                                <th class="admin-only px-4 py-3 w-24"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="playerTable" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 2: AKTUELLES SPIEL ================= -->
+        <section id="tab-match" class="tab-panel hidden fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+                <!-- Anwesenheit -->
+                <div class="lg:col-span-4 card p-5 flex flex-col">
+                    <div class="flex items-center justify-between mb-1">
+                        <h2 class="font-bold text-base">1 · Wer spielt heute?</h2>
+                        <span id="selectedCountBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">0</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-3">Anwesende Spieler antippen.</p>
+
+                    <div class="flex items-center gap-1.5 mb-3">
+                        <div id="presetsContainer" class="flex items-center gap-1.5 overflow-x-auto flex-1 py-0.5"></div>
+                        <button id="savePresetBtn" title="Auswahl als Preset speichern" class="text-xs shrink-0 bg-white hover:bg-slate-50 text-slate-600 px-2.5 py-1.5 rounded-lg border border-slate-300 transition"><i class="fa-solid fa-bookmark text-amber-500"></i></button>
+                        <button id="selectAllBtn" class="text-xs shrink-0 text-blue-700 hover:underline font-semibold px-1">Alle</button>
+                    </div>
+
+                    <div id="attendanceList" class="grid grid-cols-2 gap-2 flex-1 content-start"></div>
+
+                    <button id="generateTeamsBtn" disabled
+                            class="mt-4 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Faire Teams generieren
+                    </button>
+                </div>
+
+                <!-- Teams + Ergebnis -->
+                <div class="lg:col-span-8 space-y-5">
+                    <div class="card p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="font-bold text-base">2 · Teams</h2>
+                            <button id="remixTeamsBtn" class="hidden text-xs bg-white hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition"><i class="fa-solid fa-shuffle text-amber-500 mr-1"></i> Neu mischen</button>
+                        </div>
+
+                        <div id="teamsEmptyState" class="text-center py-12 text-slate-400">
+                            <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-3"><i class="fa-solid fa-people-group text-lg"></i></div>
+                            <p class="text-sm font-medium text-slate-600">Noch keine Teams</p>
+                            <p class="text-xs mt-1">Mindestens 2 Spieler wählen und Teams generieren.</p>
+                        </div>
+
+                        <div id="teamsContainer" class="hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="rounded-xl border border-blue-200 bg-blue-50/50 p-3.5">
+                                    <div class="flex items-center justify-between mb-2.5">
+                                        <h3 class="font-bold text-blue-700 text-sm flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>Team A</h3>
+                                        <span class="text-xs text-slate-500">Ø <b id="teamAAvg" class="text-blue-700">0</b> · <span id="teamACount">0</span> Sp.</span>
+                                    </div>
+                                    <ul id="teamAList" class="space-y-1.5"></ul>
+                                </div>
+                                <div class="rounded-xl border border-rose-200 bg-rose-50/50 p-3.5">
+                                    <div class="flex items-center justify-between mb-2.5">
+                                        <h3 class="font-bold text-rose-700 text-sm flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>Team B</h3>
+                                        <span class="text-xs text-slate-500">Ø <b id="teamBAvg" class="text-rose-700">0</b> · <span id="teamBCount">0</span> Sp.</span>
+                                    </div>
+                                    <ul id="teamBList" class="space-y-1.5"></ul>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-3 text-center">Elo-Differenz <b id="eloDiffBadge" class="text-slate-600">0</b> · Klick auf einen Spieler verschiebt ihn ins andere Team</p>
+                        </div>
+                    </div>
+
+                    <!-- Ergebnis -->
+                    <div id="resultCard" class="card p-5 hidden">
+                        <h2 class="font-bold text-base mb-4">3 · Ergebnis</h2>
+                        <div class="flex items-center justify-center gap-3 sm:gap-6">
+                            <div class="text-center flex-1">
+                                <div class="text-xs font-bold uppercase tracking-wider text-blue-700 mb-2">Team A</div>
+                                <input type="number" id="goalsAInput" min="0" max="99" placeholder="0"
+                                       class="w-full max-w-[9rem] h-24 text-6xl font-extrabold text-center text-blue-700 bg-blue-50 border-2 border-blue-200 focus:border-blue-500 rounded-2xl outline-none transition">
+                            </div>
+                            <div class="text-4xl font-bold text-slate-300 pt-6">:</div>
+                            <div class="text-center flex-1">
+                                <div class="text-xs font-bold uppercase tracking-wider text-rose-700 mb-2">Team B</div>
+                                <input type="number" id="goalsBInput" min="0" max="99" placeholder="0"
+                                       class="w-full max-w-[9rem] h-24 text-6xl font-extrabold text-center text-rose-700 bg-rose-50 border-2 border-rose-200 focus:border-rose-500 rounded-2xl outline-none transition">
+                            </div>
+                        </div>
+                        <p id="eloPreview" class="text-center text-sm text-slate-500 mt-4 min-h-[1.25rem]">Tore eintragen, um die Elo-Änderung zu sehen.</p>
+                        <button id="saveResultBtn" disabled
+                                class="mt-3 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-check"></i> Ergebnis speichern &amp; Elo berechnen
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 3: HISTORIE ================= -->
+        <section id="tab-history" class="tab-panel hidden space-y-5 fade-in">
+            <div>
+                <h2 class="text-xl font-bold tracking-tight">Historie &amp; Entwicklung</h2>
+                <p class="text-sm text-slate-500">Elo-Verlauf, Rangliste und alle bisherigen Spiele.</p>
+            </div>
+
+            <div class="card p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-sm">Elo-Verlauf</h3>
+                    <div class="flex items-center gap-3 text-xs">
+                        <button id="chartAllBtn" class="text-blue-700 hover:underline font-semibold">Alle</button>
+                        <button id="chartNoneBtn" class="text-slate-500 hover:underline font-semibold">Keine</button>
+                    </div>
+                </div>
+                <div id="chartLegend" class="flex flex-wrap gap-1.5 mb-3"></div>
+                <div id="chartWrap" class="relative w-full">
+                    <svg id="eloChart" class="w-full block"></svg>
+                    <div id="chartTooltip" class="hidden absolute pointer-events-none z-10 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs shadow-lg whitespace-nowrap"></div>
+                </div>
+            </div>
+
+            <div class="card overflow-hidden">
+                <div class="px-5 pt-4 pb-2"><h3 class="font-bold text-sm">Rangliste</h3></div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
+                            <tr>
+                                <th class="text-left font-semibold px-4 py-2.5 w-12">#</th>
+                                <th class="text-left font-semibold px-4 py-2.5">Spieler</th>
+                                <th class="text-right font-semibold px-4 py-2.5">Elo</th>
+                                <th class="text-right font-semibold px-4 py-2.5">Seit Start</th>
+                                <th class="text-right font-semibold px-4 py-2.5 hidden sm:table-cell">Spiele</th>
+                                <th class="text-right font-semibold px-4 py-2.5 hidden sm:table-cell">S / U / N</th>
+                                <th class="text-right font-semibold px-4 py-2.5">Form</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-sm">Spiele</h3>
+                    <button id="clearHistoryBtn" class="text-xs text-slate-500 hover:text-rose-600 transition">Historie leeren</button>
+                </div>
+                <div id="matchHistoryList" class="space-y-2.5"></div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 4: ZAHLUNGEN ================= -->
+        <section id="tab-payments" class="tab-panel hidden space-y-5 fade-in">
+            <div>
+                <h2 class="text-xl font-bold tracking-tight">Zahlungen</h2>
+                <p class="text-sm text-slate-500">Wer hat für welchen Spieltag bezahlt?</p>
+            </div>
+
+            <!-- Meine Beiträge -->
+            <div id="myPayments" class="card p-5"></div>
+
+            <!-- Admin: PayPal-Empfänger -->
+            <form id="paypalForm" class="admin-only card p-5">
+                <h3 class="font-bold text-sm mb-1">PayPal-Empfänger</h3>
+                <p class="text-xs text-slate-500 mb-3">An diese PayPal-E-Mail (oder deinen paypal.me-Link) sollen die Spieler zahlen. Sie sehen die Angabe unter „Meine Beiträge“.</p>
+                <div class="flex gap-2">
+                    <input type="text" id="paypalInput" maxlength="120" placeholder="name@beispiel.de oder https://paypal.me/Name" class="flex-1 min-w-0 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 rounded-lg text-sm transition">Speichern</button>
+                </div>
+            </form>
+
+            <!-- Admin: neuer Spieltag -->
+            <form id="addSpieltagForm" class="admin-only card p-5 space-y-3">
+                <h3 class="font-bold text-sm">Neuer Spieltag</h3>
+                <div class="flex flex-wrap gap-2 items-end">
+                    <label class="text-xs text-slate-500">Datum
+                        <input type="date" id="stDatum" required class="block mt-1 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
+                    <label class="text-xs text-slate-500">Titel (optional)
+                        <input type="text" id="stTitel" maxlength="80" placeholder="z. B. Halle Nord" class="block mt-1 w-48 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
+                    <label class="text-xs text-slate-500">Betrag pro Person (€)
+                        <input type="text" id="stBetrag" inputmode="decimal" required placeholder="5,00" class="block mt-1 w-28 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition"><i class="fa-solid fa-plus mr-1.5"></i>Zahlung anfordern</button>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 mb-1.5">Teilnehmer <button type="button" id="stAllBtn" class="text-blue-700 font-semibold ml-1">alle</button> · <button type="button" id="stNoneBtn" class="text-blue-700 font-semibold">keine</button></p>
+                    <div id="stTeilnehmer" class="flex flex-wrap gap-1.5"></div>
+                </div>
+                <label id="stMailRow" class="hidden items-center gap-2 text-xs text-slate-600">
+                    <input type="checkbox" id="stMail" checked class="accent-blue-600">
+                    Teilnehmern mit zugeordnetem Login eine Mail schicken
+                </label>
+            </form>
+
+            <div id="spieltageList" class="space-y-4"></div>
+
+            <!-- Admin: Benutzer-Zuordnung -->
+            <div id="usersCard" class="admin-only card p-5">
+                <h3 class="font-bold text-sm mb-1">Benutzer &amp; Zuordnung</h3>
+                <p class="text-xs text-slate-500 mb-3">Welcher angemeldete Kinde-Benutzer ist welcher Spieler? Nur so sehen Spieler ihre eigenen Beiträge.</p>
+                <div id="usersList" class="divide-y divide-slate-100 text-sm"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- CARD REVEAL MODAL -->
+    <div id="cardModal" class="fixed inset-0 z-[60] hidden">
+        <div class="reveal-bg"></div>
+        <div class="reveal-rays"></div>
+        <div class="reveal-glow"></div>
+        <div class="reveal-stage" id="revealStage">
+            <div class="reveal-bob" id="revealBob">
+                <div class="reveal-tilt" id="revealTilt">
+                    <div class="reveal-flipper" id="revealFlipper"></div>
+                </div>
+            </div>
+        </div>
+        <div class="reveal-particles" id="revealParticles"></div>
+        <div class="reveal-flash" id="revealFlash"></div>
+
+        <button id="cardCloseBtn" class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition" title="Schließen (Esc)"><i class="fa-solid fa-xmark"></i></button>
+        <div class="absolute bottom-0 inset-x-0 p-4 flex items-center justify-center gap-3 text-white">
+            <button id="cardPrevBtn" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 transition" title="Vorheriger Spieler (←)"><i class="fa-solid fa-chevron-left"></i></button>
+            <div id="cardInfo" class="text-center text-xs sm:text-sm min-w-[12rem]"></div>
+            <button id="cardNextBtn" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 transition" title="Nächster Spieler (→)"><i class="fa-solid fa-chevron-right"></i></button>
+            <button id="cardEditBtn" class="admin-only ml-2 px-3.5 h-10 rounded-full bg-white/15 hover:bg-white/25 text-sm font-semibold transition"><i class="fa-solid fa-pen mr-1.5"></i>Bearbeiten</button>
+        </div>
+    </div>
+
+    <!-- EDIT PLAYER MODAL -->
+    <div id="editModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[70] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl max-h-[92vh] overflow-y-auto">
+            <h3 class="text-base font-bold mb-4">Spieler bearbeiten</h3>
+            <form id="editPlayerForm" class="space-y-4">
+                <input type="hidden" id="editPlayerId">
+
+                <div class="flex items-center gap-4">
+                    <div id="editPhotoPreview" class="w-20 h-20 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center text-slate-300 text-3xl shrink-0"></div>
+                    <div class="space-y-1.5">
+                        <div class="flex gap-2">
+                            <button type="button" id="editPhotoBtn" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-semibold text-slate-700 transition"><i class="fa-solid fa-image mr-1.5"></i>Bild hochladen</button>
+                            <button type="button" id="editPhotoRemoveBtn" class="px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition">Entfernen</button>
+                        </div>
+                        <p class="text-[11px] text-slate-400">Am besten ein freigestelltes PNG (Kopf/Oberkörper).</p>
+                        <input type="file" id="editPhotoInput" accept="image/*" class="hidden">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Name</label>
+                        <input type="text" id="editPlayerName" required class="w-full border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Position</label>
+                        <select id="editPlayerPos" class="w-full border border-slate-300 focus:border-blue-500 rounded-lg px-2 py-2 text-sm outline-none bg-white"></select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Elo-Wert (manuelle Korrektur) <span id="editRatingHint" class="text-slate-400 font-normal"></span></label>
+                    <input type="number" id="editPlayerElo" min="100" max="3000" required class="w-full border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Karten-Werte (1–99)</label>
+                    <div id="editStatsGrid" class="grid grid-cols-3 gap-2"></div>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" id="cancelEditBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-2.5 rounded-lg transition">Abbrechen</button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-lg transition">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SAVE PRESET MODAL -->
+    <div id="presetModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 class="text-base font-bold mb-1">Kader-Preset speichern</h3>
+            <p class="text-xs text-slate-500 mb-4">Die aktuell ausgewählten Spieler unter einem Namen merken.</p>
+            <form id="savePresetForm" class="space-y-4">
+                <input type="text" id="presetNameInput" placeholder="z.B. Dienstagstruppe" required class="w-full border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none">
+                <div class="flex gap-2">
+                    <button type="button" id="cancelPresetBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-2.5 rounded-lg transition">Abbrechen</button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-lg transition">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const $ = id => document.getElementById(id);
+
+        // =====================================================================
+        // 1. State
+        // =====================================================================
+        const DEFAULT_ROSTER = ["Oakwood", "Dr.-Günni", "Dr. Sai", "EDIH Eagle", "Andi Latte", "Edel-HiWi", "Spitze Knochen", "Mr. Diddi", "Straßebub", "Fr. Holle"]
+            .map((name, i) => ({ id: "p" + (i + 1), name, elo: 1500 }));
+
+        // players: [{ id, name, elo, history: [{ seq, t, elo, delta, matchId|null }] }]
+        // matchHistory: [{ id, seq, iso, result, goalsA, goalsB, teamA:[{id,name,before,after,delta}], teamB:[...] }]
+        let players = [];
+        let squadPresets = {};
+        let matchHistory = [];
+        let selectedPlayerIds = new Set();
+        let currentTeams = null;
+        let hiddenInChart = new Set();
+        let serverMode = false;   // true = CSV files in ./daten via server.js
+        let activeTab = 'players';
+        let me = { role: 'admin', spielerId: null, paypal: '', authEnabled: false };   // wird in loadMe() vom Server gesetzt
+        let spieltage = [];
+        let kindeUsers = {};
+        const TABS = ['players', 'match', 'history', 'payments'];
+
+        const CHART_COLORS = ['#2563eb', '#059669', '#e11d48', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5', '#c026d3', '#64748b'];
+        const K_FACTOR = 32;
+
+        function defaultState() {
+            players = JSON.parse(JSON.stringify(DEFAULT_ROSTER));
+            squadPresets = { "Alle 10": DEFAULT_ROSTER.map(p => p.id) };
+            matchHistory = [];
+            normalizeData();
+        }
+
+        // ---- Rating-Card ----
+        const STAT_KEYS = ['tem', 'sch', 'pas', 'dri', 'def', 'phy'];
+        const STAT_LABELS = { tem: 'TEM', sch: 'SCH', pas: 'PAS', dri: 'DRI', def: 'DEF', phy: 'PHY' };
+        const POSITIONS = ['ST', 'LF', 'RF', 'ZOM', 'ZM', 'ZDM', 'LV', 'RV', 'IV', 'TW'];
+        const TIER_NAMES = { bronze: 'Bronze', silber: 'Silber', gold: 'Gold', ikone: 'Ikone' };
+
+        // Elo -> Gesamtwertung 1-99: 1500 Elo = 65, je 10 Elo ein Punkt
+        function ratingFromElo(elo) { return Math.max(1, Math.min(99, Math.round(65 + (elo - 1500) / 10))); }
+        function tierFor(rating) { return rating >= 88 ? 'ikone' : rating >= 75 ? 'gold' : rating >= 60 ? 'silber' : 'bronze'; }
+
+        function cardHtml(p, { fs = 14, reveal = false, delay = 0 } = {}) {
+            const rating = ratingFromElo(p.elo), tier = tierFor(rating);
+            const val = v => reveal ? 0 : v;
+            const stat = k => `<div><b data-val="${p.stats[k]}">${val(p.stats[k])}</b><i>${STAT_LABELS[k]}</i></div>`;
+            return `<div class="fut-card tier-${tier}" style="--fs:${fs}px;--shine-delay:${delay}s">
+                <div class="fut-shape"></div>
+                <div class="fut-inner">
+                    <div class="fut-pattern"></div>
+                    <div class="fut-rating"><span class="num" data-val="${rating}">${val(rating)}</span><span class="pos">${escapeHtml(p.pos)}</span><span class="bar"></span></div>
+                    <div class="fut-photo">${p.photo ? `<img src="${escapeHtml(p.photo)}" alt="" draggable="false">` : '<i class="fa-solid fa-user"></i>'}</div>
+                    <div class="fut-name">${escapeHtml(p.name)}</div>
+                    <div class="fut-line"></div>
+                    <div class="fut-stats">${['tem', 'sch', 'pas', 'dri', 'def', 'phy'].map(stat).join('')}</div>
+                    <div class="fut-elo">ELO ${p.elo}</div>
+                    <div class="fut-holo"></div>
+                    <div class="fut-shine"></div>
+                    <div class="fut-glare"></div>
+                </div>
+            </div>`;
+        }
+
+        function normalizeData() {
+            players.forEach(p => {
+                p.pos = POSITIONS.includes(p.pos) ? p.pos : 'ZM';
+                p.photo = p.photo || '';
+                p.stats = Object.assign(Object.fromEntries(STAT_KEYS.map(k => [k, 50])), p.stats || {});
+                STAT_KEYS.forEach(k => { p.stats[k] = Math.max(1, Math.min(99, parseInt(p.stats[k]) || 50)); });
+            });
+            players.forEach(p => {
+                if (!Array.isArray(p.history) || p.history.length === 0) {
+                    p.history = [{ seq: 0, t: new Date().toISOString(), elo: p.elo, delta: 0, matchId: null }];
+                }
+            });
+        }
+
+        function currentSeq() {
+            let max = 0;
+            players.forEach(p => p.history.forEach(h => { if (h.seq > max) max = h.seq; }));
+            matchHistory.forEach(m => { if (m.seq > max) max = m.seq; });
+            return max;
+        }
+
+        function playerColor(id) {
+            const idx = players.findIndex(p => p.id === id);
+            return CHART_COLORS[(idx < 0 ? 0 : idx) % CHART_COLORS.length];
+        }
+
+        function playerStats(id) {
+            const s = { games: 0, w: 0, d: 0, l: 0, form: [] };
+            matchHistory.forEach(m => {
+                const inA = m.teamA.some(p => p.id === id);
+                const inB = m.teamB.some(p => p.id === id);
+                if (!inA && !inB) return;
+                s.games++;
+                const r = m.result === 'DRAW' ? 'd' : ((m.result === 'A') === inA ? 'w' : 'l');
+                s[r]++;
+                s.form.push(r);
+            });
+            return s;
+        }
+
+        // =====================================================================
+        // 2. CSV (de-Excel-Format: Semikolon, UTF-8 mit BOM)
+        // =====================================================================
+        const SEP = ';';
+        const SPIELE_HEADER = ['seq', 'zeit', 'typ', 'match_id', 'spieler_id', 'spieler', 'team', 'tore_eigene', 'tore_gegner', 'elo_vorher', 'elo_nachher', 'delta'];
+
+        function csvEscape(v) {
+            v = v === null || v === undefined ? '' : String(v);
+            return /[;"\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+        }
+
+        function toCsv(header, rows) {
+            return '﻿' + [header, ...rows].map(r => r.map(csvEscape).join(SEP)).join('\r\n') + '\r\n';
+        }
+
+        // returns array of objects keyed by header row
+        function parseCsv(text) {
+            if (!text) return [];
+            text = text.replace(/^﻿/, '');
+            const rows = [];
+            let row = [], cur = '', inQ = false;
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i];
+                if (inQ) {
+                    if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else inQ = false; }
+                    else cur += c;
+                } else if (c === '"') inQ = true;
+                else if (c === SEP) { row.push(cur); cur = ''; }
+                else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+                else if (c !== '\r') cur += c;
+            }
+            if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+            if (rows.length < 2) return [];
+            const head = rows[0];
+            return rows.slice(1).filter(r => r.some(v => v !== '')).map(r => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ''])));
+        }
+
+        function stateToCsv() {
+            const spieler = toCsv(['id', 'name', 'elo', 'position', ...STAT_KEYS, 'foto'],
+                players.map(p => [p.id, p.name, p.elo, p.pos, ...STAT_KEYS.map(k => p.stats[k]), p.photo.startsWith('data:') ? '' : p.photo.split('?')[0]]));
+            const presets = toCsv(['name', 'spieler_ids'], Object.entries(squadPresets).map(([n, ids]) => [n, ids.join('|')]));
+
+            const rows = [];
+            const ORDER = { start: 0, match: 1, manuell: 2 };
+            matchHistory.forEach(m => {
+                [['A', m.teamA, m.goalsA, m.goalsB], ['B', m.teamB, m.goalsB, m.goalsA]].forEach(([team, list, own, opp]) => {
+                    list.forEach(p => rows.push({ k: ORDER.match, r: [m.seq, m.iso, 'match', m.id, p.id, p.name, team, own, opp, p.before, p.after, p.delta] }));
+                });
+            });
+            players.forEach(p => p.history.forEach((h, i) => {
+                if (h.matchId) return;
+                const typ = i === 0 && h.delta === 0 ? 'start' : 'manuell';
+                rows.push({ k: ORDER[typ], r: [h.seq, h.t, typ, '', p.id, p.name, '', '', '', h.elo - h.delta, h.elo, h.delta] });
+            }));
+            // stable sort: seq, then start < match < manuell
+            rows.forEach((x, i) => x.i = i);
+            rows.sort((a, b) => (a.r[0] - b.r[0]) || (a.k - b.k) || (a.i - b.i));
+            return { spieler, spiele: toCsv(SPIELE_HEADER, rows.map(x => x.r)), presets };
+        }
+
+        function stateFromCsv(csv) {
+            players = parseCsv(csv.spieler).map(r => ({
+                id: r.id, name: r.name, elo: parseInt(r.elo) || 1500, history: [],
+                pos: r.position, photo: r.foto ? r.foto + '?v=' + Date.now() : '',
+                stats: Object.fromEntries(STAT_KEYS.map(k => [k, r[k]]))
+            }));
+            const byId = Object.fromEntries(players.map(p => [p.id, p]));
+            const matches = new Map();
+
+            parseCsv(csv.spiele).forEach(r => {
+                const seq = parseInt(r.seq) || 0;
+                const after = parseInt(r.elo_nachher), before = parseInt(r.elo_vorher), delta = parseInt(r.delta) || 0;
+                const player = byId[r.spieler_id];
+                if (player) player.history.push({ seq, t: r.zeit, elo: after, delta, matchId: r.typ === 'match' ? r.match_id : null });
+                if (r.typ !== 'match') return;
+                if (!matches.has(r.match_id)) matches.set(r.match_id, { id: r.match_id, seq, iso: r.zeit, goalsA: null, goalsB: null, teamA: [], teamB: [] });
+                const m = matches.get(r.match_id);
+                const entry = { id: r.spieler_id, name: r.spieler, before, after, delta };
+                if (r.team === 'A') { m.teamA.push(entry); m.goalsA = parseInt(r.tore_eigene); m.goalsB = parseInt(r.tore_gegner); }
+                else m.teamB.push(entry);
+            });
+
+            matchHistory = [...matches.values()].map(m => ({ ...m, result: m.goalsA > m.goalsB ? 'A' : (m.goalsB > m.goalsA ? 'B' : 'DRAW') }));
+            matchHistory.sort((a, b) => a.seq - b.seq);
+
+            squadPresets = {};
+            parseCsv(csv.presets).forEach(r => { if (r.name) squadPresets[r.name] = r.spieler_ids ? r.spieler_ids.split('|') : []; });
+            normalizeData();
+        }
+
+        // =====================================================================
+        // 3. Persistence (CSV via server.js, localStorage as fallback/mirror)
+        // =====================================================================
+        let saveTimer = null;
+
+        function setSaveStatus(kind, text) {
+            const dot = { ok: 'bg-emerald-500', warn: 'bg-amber-500', err: 'bg-rose-500' }[kind];
+            $('saveStatus').innerHTML = `<span class="w-2 h-2 rounded-full ${dot}"></span>${text}`;
+        }
+
+        function saveApplicationData() {
+            if (me.role !== 'admin') return;   // Spieler dürfen nichts schreiben
+            try {
+                localStorage.setItem('matchmaster_v3', JSON.stringify({ players, squadPresets, matchHistory }));
+            } catch (e) { /* ignore */ }
+            if (!serverMode) return;
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch('/api/state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(stateToCsv()) });
+                    if (!res.ok) throw new Error(res.status);
+                    setSaveStatus('ok', 'CSV gespeichert · ' + new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }));
+                } catch (e) {
+                    setSaveStatus('err', 'CSV-Speichern fehlgeschlagen');
+                }
+            }, 150);
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const raw = localStorage.getItem('matchmaster_v3');
+                if (!raw) return false;
+                const d = JSON.parse(raw);
+                players = d.players; squadPresets = d.squadPresets || {}; matchHistory = d.matchHistory || [];
+                normalizeData();
+                return true;
+            } catch (e) { return false; }
+        }
+
+        async function initData() {
+            if (location.protocol.startsWith('http')) {
+                try {
+                    const res = await fetch('/api/state', { cache: 'no-store' });
+                    if (res.ok) {
+                        const csv = await res.json();
+                        serverMode = true;
+                        if (csv.spieler && csv.spieler.trim()) {
+                            stateFromCsv(csv);
+                            setSaveStatus('ok', 'Aus CSV geladen · daten/');
+                        } else {
+                            if (!loadFromLocalStorage()) defaultState();
+                            saveApplicationData();   // legt die CSV-Dateien an
+                            setSaveStatus('ok', 'CSV-Dateien angelegt · daten/');
+                        }
+                        return;
+                    }
+                } catch (e) { /* kein Server -> Fallback */ }
+            }
+            if (!loadFromLocalStorage()) defaultState();
+            setSaveStatus('warn', 'Nur Browser-Speicher (start.bat für CSV)');
+        }
+
+        // =====================================================================
+        // 4. Elo engine
+        // =====================================================================
+        function computeChange(teams, gA, gB) {
+            const avg = list => list.reduce((s, p) => s + p.elo, 0) / list.length;
+            const avgA = avg(teams.teamA), avgB = avg(teams.teamB);
+            const expectedA = 1 / (1 + Math.pow(10, (avgB - avgA) / 400));
+            const result = gA > gB ? 'A' : (gB > gA ? 'B' : 'DRAW');
+            const actualA = result === 'A' ? 1 : (result === 'B' ? 0 : 0.5);
+            const margin = Math.abs(gA - gB);
+            // größerer Sieg = mehr Elo (Tordifferenz-Multiplikator)
+            const mult = result === 'DRAW' || margin <= 1 ? 1 : (margin === 2 ? 1.5 : (11 + margin) / 8);
+            let changeA = Math.round(K_FACTOR * mult * (actualA - expectedA));
+            if (result === 'A' && changeA < 1) changeA = 1;
+            if (result === 'B' && changeA > -1) changeA = -1;
+            return { result, changeA, expectedA };
+        }
+
+        function readScore() {
+            const a = $('goalsAInput').value, b = $('goalsBInput').value;
+            if (a === '' || b === '') return null;
+            const gA = parseInt(a), gB = parseInt(b);
+            if (isNaN(gA) || isNaN(gB) || gA < 0 || gB < 0) return null;
+            return { gA, gB };
+        }
+
+        function updateResultPreview() {
+            const score = readScore();
+            const btn = $('saveResultBtn');
+            btn.disabled = !score || !currentTeams;
+            if (!score || !currentTeams) {
+                $('eloPreview').innerHTML = 'Tore eintragen, um die Elo-Änderung zu sehen.';
+                return;
+            }
+            const { result, changeA, expectedA } = computeChange(currentTeams, score.gA, score.gB);
+            if (changeA === 0) {
+                $('eloPreview').innerHTML = `Unentschieden · keine Elo-Änderung <span class="text-slate-400">(Erwartung A: ${Math.round(expectedA * 100)} %)</span>`;
+                return;
+            }
+            const fmt = (v, c) => `<b class="${v > 0 ? 'text-emerald-600' : 'text-rose-600'}">${formatDelta(v)}</b>`;
+            $('eloPreview').innerHTML = `Team A ${fmt(changeA)} · Team B ${fmt(0 - changeA)} Elo <span class="text-slate-400">(Siegchance A: ${Math.round(expectedA * 100)} %)</span>`;
+        }
+
+        function processMatchResult() {
+            const score = readScore();
+            if (!currentTeams || !score) return;
+            const { gA, gB } = score;
+            const { result, changeA } = computeChange(currentTeams, gA, gB);
+            const changeB = 0 - changeA;
+
+            const seq = currentSeq() + 1;
+            const nowIso = new Date().toISOString();
+            const matchId = 'm_' + Date.now();
+
+            const apply = (team, change) => team.map(p => {
+                const player = players.find(x => x.id === p.id);
+                const before = player.elo;
+                player.elo = Math.max(100, before + change);
+                const delta = player.elo - before;
+                player.history.push({ seq, t: nowIso, elo: player.elo, delta, matchId });
+                return { id: player.id, name: player.name, before, after: player.elo, delta };
+            });
+
+            const logA = apply(currentTeams.teamA, changeA);
+            const logB = apply(currentTeams.teamB, changeB);
+            matchHistory.push({ id: matchId, seq, iso: nowIso, result, goalsA: gA, goalsB: gB, teamA: logA, teamB: logB });
+
+            $('goalsAInput').value = '';
+            $('goalsBInput').value = '';
+            currentTeams = null;
+            saveApplicationData();
+            renderAll();
+
+            const txt = result === 'DRAW' ? 'Unentschieden – keine Elo-Änderung.' : `Team ${result} +${Math.abs(changeA)} Elo, Gegner −${Math.abs(changeA)} Elo.`;
+            showToast(`Gespeichert: ${gA}:${gB}`, txt, 'success');
+        }
+
+        // =====================================================================
+        // 5. Teams
+        // =====================================================================
+        function generateBalancedTeams(addRandomness) {
+            const active = players.filter(p => selectedPlayerIds.has(p.id));
+            if (active.length < 2) return;
+            let sorted = [...active].sort((a, b) => b.elo - a.elo);
+            if (addRandomness) {
+                for (let i = 0; i < sorted.length - 1; i++) {
+                    if (Math.abs(sorted[i].elo - sorted[i + 1].elo) < 60 && Math.random() > 0.5) {
+                        [sorted[i], sorted[i + 1]] = [sorted[i + 1], sorted[i]];
+                    }
+                }
+            }
+            const teamA = [], teamB = [];
+            let eloA = 0, eloB = 0;
+            sorted.forEach(p => {
+                if (eloA <= eloB) { teamA.push(p); eloA += p.elo; } else { teamB.push(p); eloB += p.elo; }
+            });
+            currentTeams = { teamA, teamB };
+            renderMatchTab();
+        }
+
+        function movePlayer(id) {
+            if (!currentTeams) return;
+            const { teamA, teamB } = currentTeams;
+            const iA = teamA.findIndex(p => p.id === id);
+            if (iA >= 0) teamB.push(...teamA.splice(iA, 1));
+            else { const iB = teamB.findIndex(p => p.id === id); if (iB >= 0) teamA.push(...teamB.splice(iB, 1)); }
+            renderMatchTab();
+        }
+
+        // =====================================================================
+        // 6. Rendering
+        // =====================================================================
+        function formatDelta(d) { return (d > 0 ? '+' : (d < 0 ? '−' : '')) + Math.abs(d); }
+        function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+        function deltaClass(d) { return d > 0 ? 'text-emerald-600' : (d < 0 ? 'text-rose-600' : 'text-slate-400'); }
+
+        function renderAll() {
+            renderPlayersTab();
+            renderMatchTab();
+            renderHistoryTab();
+        }
+
+        function sparklineSvg(history, color, w = 80, h = 24) {
+            const pts = history.slice(-14);
+            if (pts.length < 2) return '';
+            const vals = pts.map(p => p.elo);
+            const min = Math.min(...vals), max = Math.max(...vals);
+            const range = Math.max(max - min, 10);
+            const path = pts.map((p, i) => {
+                const x = (i / (pts.length - 1)) * (w - 6) + 3;
+                const y = h - 4 - ((p.elo - min) / range) * (h - 8);
+                return `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(' ');
+            return `<svg width="${w}" height="${h}" class="inline-block"><path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        }
+
+        function lastMatchDelta(p) {
+            const pt = [...p.history].reverse().find(h => h.matchId);
+            return pt ? pt.delta : 0;
+        }
+
+        // ---- Tab 1: Spieler ----
+        function renderPlayersTab() {
+            const sorted = [...players].sort((a, b) => b.elo - a.elo);
+            $('playerTable').innerHTML = sorted.map((p, i) => {
+                const s = playerStats(p.id);
+                const d = lastMatchDelta(p);
+                const rating = ratingFromElo(p.elo);
+                return `<tr class="hover:bg-slate-50/70 cursor-pointer" data-card="${p.id}">
+                    <td class="px-4 py-3 text-slate-400 font-medium">${i + 1}</td>
+                    <td class="px-4 py-3"><div class="flex items-center gap-3">
+                        <span class="w-9 h-9 rounded-full overflow-hidden bg-slate-100 border-2 flex items-center justify-center text-slate-300 shrink-0" style="border-color:${playerColor(p.id)}">${p.photo ? `<img src="${escapeHtml(p.photo)}" class="w-full h-full object-cover object-top">` : '<i class="fa-solid fa-user text-sm"></i>'}</span>
+                        <span class="font-semibold">${escapeHtml(p.name)}</span>
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">${escapeHtml(p.pos)}</span></div></td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap"><span class="font-mono font-bold text-base">${p.elo}</span>
+                        <span class="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${{ bronze: 'bg-orange-100 text-orange-800', silber: 'bg-slate-200 text-slate-700', gold: 'bg-amber-100 text-amber-800', ikone: 'bg-indigo-100 text-indigo-700' }[tierFor(rating)]}" title="${TIER_NAMES[tierFor(rating)]}">${rating}</span></td>
+                    <td class="px-4 py-3 text-right font-mono text-xs font-bold ${deltaClass(d)}">${d ? (d > 0 ? '▲ ' : '▼ ') + Math.abs(d) : '–'}</td>
+                    <td class="px-4 py-3 text-right text-slate-600 hidden sm:table-cell">${s.games}</td>
+                    <td class="px-4 py-3 text-right text-slate-600 hidden sm:table-cell font-mono text-xs">${s.w} / ${s.d} / ${s.l}</td>
+                    <td class="px-4 py-3 hidden md:table-cell">${sparklineSvg(p.history, playerColor(p.id))}</td>
+                    <td class="admin-only px-4 py-3 text-right whitespace-nowrap">
+                        <button class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition" title="Bearbeiten" data-edit="${p.id}"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <button class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition" title="Löschen" data-del="${p.id}"><i class="fa-solid fa-trash text-xs"></i></button>
+                    </td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="8" class="px-4 py-8 text-center text-slate-400">Noch keine Spieler</td></tr>';
+
+            $('playerTable').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openEditModal(b.dataset.edit));
+            $('playerTable').querySelectorAll('[data-del]').forEach(b => b.onclick = () => deletePlayer(b.dataset.del));
+            $('playerTable').querySelectorAll('[data-card]').forEach(tr => tr.onclick = e => { if (!e.target.closest('button')) openCardModal(tr.dataset.card); });
+
+            // Karten-Raster
+            const grid = $('playerCards');
+            grid.innerHTML = '';
+            sorted.forEach((p, i) => {
+                const tile = document.createElement('div');
+                tile.className = 'card-tile';
+                tile.title = 'Karte öffnen';
+                tile.innerHTML = cardHtml(p, { fs: 9.8, delay: (i % 6) * 0.7 });
+                tile.onclick = () => openCardModal(p.id);
+                grid.appendChild(tile);
+            });
+            if (!sorted.length) grid.innerHTML = '<p class="text-slate-400 text-sm py-10">Noch keine Spieler</p>';
+            applyPlayersView();
+        }
+
+        let playersView = 'cards';
+        try { playersView = localStorage.getItem('matchmaster_view') || 'cards'; } catch (e) { }
+        function applyPlayersView() {
+            $('playerCards').classList.toggle('hidden', playersView !== 'cards');
+            $('playerListView').classList.toggle('hidden', playersView !== 'list');
+            const on = 'bg-blue-50 text-blue-700', off = 'text-slate-500 hover:bg-slate-50';
+            $('viewCardsBtn').className = `px-3 py-2 transition ${playersView === 'cards' ? on : off}`;
+            $('viewListBtn').className = `px-3 py-2 transition border-l border-slate-300 ${playersView === 'list' ? on : off}`;
+        }
+        $('viewCardsBtn').onclick = () => { playersView = 'cards'; try { localStorage.setItem('matchmaster_view', playersView); } catch (e) { } applyPlayersView(); };
+        $('viewListBtn').onclick = () => { playersView = 'list'; try { localStorage.setItem('matchmaster_view', playersView); } catch (e) { } applyPlayersView(); };
+
+        // ---- Tab 2: Aktuelles Spiel ----
+        function renderMatchTab() {
+            // Anwesenheit
+            const sorted = [...players].sort((a, b) => b.elo - a.elo);
+            $('attendanceList').innerHTML = '';
+            sorted.forEach(p => {
+                const on = selectedPlayerIds.has(p.id);
+                const btn = document.createElement('button');
+                btn.className = `flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-left text-sm transition ${on ? 'bg-blue-50 border-blue-500 text-blue-900' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`;
+                btn.innerHTML = `<span class="font-semibold truncate">${escapeHtml(p.name)}</span><span class="font-mono text-[11px] ${on ? 'text-blue-700' : 'text-slate-400'}">${p.elo}</span>`;
+                btn.onclick = () => { on ? selectedPlayerIds.delete(p.id) : selectedPlayerIds.add(p.id); renderMatchTab(); };
+                $('attendanceList').appendChild(btn);
+            });
+            $('selectedCountBadge').textContent = selectedPlayerIds.size;
+            $('generateTeamsBtn').disabled = selectedPlayerIds.size < 2;
+
+            // Presets
+            const names = Object.keys(squadPresets);
+            $('presetsContainer').innerHTML = names.length ? '' : '<span class="text-[11px] text-slate-400">Keine Presets</span>';
+            names.forEach(name => {
+                const chip = document.createElement('div');
+                chip.className = 'flex items-center bg-slate-100 text-slate-700 rounded-lg text-xs shrink-0';
+                chip.innerHTML = `<button class="px-2.5 py-1.5 hover:text-blue-700 font-semibold">${escapeHtml(name)}</button><button class="pr-2 text-slate-400 hover:text-rose-600">&times;</button>`;
+                const [a, d] = chip.querySelectorAll('button');
+                a.onclick = () => applyPreset(name);
+                d.onclick = () => { delete squadPresets[name]; saveApplicationData(); renderMatchTab(); };
+                $('presetsContainer').appendChild(chip);
+            });
+
+            // Teams
+            const has = !!currentTeams;
+            $('teamsEmptyState').classList.toggle('hidden', has);
+            $('teamsContainer').classList.toggle('hidden', !has);
+            $('remixTeamsBtn').classList.toggle('hidden', !has);
+            $('resultCard').classList.toggle('hidden', !has);
+            if (has) {
+                const { teamA, teamB } = currentTeams;
+                const sum = l => l.reduce((s, p) => s + p.elo, 0);
+                const avgA = teamA.length ? Math.round(sum(teamA) / teamA.length) : 0;
+                const avgB = teamB.length ? Math.round(sum(teamB) / teamB.length) : 0;
+                $('teamAAvg').textContent = avgA; $('teamBAvg').textContent = avgB;
+                $('teamACount').textContent = teamA.length; $('teamBCount').textContent = teamB.length;
+                $('eloDiffBadge').textContent = Math.abs(avgA - avgB) + ' Elo (Ø)';
+                [['teamAList', teamA], ['teamBList', teamB]].forEach(([id, list]) => {
+                    $(id).innerHTML = '';
+                    [...list].sort((a, b) => b.elo - a.elo).forEach(p => {
+                        const li = document.createElement('li');
+                        li.className = 'flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-200 text-sm cursor-pointer hover:border-slate-400 transition';
+                        li.innerHTML = `<span class="font-semibold">${escapeHtml(p.name)}</span><span class="font-mono text-xs text-slate-500">${p.elo}</span>`;
+                        li.onclick = () => movePlayer(p.id);
+                        $(id).appendChild(li);
+                    });
+                });
+            }
+            updateResultPreview();
+        }
+
+        function applyPreset(name) {
+            const ids = squadPresets[name];
+            if (!Array.isArray(ids)) return;
+            selectedPlayerIds = new Set(ids.filter(id => players.some(p => p.id === id)));
+            renderMatchTab();
+        }
+
+        // ---- Tab 3: Historie ----
+        function renderHistoryTab() {
+            renderLeaderboard();
+            renderMatchHistory();
+            if (activeTab === 'history') renderChart();
+        }
+
+        function renderLeaderboard() {
+            const sorted = [...players].sort((a, b) => b.elo - a.elo);
+            $('leaderboard').innerHTML = sorted.map((p, i) => {
+                const s = playerStats(p.id);
+                const total = p.elo - p.history[0].elo;
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1;
+                const form = s.form.slice(-5).map(r => `<span class="inline-block w-5 h-5 rounded text-[10px] font-bold leading-5 text-center text-white ${r === 'w' ? 'bg-emerald-500' : (r === 'l' ? 'bg-rose-500' : 'bg-slate-400')}">${r === 'w' ? 'S' : (r === 'l' ? 'N' : 'U')}</span>`).join(' ');
+                return `<tr>
+                    <td class="px-4 py-2.5 text-slate-500 font-medium">${medal}</td>
+                    <td class="px-4 py-2.5 font-semibold"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle" style="background:${playerColor(p.id)}"></span>${escapeHtml(p.name)}</td>
+                    <td class="px-4 py-2.5 text-right font-mono font-bold">${p.elo}</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-xs font-bold ${deltaClass(total)}">${total ? formatDelta(total) : '–'}</td>
+                    <td class="px-4 py-2.5 text-right text-slate-600 hidden sm:table-cell">${s.games}</td>
+                    <td class="px-4 py-2.5 text-right text-slate-600 hidden sm:table-cell font-mono text-xs">${s.w} / ${s.d} / ${s.l}</td>
+                    <td class="px-4 py-2.5 text-right whitespace-nowrap">${form || '<span class="text-slate-300">–</span>'}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderMatchHistory() {
+            const list = $('matchHistoryList');
+            if (matchHistory.length === 0) {
+                list.innerHTML = '<div class="text-slate-400 text-sm text-center py-6">Noch keine Spiele absolviert</div>';
+                return;
+            }
+            const chips = team => team.map(p => `<span class="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-md px-2 py-1">
+                <span class="font-medium text-slate-800">${escapeHtml(p.name)}</span>
+                <span class="font-mono text-slate-400">${p.before}→${p.after}</span>
+                <span class="font-mono font-bold ${deltaClass(p.delta)}">${p.delta ? formatDelta(p.delta) : '±0'}</span></span>`).join(' ');
+
+            list.innerHTML = [...matchHistory].reverse().map((m, i) => {
+                const nr = matchHistory.length - i;
+                const date = new Date(m.iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+                const aWin = m.result === 'A', bWin = m.result === 'B';
+                return `<div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                    <div class="flex items-center gap-3 mb-2.5">
+                        <span class="text-xs font-bold text-slate-400">#${nr}</span>
+                        <span class="text-lg font-extrabold font-mono tracking-tight"><span class="${aWin ? 'text-blue-700' : 'text-slate-500'}">${m.goalsA}</span><span class="text-slate-300 mx-1">:</span><span class="${bWin ? 'text-rose-700' : 'text-slate-500'}">${m.goalsB}</span></span>
+                        <span class="text-[11px] font-semibold ${m.result === 'DRAW' ? 'text-slate-500' : (aWin ? 'text-blue-700' : 'text-rose-700')}">${m.result === 'DRAW' ? 'Unentschieden' : 'Sieg Team ' + m.result}</span>
+                        <span class="text-[11px] text-slate-400 ml-auto">${date}</span>
+                    </div>
+                    <div class="space-y-1.5 text-[11px]">
+                        <div class="flex flex-wrap items-center gap-1.5"><span class="font-bold text-blue-700 w-3">A</span>${chips(m.teamA)}</div>
+                        <div class="flex flex-wrap items-center gap-1.5"><span class="font-bold text-rose-700 w-3">B</span>${chips(m.teamB)}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ---- Chart ----
+        function renderChart() {
+            const legend = $('chartLegend');
+            legend.innerHTML = '';
+            players.forEach(p => {
+                const hidden = hiddenInChart.has(p.id);
+                const chip = document.createElement('button');
+                chip.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs transition ${hidden ? 'border-slate-200 text-slate-400 bg-white' : 'border-slate-300 text-slate-800 bg-slate-50'}`;
+                chip.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${hidden ? '#cbd5e1' : playerColor(p.id)}"></span>${escapeHtml(p.name)}<span class="font-mono ${hidden ? '' : 'text-slate-500'}">${p.elo}</span>`;
+                chip.onclick = () => { hidden ? hiddenInChart.delete(p.id) : hiddenInChart.add(p.id); renderChart(); };
+                legend.appendChild(chip);
+            });
+
+            const svgEl = $('eloChart'), wrap = $('chartWrap'), tip = $('chartTooltip');
+            const W = wrap.clientWidth || 700, H = 380;
+            const m = { l: 44, r: 16, t: 14, b: 30 };
+            svgEl.setAttribute('width', W); svgEl.setAttribute('height', H); svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+            const visible = players.filter(p => !hiddenInChart.has(p.id));
+            const maxSeq = Math.max(currentSeq(), 1);
+            const msg = t => { svgEl.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="#94a3b8" font-size="13">${t}</text>`; };
+            if (matchHistory.length === 0) return msg('Der Verlauf erscheint nach dem ersten gespeicherten Spiel.');
+            if (!visible.length) return msg('Keine Spieler ausgewählt.');
+
+            const all = visible.flatMap(p => p.history.map(h => h.elo));
+            let yMin = Math.min(...all), yMax = Math.max(...all);
+            const pad = Math.max((yMax - yMin) * 0.12, 10);
+            yMin = Math.floor((yMin - pad) / 10) * 10; yMax = Math.ceil((yMax + pad) / 10) * 10;
+            const x = s => m.l + (s / maxSeq) * (W - m.l - m.r - 40);
+            const y = v => m.t + (1 - (v - yMin) / (yMax - yMin)) * (H - m.t - m.b);
+
+            let svg = '';
+            for (let i = 0; i <= 5; i++) {
+                const v = yMin + ((yMax - yMin) * i) / 5;
+                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="#eef2f6"/>`;
+                svg += `<text x="${m.l - 8}" y="${y(v) + 3}" text-anchor="end" fill="#94a3b8" font-size="10">${Math.round(v)}</text>`;
+            }
+            if (1500 > yMin && 1500 < yMax) {
+                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(1500)}" y2="${y(1500)}" stroke="#94a3b8" stroke-dasharray="4 4"/>`;
+                svg += `<text x="${W - m.r}" y="${y(1500) - 4}" text-anchor="end" fill="#94a3b8" font-size="9">1500</text>`;
+            }
+            const xStep = Math.max(1, Math.ceil(maxSeq / 12));
+            for (let s = 0; s <= maxSeq; s += xStep) svg += `<text x="${x(s)}" y="${H - 10}" text-anchor="middle" fill="#94a3b8" font-size="10">${s === 0 ? 'Start' : '#' + s}</text>`;
+
+            const dots = [];
+            [...visible].sort((a, b) => a.elo - b.elo).forEach(p => {
+                const color = playerColor(p.id);
+                const pts = [...p.history].sort((a, b) => a.seq - b.seq);
+                svg += `<path d="${pts.map((h, i) => `${i ? 'L' : 'M'}${x(h.seq).toFixed(1)},${y(h.elo).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+                pts.forEach(h => {
+                    dots.push({ p, h, cx: x(h.seq), cy: y(h.elo), color });
+                    svg += `<circle cx="${x(h.seq).toFixed(1)}" cy="${y(h.elo).toFixed(1)}" r="3.4" fill="#fff" stroke="${color}" stroke-width="2"/>`;
+                });
+                const last = pts[pts.length - 1];
+                svg += `<text x="${x(last.seq) + 8}" y="${y(last.elo) + 3}" fill="${color}" font-size="10.5" font-weight="700">${escapeHtml(p.name)}</text>`;
+            });
+            svg += `<line id="chartCursor" y1="${m.t}" y2="${H - m.b}" stroke="#94a3b8" stroke-dasharray="3 3" style="display:none"/>`;
+            svgEl.innerHTML = svg;
+            const cursor = $('chartCursor');
+
+            svgEl.onmousemove = e => {
+                const r = svgEl.getBoundingClientRect();
+                const mx = e.clientX - r.left, my = e.clientY - r.top;
+                let best = null, bd = Infinity;
+                dots.forEach(d => { const dd = Math.hypot(d.cx - mx, d.cy - my); if (dd < bd) { bd = dd; best = d; } });
+                if (!best || bd > 36) { cursor.style.display = 'none'; tip.classList.add('hidden'); return; }
+                cursor.setAttribute('x1', best.cx); cursor.setAttribute('x2', best.cx); cursor.style.display = '';
+                const { p, h } = best;
+                const when = h.seq === 0 ? 'Startwert' : `Spiel #${h.seq} · ${new Date(h.t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`;
+                tip.innerHTML = `<div class="font-bold" style="color:${best.color}">${escapeHtml(p.name)}</div>
+                    <div class="text-slate-500">${when}${!h.matchId && h.seq > 0 ? ' · manuell' : ''}</div>
+                    <div><span class="font-mono font-bold text-slate-900 text-sm">${h.elo}</span> ${h.seq > 0 ? `<span class="font-mono font-bold ${deltaClass(h.delta)}">(${h.delta ? formatDelta(h.delta) : '±0'})</span>` : ''}</div>`;
+                tip.classList.remove('hidden');
+                const tw = tip.offsetWidth;
+                tip.style.left = Math.max(0, best.cx + 14 + tw > W ? best.cx - 14 - tw : best.cx + 14) + 'px';
+                tip.style.top = Math.max(0, best.cy - 24) + 'px';
+            };
+            svgEl.onmouseleave = () => { cursor.style.display = 'none'; tip.classList.add('hidden'); };
+        }
+
+        // =====================================================================
+        // 7. Tabs
+        // =====================================================================
+        function showTab(name) {
+            if (!TABS.includes(name) || (name === 'match' && me.role !== 'admin')) name = 'players';
+            activeTab = name;
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('hidden', p.id !== 'tab-' + name));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+            try { localStorage.setItem('matchmaster_tab', name); } catch (e) { }
+            if (name === 'history') renderChart();
+            if (name === 'payments') loadPayments();
+            window.scrollTo(0, 0);
+        }
+        document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+        window.addEventListener('resize', () => { if (activeTab === 'history') renderChart(); });
+
+        // =====================================================================
+        // 8. Events
+        // =====================================================================
+        $('addPlayerForm').onsubmit = e => {
+            e.preventDefault();
+            const name = $('playerNameInput').value.trim();
+            const elo = parseInt($('playerEloInput').value) || 1500;
+            if (!name) return;
+            const p = { id: "p_" + Date.now(), name, elo, history: [{ seq: currentSeq(), t: new Date().toISOString(), elo, delta: 0, matchId: null }] };
+            players.push(p);
+            normalizeData();
+            selectedPlayerIds.add(p.id);
+            saveApplicationData();
+            renderAll();
+            $('playerNameInput').value = ''; $('playerEloInput').value = '1500';
+            showToast("Spieler hinzugefügt", `${name} startet mit ${elo} Elo.`, "success");
+        };
+
+        function openEditModal(id) {
+            const p = players.find(x => x.id === id);
+            if (!p) return;
+            $('editPlayerId').value = p.id; $('editPlayerName').value = p.name; $('editPlayerElo').value = p.elo;
+            $('editPlayerPos').innerHTML = POSITIONS.map(pos => `<option ${pos === p.pos ? 'selected' : ''}>${pos}</option>`).join('');
+            $('editStatsGrid').innerHTML = STAT_KEYS.map(k => `<label class="flex items-center gap-2 border border-slate-300 rounded-lg px-2.5 py-1.5 focus-within:border-blue-500">
+                <span class="text-[11px] font-bold text-slate-500 w-8">${STAT_LABELS[k]}</span>
+                <input type="number" min="1" max="99" data-stat="${k}" value="${p.stats[k]}" class="w-full text-sm font-semibold outline-none"></label>`).join('');
+            pendingPhoto = undefined;
+            renderEditPhoto(p.photo);
+            updateRatingHint();
+            $('editModal').classList.replace('hidden', 'flex');
+        }
+        const closeEdit = () => $('editModal').classList.replace('flex', 'hidden');
+        $('cancelEditBtn').onclick = closeEdit;
+        $('editPlayerElo').oninput = () => updateRatingHint();
+        function updateRatingHint() {
+            const elo = parseInt($('editPlayerElo').value) || 1500, r = ratingFromElo(elo);
+            $('editRatingHint').textContent = `→ Rating ${r} · ${TIER_NAMES[tierFor(r)]}`;
+        }
+
+        // Foto: undefined = unverändert, '' = entfernen, 'data:...' = neu
+        let pendingPhoto;
+        function renderEditPhoto(src) {
+            $('editPhotoPreview').innerHTML = src ? `<img src="${escapeHtml(src)}" class="w-full h-full object-cover object-top">` : '<i class="fa-solid fa-user"></i>';
+        }
+        $('editPhotoBtn').onclick = () => $('editPhotoInput').click();
+        $('editPhotoRemoveBtn').onclick = () => { pendingPhoto = ''; renderEditPhoto(''); };
+        $('editPhotoInput').onchange = async e => {
+            const file = e.target.files[0];
+            e.target.value = '';
+            if (!file) return;
+            try {
+                pendingPhoto = await fileToPhoto(file);
+                renderEditPhoto(pendingPhoto);
+            } catch (err) {
+                showToast("Bild-Fehler", "Das Bild konnte nicht gelesen werden.", "error");
+            }
+        };
+
+        // Zuschneiden (Cover, leicht nach oben gewichtet) und verkleinern
+        function fileToPhoto(file) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    const W = 420, H = 460, ratio = W / H;
+                    let sw = img.width, sh = img.height;
+                    if (sw / sh > ratio) sw = sh * ratio; else sh = sw / ratio;
+                    const sx = (img.width - sw) / 2, sy = (img.height - sh) * 0.2;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = W; canvas.height = H;
+                    canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+                    const alpha = /png|webp|gif/.test(file.type);
+                    resolve(canvas.toDataURL(alpha ? 'image/png' : 'image/jpeg', 0.9));
+                    URL.revokeObjectURL(url);
+                };
+                img.onerror = reject;
+                img.src = url;
+            });
+        }
+
+        // Im Server-Modus landet das Foto als Datei in daten/fotos/, sonst bleibt es als Data-URL im Browser
+        async function storePhoto(p, dataUrl) {
+            if (!dataUrl) {
+                if (serverMode) { try { await fetch('/api/foto/' + p.id, { method: 'DELETE' }); } catch (e) { } }
+                p.photo = '';
+                return;
+            }
+            if (serverMode) {
+                try {
+                    const res = await fetch('/api/foto/' + p.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: dataUrl }) });
+                    const j = await res.json();
+                    if (!res.ok || !j.ok) throw new Error(j.error);
+                    p.photo = j.path + '?v=' + Date.now();
+                    return;
+                } catch (e) {
+                    showToast("Foto nicht in Ordner gespeichert", "Bild bleibt vorerst nur im Browser.", "error");
+                }
+            }
+            p.photo = dataUrl;
+        }
+
+        $('editPlayerForm').onsubmit = async e => {
+            e.preventDefault();
+            const p = players.find(x => x.id === $('editPlayerId').value);
+            if (p) {
+                p.name = $('editPlayerName').value.trim();
+                p.pos = $('editPlayerPos').value;
+                document.querySelectorAll('#editStatsGrid [data-stat]').forEach(inp => {
+                    p.stats[inp.dataset.stat] = Math.max(1, Math.min(99, parseInt(inp.value) || 50));
+                });
+                const newElo = parseInt($('editPlayerElo').value) || 1500;
+                if (newElo !== p.elo) {
+                    p.history.push({ seq: currentSeq(), t: new Date().toISOString(), elo: newElo, delta: newElo - p.elo, matchId: null });
+                    p.elo = newElo;
+                }
+                if (pendingPhoto !== undefined) await storePhoto(p, pendingPhoto);
+                saveApplicationData(); renderAll();
+                showToast("Gespeichert", "Spielerdaten aktualisiert.", "info");
+                if (!$('cardModal').classList.contains('hidden')) openCardModal(p.id, { replay: false });
+            }
+            closeEdit();
+        };
+
+        // =====================================================================
+        // Karten-Enthüllung (Modal)
+        // =====================================================================
+        let cardPlayerId = null, tiltReady = false, revealTimers = [], countRaf = null;
+
+        function cardOrder() { return [...players].sort((a, b) => b.elo - a.elo); }
+
+        function openCardModal(id, { replay = true } = {}) {
+            const p = players.find(x => x.id === id);
+            if (!p) return;
+            cardPlayerId = id;
+            const modal = $('cardModal');
+            const rating = ratingFromElo(p.elo), tier = tierFor(rating);
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const animate = replay && !reduce;
+
+            revealTimers.forEach(clearTimeout); revealTimers = [];
+            cancelAnimationFrame(countRaf);
+            tiltReady = false;
+
+            modal.className = `fixed inset-0 z-[60] tier-${tier}`;
+            document.body.style.overflow = 'hidden';
+
+            const flipper = $('revealFlipper');
+            flipper.className = 'reveal-flipper';
+            flipper.innerHTML = `
+                <div class="reveal-face">${cardHtml(p, { fs: Math.min(17, Math.max(10.5, (window.innerHeight - 190) / 28.5)), reveal: animate })}</div>
+                <div class="reveal-face reveal-back"><div class="fut-card tier-${tier}" style="--fs:${Math.min(17, Math.max(10.5, (window.innerHeight - 190) / 28.5))}px">
+                    <div class="fut-shape"></div><div class="fut-inner"><div class="fut-pattern"></div>
+                    <div class="back-art"><i class="fa-solid fa-futbol"></i><span>FC-M:SYS</span></div><div class="fut-holo"></div><div class="fut-shine"></div></div></div></div>`;
+            // Die große Karte soll ruhig und gleichmäßig schimmern
+            flipper.querySelectorAll('.fut-shine').forEach(s => s.style.setProperty('animation-duration', '4s'));
+            flipper.querySelector('.fut-inner').insertAdjacentHTML('beforeend', '<div class="reveal-shine-once"></div>');
+
+            $('cardInfo').innerHTML = `<div class="font-bold text-base">${escapeHtml(p.name)}</div>
+                <div class="text-white/60">Elo <b class="text-white">${p.elo}</b> → Rating <b class="text-white">${rating}</b> · <span class="font-semibold" style="color:rgb(${{ bronze: '230,160,100', silber: '203,213,225', gold: '252,211,77', ikone: '165,170,255' }[tier]})">${TIER_NAMES[tier]}</span></div>`;
+
+            $('revealBob').className = 'reveal-bob';
+            $('revealTilt').style.transform = '';
+            buildParticles(tier);
+
+            // Animation neu starten (Reflow erzwingen)
+            const flash = $('revealFlash');
+            flash.className = 'reveal-flash';
+            void flipper.offsetWidth;
+            if (animate) {
+                flipper.classList.add('play'); flash.classList.add('play');
+                flipper.querySelector('.reveal-shine-once').classList.add('play');
+                revealTimers.push(setTimeout(() => countUp(flipper), 1900));
+            }
+            revealTimers.push(setTimeout(() => { tiltReady = true; $('revealBob').classList.add('idle'); }, animate ? 2500 : 100));
+            modal.classList.remove('hidden');
+        }
+
+        function closeCardModal() {
+            $('cardModal').classList.add('hidden');
+            document.body.style.overflow = '';
+            revealTimers.forEach(clearTimeout); cancelAnimationFrame(countRaf);
+            cardPlayerId = null;
+        }
+
+        function stepCard(dir) {
+            const list = cardOrder();
+            const i = list.findIndex(p => p.id === cardPlayerId);
+            if (i < 0 || !list.length) return;
+            openCardModal(list[(i + dir + list.length) % list.length].id);
+        }
+
+        // Zahlen zählen hoch, Werte der Reihe nach
+        function countUp(root) {
+            const els = [...root.querySelectorAll('.reveal-face:first-child [data-val]')];
+            const t0 = performance.now();
+            const tick = now => {
+                let running = false;
+                els.forEach((el, i) => {
+                    const start = i === 0 ? 0 : 350 + (i - 1) * 110;
+                    const dur = i === 0 ? 1100 : 700;
+                    const t = Math.min(1, Math.max(0, (now - t0 - start) / dur));
+                    const eased = 1 - Math.pow(1 - t, 3);
+                    el.textContent = Math.round(parseInt(el.dataset.val) * eased);
+                    if (t < 1) running = true;
+                });
+                if (running) countRaf = requestAnimationFrame(tick);
+            };
+            countRaf = requestAnimationFrame(tick);
+        }
+
+        function buildParticles(tier) {
+            const n = { bronze: 10, silber: 22, gold: 40, ikone: 56 }[tier];
+            const box = $('revealParticles');
+            box.innerHTML = '';
+            for (let i = 0; i < n; i++) {
+                const a = Math.random() * Math.PI * 2, d = 120 + Math.random() * Math.min(window.innerWidth, 700) * 0.5;
+                const s = document.createElement('span');
+                s.style.cssText = `--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d * 0.8}px;--sz:${3 + Math.random() * 9}px;--dur:${0.9 + Math.random() * 1.1}s;--delay:${1.75 + Math.random() * 0.35}s`;
+                box.appendChild(s);
+            }
+        }
+
+        // 3D-Neigung + Glanz folgen der Maus bzw. dem Finger
+        function tiltMove(e) {
+            if (!tiltReady) return;
+            const r = $('revealFlipper').getBoundingClientRect();
+            const px = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+            const py = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+            $('revealTilt').style.transform = `rotateY(${(px - 0.5) * 26}deg) rotateX(${(0.5 - py) * 22}deg)`;
+            const card = $('revealFlipper');
+            card.style.setProperty('--mx', px * 100 + '%'); card.style.setProperty('--my', py * 100 + '%'); card.style.setProperty('--glare', 1);
+        }
+        function tiltEnd() {
+            $('revealTilt').style.transform = '';
+            $('revealFlipper').style.setProperty('--glare', 0);
+        }
+        $('revealStage').addEventListener('pointermove', tiltMove);
+        $('revealStage').addEventListener('pointerleave', tiltEnd);
+        $('revealStage').addEventListener('click', e => { if (!e.target.closest('.fut-card')) closeCardModal(); });
+        $('cardCloseBtn').onclick = closeCardModal;
+        $('cardPrevBtn').onclick = () => stepCard(-1);
+        $('cardNextBtn').onclick = () => stepCard(1);
+        $('cardEditBtn').onclick = () => { if (cardPlayerId) openEditModal(cardPlayerId); };
+        document.addEventListener('keydown', e => {
+            if ($('cardModal').classList.contains('hidden') || !$('editModal').classList.contains('hidden')) return;
+            if (e.key === 'Escape') closeCardModal();
+            else if (e.key === 'ArrowLeft') stepCard(-1);
+            else if (e.key === 'ArrowRight') stepCard(1);
+        });
+
+        function deletePlayer(id) {
+            const p = players.find(x => x.id === id);
+            if (!p || !confirm(`${p.name} wirklich löschen?`)) return;
+            players = players.filter(x => x.id !== id);
+            selectedPlayerIds.delete(id);
+            if (currentTeams) currentTeams = null;
+            saveApplicationData(); renderAll();
+        }
+
+        $('selectAllBtn').onclick = () => {
+            if (selectedPlayerIds.size === players.length) selectedPlayerIds.clear();
+            else players.forEach(p => selectedPlayerIds.add(p.id));
+            renderMatchTab();
+        };
+        $('generateTeamsBtn').onclick = () => generateBalancedTeams(false);
+        $('remixTeamsBtn').onclick = () => generateBalancedTeams(true);
+
+        $('goalsAInput').oninput = $('goalsBInput').oninput = updateResultPreview;
+        $('saveResultBtn').onclick = processMatchResult;
+        [$('goalsAInput'), $('goalsBInput')].forEach(inp => inp.onkeydown = e => { if (e.key === 'Enter' && !$('saveResultBtn').disabled) processMatchResult(); });
+
+        $('savePresetBtn').onclick = () => {
+            if (!selectedPlayerIds.size) return showToast("Hinweis", "Wähle zuerst Spieler aus.", "info");
+            $('presetNameInput').value = '';
+            $('presetModal').classList.replace('hidden', 'flex');
+            $('presetNameInput').focus();
+        };
+        $('cancelPresetBtn').onclick = () => $('presetModal').classList.replace('flex', 'hidden');
+        $('savePresetForm').onsubmit = e => {
+            e.preventDefault();
+            const name = $('presetNameInput').value.trim();
+            if (!name) return;
+            squadPresets[name] = Array.from(selectedPlayerIds);
+            saveApplicationData(); renderMatchTab();
+            $('presetModal').classList.replace('flex', 'hidden');
+            showToast("Preset gespeichert", `„${name}“ wurde hinterlegt.`, "success");
+        };
+
+        $('clearHistoryBtn').onclick = () => {
+            if (!confirm("Spiel-Historie und Elo-Verlauf löschen? Die aktuellen Elo-Werte bleiben erhalten.")) return;
+            matchHistory = [];
+            players.forEach(p => { p.history = []; });
+            normalizeData();
+            saveApplicationData(); renderAll();
+        };
+        $('chartAllBtn').onclick = () => { hiddenInChart.clear(); renderChart(); };
+        $('chartNoneBtn').onclick = () => { players.forEach(p => hiddenInChart.add(p.id)); renderChart(); };
+
+        $('resetDataBtn').onclick = () => {
+            if (!confirm("Alles auf den Standard-Kader zurücksetzen? Spiele und Verlauf gehen verloren (auch in den CSV-Dateien).")) return;
+            defaultState();
+            hiddenInChart.clear(); currentTeams = null;
+            selectedPlayerIds = new Set(players.map(p => p.id));
+            saveApplicationData(); renderAll();
+            showToast("Zurückgesetzt", "Standard-Kader wiederhergestellt.", "info");
+        };
+
+        $('exportJsonBtn').onclick = () => {
+            const blob = new Blob([JSON.stringify({ version: "3.0", exportDate: new Date().toISOString(), players, squadPresets, matchHistory }, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `FCMSys_Backup_${new Date().toISOString().slice(0, 10)}.json`; a.click();
+            URL.revokeObjectURL(url);
+        };
+        $('importJsonBtn').onclick = () => $('importFileInput').click();
+        $('importFileInput').onchange = e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = evt => {
+                try {
+                    const data = JSON.parse(evt.target.result);
+                    if (!data || !Array.isArray(data.players)) throw new Error("format");
+                    players = data.players;
+                    squadPresets = data.squadPresets || {};
+                    // alte Backups (v2) hatten Namen als Strings im Match-Log -> verwerfen, Elo bleibt
+                    matchHistory = (data.matchHistory || []).filter(m => m && m.id && Array.isArray(m.teamA) && typeof m.teamA[0] === 'object');
+                    normalizeData();
+                    selectedPlayerIds = new Set(players.map(p => p.id));
+                    currentTeams = null;
+                    saveApplicationData(); renderAll();
+                    showToast("Import erfolgreich", `${players.length} Spieler, ${matchHistory.length} Spiele geladen.`, "success");
+                } catch (err) {
+                    showToast("Import-Fehler", "Die JSON-Datei konnte nicht gelesen werden.", "error");
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        };
+
+        // =====================================================================
+        // 8b. Login, Rollen, Zahlungen
+        // =====================================================================
+        async function api(method, url, body) {
+            const res = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+            if (res.status === 401) { location.href = '/login'; throw new Error('Nicht angemeldet'); }
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || res.status);
+            return data;
+        }
+
+        async function loadMe() {
+            if (location.protocol.startsWith('http')) {
+                try {
+                    const res = await fetch('/api/me', { cache: 'no-store' });
+                    if (res.status === 401) { location.href = '/login'; return false; }
+                    if (res.ok) me = await res.json();
+                } catch (e) { /* kein Server -> lokaler Modus */ }
+            }
+            document.body.classList.toggle('role-player', me.role !== 'admin');
+            $('stMailRow').classList.toggle('hidden', !me.mailEnabled);
+            $('stMailRow').classList.toggle('flex', !!me.mailEnabled);
+            if (me.authEnabled) {
+                $('userChip').classList.replace('hidden', 'flex');
+                $('userName').textContent = me.name;
+                $('userRole').textContent = me.role === 'admin' ? 'Admin' : 'Spieler';
+            }
+            return true;
+        }
+
+        const eur = cent => (cent / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        const fmtDate = iso => new Date(iso + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+        const playerName = id => (players.find(p => p.id === id) || { name: '(gelöscht)' }).name;
+        let stSel = null;   // ausgewählte Teilnehmer im Formular "Neuer Spieltag"
+
+        async function loadPayments() {
+            if (!serverMode) {
+                $('myPayments').innerHTML = '<p class="text-sm text-slate-500">Zahlungen funktionieren nur mit dem Server (start.bat).</p>';
+                return;
+            }
+            try {
+                spieltage = (await api('GET', '/api/zahlungen')).spieltage;
+                if (me.role === 'admin') kindeUsers = me.authEnabled ? await api('GET', '/api/users') : {};
+            } catch (e) { showToast('Zahlungen konnten nicht geladen werden', e.message, 'error'); return; }
+            renderPayments();
+        }
+
+        function badge(paid, via) {
+            return paid
+                ? `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-check mr-1"></i>bezahlt${via ? ' · ' + escapeHtml(via) : ''}</span>`
+                : '<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">offen</span>';
+        }
+
+        function renderPayments() {
+            const isAdmin = me.role === 'admin';
+
+            // --- Meine Beiträge ---
+            const mine = me.spielerId ? spieltage.filter(s => s.teilnehmer.includes(me.spielerId)) : [];
+            const open = mine.filter(s => !s.bezahlt[me.spielerId]);
+            const my = $('myPayments');
+            my.classList.toggle('hidden', !me.spielerId && !me.authEnabled);
+            if (!me.spielerId) {
+                my.innerHTML = '<p class="text-sm text-slate-500"><i class="fa-solid fa-circle-info mr-1.5 text-blue-500"></i>Dein Login ist noch keinem Spieler zugeordnet. Bitte den Admin, dich unter „Benutzer &amp; Zuordnung“ zuzuweisen.</p>';
+            } else {
+                my.innerHTML = `<div class="flex items-center justify-between mb-3"><h3 class="font-bold text-sm">Meine Beiträge · ${escapeHtml(playerName(me.spielerId))}</h3>
+                    <span class="text-sm font-bold ${open.length ? 'text-amber-600' : 'text-emerald-600'}">${open.length ? 'Offen: ' + eur(open.reduce((s, x) => s + x.betragCent, 0)) : 'Alles bezahlt'}</span></div>
+                    ${open.length && me.paypal && !/^https:/.test(me.paypal) ? `<p class="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-2"><i class="fa-brands fa-paypal text-blue-600 mr-1.5"></i>Bezahlen per PayPal an <b class="select-all">${escapeHtml(me.paypal)}</b> (Freunde &amp; Familie, damit keine Gebühren anfallen). Der Admin hakt es danach ab.</p>` : ''}
+                    <div class="divide-y divide-slate-100">${mine.map(s => {
+                        const paid = s.bezahlt[me.spielerId];
+                        return `<div class="py-2.5 flex items-center gap-3 text-sm">
+                            <div class="flex-1 min-w-0"><div class="font-semibold">${fmtDate(s.datum)}</div><div class="text-xs text-slate-500 truncate">${escapeHtml(s.titel || '')}</div></div>
+                            <div class="font-mono font-bold">${eur(s.betragCent)}</div>
+                            ${badge(!!paid, paid && paid.via)}
+                            ${!paid && /^https:/.test(me.paypal) && s.betragCent > 0 ? `<a href="${escapeHtml(me.paypal.replace(/\/+$/, '') + '/' + (s.betragCent / 100).toFixed(2) + 'EUR')}" target="_blank" rel="noopener" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition"><i class="fa-brands fa-paypal mr-1"></i>Bezahlen</a>` : ''}
+                        </div>`;
+                    }).join('') || '<p class="py-3 text-sm text-slate-400">Noch keine Spieltage für dich.</p>'}</div>`;
+            }
+
+            if (!isAdmin) { $('spieltageList').innerHTML = ''; return; }
+
+            // --- Formular ---
+            if (!$('stDatum').value) $('stDatum').value = new Date().toLocaleDateString('sv-SE');
+            if (!stSel) stSel = new Set(players.map(p => p.id));
+            $('stTeilnehmer').innerHTML = [...players].sort((a, b) => a.name.localeCompare(b.name)).map(p =>
+                `<label class="flex items-center gap-1.5 text-xs border border-slate-300 rounded-full px-2.5 py-1 cursor-pointer select-none">
+                    <input type="checkbox" data-st="${escapeHtml(p.id)}" ${stSel.has(p.id) ? 'checked' : ''} class="accent-blue-600">${escapeHtml(p.name)}</label>`).join('');
+
+            if (document.activeElement !== $('paypalInput')) $('paypalInput').value = me.paypal || '';
+
+            // --- Spieltage (Admin) ---
+            const mailOf = id => (Object.values(kindeUsers).find(u => u.spielerId === id) || {}).email || '';
+            $('spieltageList').innerHTML = spieltage.map(s => {
+                const paidIds = s.teilnehmer.filter(id => s.bezahlt[id]);
+                const openIds = s.teilnehmer.filter(id => !s.bezahlt[id]);
+                const mails = openIds.map(mailOf).filter(Boolean);
+                const mailto = mails.length ? 'mailto:?bcc=' + encodeURIComponent(mails.join(',')) +
+                    '&subject=' + encodeURIComponent(`Fußball ${fmtDate(s.datum)}: Beitrag ${eur(s.betragCent)}`) +
+                    '&body=' + encodeURIComponent(`Hallo,\n\nfür den Spieltag am ${fmtDate(s.datum)}${s.titel ? ' (' + s.titel + ')' : ''} sind noch ${eur(s.betragCent)} offen.\n` +
+                        (me.paypal ? `Bitte per PayPal (Freunde & Familie) an: ${me.paypal}\n` : '') + '\nDanke!') : '';
+                const pct = Math.round(100 * paidIds.length / s.teilnehmer.length);
+                const rows = [...s.teilnehmer].sort((a, b) => playerName(a).localeCompare(playerName(b))).map(id => {
+                    const p = s.bezahlt[id];
+                    return `<div class="py-2 flex items-center gap-3 text-sm">
+                        <span class="flex-1 font-medium">${escapeHtml(playerName(id))}</span>
+                        ${badge(!!p, p && p.via)}
+                        <button data-act="toggle" data-st="${escapeHtml(s.id)}" data-sp="${escapeHtml(id)}" data-paid="${p ? 0 : 1}" class="text-xs font-semibold px-2.5 py-1 rounded-lg border ${p ? 'border-slate-300 text-slate-500 hover:bg-slate-50' : 'border-blue-300 text-blue-700 hover:bg-blue-50'} transition">${p ? 'Zurücksetzen' : 'Als bezahlt markieren'}</button>
+                    </div>`;
+                }).join('');
+                return `<div class="card p-5">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <div><h3 class="font-bold">${fmtDate(s.datum)}${s.titel ? ' · ' + escapeHtml(s.titel) : ''}</h3>
+                            <p class="text-xs text-slate-500">${eur(s.betragCent)} pro Person · ${paidIds.length}/${s.teilnehmer.length} bezahlt · ${eur(paidIds.length * s.betragCent)} von ${eur(s.teilnehmer.length * s.betragCent)}</p></div>
+                        <div class="flex items-center gap-1.5">
+                            ${openIds.length ? (mailto
+                                ? `<a href="${escapeHtml(mailto)}" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition" title="${mails.length} von ${openIds.length} offenen Spielern haben eine hinterlegte Mail"><i class="fa-solid fa-envelope mr-1.5 text-amber-500"></i>Offene erinnern (${mails.length})</a>`
+                                : '<span class="text-[11px] text-slate-400" title="Unter „Benutzer &amp; Zuordnung“ Spielern einen Login zuweisen, dann ist ihre Mail bekannt">keine Mails bekannt</span>') : ''}
+                            <button data-act="delete" data-st="${escapeHtml(s.id)}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </div>
+                    </div>
+                    <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2"><div class="h-full bg-emerald-500" style="width:${pct}%"></div></div>
+                    <div class="divide-y divide-slate-100">${rows}</div>
+                </div>`;
+            }).join('') || '<p class="text-sm text-slate-400">Noch keine Spieltage angelegt.</p>';
+
+            // --- Benutzer-Zuordnung ---
+            $('usersCard').classList.toggle('hidden', !me.authEnabled);
+            const opts = sel => '<option value="">— nicht zugeordnet —</option>' + [...players].sort((a, b) => a.name.localeCompare(b.name))
+                .map(p => `<option value="${escapeHtml(p.id)}" ${p.id === sel ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('');
+            $('usersList').innerHTML = Object.entries(kindeUsers).map(([sub, u]) =>
+                `<div class="py-2.5 flex flex-wrap items-center gap-3">
+                    <div class="flex-1 min-w-[10rem]"><div class="font-semibold">${escapeHtml(u.name)} <span class="text-[10px] uppercase tracking-wider text-slate-400">${u.role === 'admin' ? 'Admin' : 'Spieler'}</span></div><div class="text-xs text-slate-500">${escapeHtml(u.email || '')}</div></div>
+                    <select data-user="${escapeHtml(sub)}" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm outline-none">${opts(u.spielerId)}</select>
+                </div>`).join('') || '<p class="py-2 text-slate-400">Noch niemand angemeldet.</p>';
+        }
+
+        $('spieltageList').onclick = async e => {
+            const b = e.target.closest('[data-act]');
+            if (!b) return;
+            const { act, st, sp, paid } = b.dataset;
+            try {
+                if (act === 'toggle') await api('POST', `/api/spieltage/${st}/bezahlt`, { spielerId: sp, paid: paid === '1' });
+                if (act === 'delete') {
+                    if (!confirm('Spieltag samt Zahlungsstatus löschen?')) return;
+                    await api('DELETE', `/api/spieltage/${st}`);
+                }
+                await loadPayments();
+            } catch (err) { showToast('Fehler', err.message, 'error'); }
+        };
+
+        $('usersList').onchange = async e => {
+            const sel = e.target.closest('[data-user]');
+            if (!sel) return;
+            try {
+                await api('PUT', `/api/users/${encodeURIComponent(sel.dataset.user)}`, { spielerId: sel.value });
+                showToast('Zuordnung gespeichert', '', 'success');
+                if (kindeUsers[sel.dataset.user]) kindeUsers[sel.dataset.user].spielerId = sel.value || null;
+            } catch (err) { showToast('Fehler', err.message, 'error'); }
+        };
+
+        $('paypalForm').onsubmit = async e => {
+            e.preventDefault();
+            try {
+                const v = $('paypalInput').value.trim();
+                await api('PUT', '/api/einstellungen', { paypal: v });
+                me.paypal = v;
+                showToast('PayPal-Empfänger gespeichert', v || 'Angabe entfernt.', 'success');
+                renderPayments();
+            } catch (err) { showToast('Fehler', err.message, 'error'); }
+        };
+
+        $('stTeilnehmer').onchange = e => {
+            const cb = e.target.closest('[data-st]');
+            if (cb) cb.checked ? stSel.add(cb.dataset.st) : stSel.delete(cb.dataset.st);
+        };
+        $('stAllBtn').onclick = () => { stSel = new Set(players.map(p => p.id)); renderPayments(); };
+        $('stNoneBtn').onclick = () => { stSel = new Set(); renderPayments(); };
+
+        $('addSpieltagForm').onsubmit = async e => {
+            e.preventDefault();
+            const betrag = parseFloat($('stBetrag').value.replace(',', '.'));
+            if (!(betrag >= 0) || !stSel || !stSel.size) return showToast('Angaben fehlen', 'Betrag und mindestens ein Teilnehmer nötig.', 'error');
+            try {
+                const r = await api('POST', '/api/spieltage', { datum: $('stDatum').value, titel: $('stTitel').value.trim(), betragCent: Math.round(betrag * 100), teilnehmer: [...stSel], mail: $('stMail').checked });
+                $('stTitel').value = ''; $('stBetrag').value = '';
+                const m = r && r.mail;
+                const mailInfo = !m ? '' : ` Mails: ${m.sent} gesendet` + (m.skipped ? `, ${m.skipped} ohne Login/Mail` : '') + (m.failed.length ? `, ${m.failed.length} fehlgeschlagen (${m.failed[0]})` : '') + '.';
+                showToast('Spieltag angelegt', `${stSel.size} Teilnehmer, ${eur(Math.round(betrag * 100))} pro Person.${mailInfo}`, m && m.failed.length ? 'error' : 'success');
+                await loadPayments();
+            } catch (err) { showToast('Fehler', err.message, 'error'); }
+        };
+
+        let toastTimer;
+        function showToast(title, desc, type) {
+            const t = $('toast');
+            $('toastTitle').textContent = title; $('toastDesc').textContent = desc;
+            const styles = {
+                success: ['bg-white', 'border-emerald-200', '<i class="fa-solid fa-circle-check text-emerald-500"></i>'],
+                error: ['bg-white', 'border-rose-300', '<i class="fa-solid fa-triangle-exclamation text-rose-500"></i>'],
+                info: ['bg-white', 'border-slate-200', '<i class="fa-solid fa-circle-info text-blue-500"></i>']
+            }[type] || [];
+            t.className = `fixed top-20 right-4 z-[80] max-w-sm w-[calc(100%-2rem)] rounded-xl border shadow-lg p-3.5 fade-in ${styles[0]} ${styles[1]}`;
+            $('toastIcon').innerHTML = styles[2];
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.add('hidden'), 4500);
+        }
+        $('closeToastBtn').onclick = () => $('toast').classList.add('hidden');
+
+        // =====================================================================
+        // 9. Init
+        // =====================================================================
+        (async function init() {
+            if (!(await loadMe())) return;
+            await initData();
+            selectedPlayerIds = new Set(players.map(p => p.id));
+            renderAll();
+            let tab = 'players';
+            try { tab = localStorage.getItem('matchmaster_tab') || tab; } catch (e) { }
+            showTab(tab);
+        })();
+    </script>
+</body>
+</html>
