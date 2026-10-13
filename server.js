@@ -24,6 +24,7 @@ try {
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, 'daten');
 const PORT = parseInt(process.env.PORT, 10) || 3000;
+const IMAGES = { 'msys.svg': 'Msys-Wappen.svg', 'lm.svg': 'L&M-Logo.svg', 'ramazzotti.svg': 'Ramazzotti-Logo.svg' };
 const FILES = { spieler: 'spieler.csv', spiele: 'spiele.csv', presets: 'presets.csv' };
 
 const KINDE_DOMAIN = (process.env.KINDE_DOMAIN || '').replace(/\/+$/, '');
@@ -428,7 +429,7 @@ const LOGIN_PAGE = `<!doctype html>
 <style>
   body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#eef3fb,#f7f9fd);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a}
   .box{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 24px rgba(15,23,42,.08);padding:32px 28px;width:min(92vw,360px);text-align:center}
-  .logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#3b82f6,#1e40af);box-shadow:0 6px 16px rgba(37,99,235,.3);color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+  .logo{display:block;height:84px;width:auto;margin:0 auto 14px}
   h1{font-size:20px;margin:0 0 6px}h1 span{color:#2563eb}
   p{font-size:14px;color:#64748b;margin:0 0 22px}
   a.btn{display:block;background:#2563eb;color:#fff;text-decoration:none;font-weight:600;padding:12px;border-radius:10px}
@@ -436,7 +437,7 @@ const LOGIN_PAGE = `<!doctype html>
   small{display:block;margin-top:14px;font-size:12px;color:#94a3b8}
 </style></head><body>
 <div class="box">
-  <div class="logo">&#9917;</div>
+  <img class="logo" src="/img/msys.svg" alt="FC-M:Sys">
   <h1>FC-M<span>:Sys</span></h1>
   <p>Bitte melde dich an, um Statistiken und Zahlungen zu sehen.</p>
   <a class="btn" href="/login">Anmelden / Registrieren</a>
@@ -467,6 +468,13 @@ async function handle(req, res) {
     const parsed = new URL(req.url, 'http://x');
     const url = parsed.pathname;
     const method = req.method;
+
+    // --- Logos (öffentlich, auch für die Login-Seite): feste Liste, keine freien Pfade ---
+    const imgFile = method === 'GET' && (url === '/favicon.ico' ? IMAGES['msys.svg'] : IMAGES[url.replace(/^\/img\//, '')]);
+    if (imgFile) {
+        res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+        return res.end(fs.readFileSync(path.join(ROOT, 'src', 'img', imgFile)));
+    }
 
     // --- ohne Login erreichbar ---
     if (AUTH_ENABLED && method === 'GET' && url === '/login') return startLogin(res);
