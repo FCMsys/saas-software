@@ -493,7 +493,9 @@
                     <label class="block text-xs font-semibold text-slate-500 mb-1">Karten-Werte (1–99)</label>
                     <div id="editStatsGrid" class="grid grid-cols-3 gap-2"></div>
                 </div>
+                <p class="text-[11px] text-slate-400 -mt-2">Die Werte bewegen sich automatisch mit der Elo (10 Elo ≈ 1 Punkt). Ändern setzt den neuen Wert als Ausgangspunkt.</p>
                 <div class="flex gap-2 pt-2">
+                    <button type="button" id="deletePlayerBtn" title="Spieler löschen" class="px-3.5 text-rose-600 hover:bg-rose-50 border border-rose-200 text-sm font-semibold rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
                     <button type="button" id="cancelEditBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-2.5 rounded-lg transition">Abbrechen</button>
                     <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-lg transition">Speichern</button>
                 </div>
@@ -551,8 +553,27 @@
         }
 
         // ---- Rating-Card ----
-        const STAT_KEYS = ['tem', 'sch', 'pas', 'dri', 'def', 'phy'];
-        const STAT_LABELS = { tem: 'TEM', sch: 'SCH', pas: 'PAS', dri: 'DRI', def: 'DEF', phy: 'PHY' };
+        const STAT_KEYS = ['sch', 'pas', 'drl', 'ver', 'phy'];
+        const STAT_LABELS = { sch: 'SCH', pas: 'PAS', drl: 'DRL', ver: 'VER', phy: 'PHY' };
+        // Wie stark sich ein Wert je Position mit der Elo bewegt (1 = so viel wie die Gesamtwertung:
+        // 10 Elo = 1 Punkt). Stürmer gewinnen mehr Schuss, Verteidiger mehr Verteidigung usw.
+        const STAT_WEIGHTS = {
+            ST:  { sch: 1.3, pas: .8, drl: 1.1, ver: .4, phy: 1.0 },
+            LF:  { sch: 1.1, pas: 1.0, drl: 1.3, ver: .5, phy: .9 },
+            RF:  { sch: 1.1, pas: 1.0, drl: 1.3, ver: .5, phy: .9 },
+            ZOM: { sch: 1.0, pas: 1.3, drl: 1.1, ver: .6, phy: .8 },
+            ZM:  { sch: .9, pas: 1.2, drl: 1.0, ver: .9, phy: 1.0 },
+            ZDM: { sch: .6, pas: 1.0, drl: .7, ver: 1.3, phy: 1.2 },
+            LV:  { sch: .6, pas: .9, drl: 1.0, ver: 1.2, phy: 1.1 },
+            RV:  { sch: .6, pas: .9, drl: 1.0, ver: 1.2, phy: 1.1 },
+            IV:  { sch: .4, pas: .7, drl: .5, ver: 1.5, phy: 1.4 },
+            TW:  { sch: .5, pas: .8, drl: .5, ver: 1.3, phy: 1.0 }
+        };
+        // Angezeigter Wert = Basiswert + Elo-Änderung seit dem Setzen der Basis (stateless, daher ohne Rundungsdrift)
+        function statVal(p, k) {
+            const w = (STAT_WEIGHTS[p.pos] || STAT_WEIGHTS.ZM)[k];
+            return Math.max(1, Math.min(99, Math.round(p.stats[k] + (p.elo - p.baseElo) / 10 * w)));
+        }
         const POSITIONS = ['ST', 'LF', 'RF', 'ZOM', 'ZM', 'ZDM', 'LV', 'RV', 'IV', 'TW'];
         const TIER_NAMES = { bronze: 'Bronze', silber: 'Silber', gold: 'Gold', ikone: 'Ikone' };
 
@@ -563,7 +584,7 @@
         function cardHtml(p, { fs = 14, reveal = false, delay = 0 } = {}) {
             const rating = ratingFromElo(p.elo), tier = tierFor(rating);
             const val = v => reveal ? 0 : v;
-            const stat = k => `<div><b data-val="${p.stats[k]}">${val(p.stats[k])}</b><i>${STAT_LABELS[k]}</i></div>`;
+            const stat = k => { const v = statVal(p, k); return `<div><b data-val="${v}">${val(v)}</b><i>${STAT_LABELS[k]}</i></div>`; };
             return `<div class="fut-card tier-${tier}" style="--fs:${fs}px;--shine-delay:${delay}s">
                 <div class="fut-shape"></div>
                 <div class="fut-inner">
@@ -572,7 +593,7 @@
                     <div class="fut-photo">${p.photo ? `<img src="${escapeHtml(p.photo)}" alt="" draggable="false">` : '<i class="fa-solid fa-user"></i>'}</div>
                     <div class="fut-name">${escapeHtml(p.name)}</div>
                     <div class="fut-line"></div>
-                    <div class="fut-stats">${['tem', 'sch', 'pas', 'dri', 'def', 'phy'].map(stat).join('')}</div>
+                    <div class="fut-stats">${STAT_KEYS.map(stat).join('')}</div>
                     <div class="fut-elo">ELO ${p.elo}</div>
                     <div class="fut-holo"></div>
                     <div class="fut-shine"></div>
@@ -585,8 +606,14 @@
             players.forEach(p => {
                 p.pos = POSITIONS.includes(p.pos) ? p.pos : 'ZM';
                 p.photo = p.photo || '';
-                p.stats = Object.assign(Object.fromEntries(STAT_KEYS.map(k => [k, 50])), p.stats || {});
-                STAT_KEYS.forEach(k => { p.stats[k] = Math.max(1, Math.min(99, parseInt(p.stats[k]) || 50)); });
+                // Alte Werte übernehmen: DRI -> DRL, DEF -> VER (TEM entfällt)
+                const old = p.stats || {};
+                p.stats = {};
+                STAT_KEYS.forEach(k => {
+                    const v = old[k] ?? (k === 'drl' ? old.dri : k === 'ver' ? old.def : undefined);
+                    p.stats[k] = Math.max(1, Math.min(99, parseInt(v) || 50));
+                });
+                if (!Number.isFinite(p.baseElo)) p.baseElo = p.elo;   // Elo, zu der die Basiswerte gelten
             });
             players.forEach(p => {
                 if (!Array.isArray(p.history) || p.history.length === 0) {
@@ -659,8 +686,8 @@
         }
 
         function stateToCsv() {
-            const spieler = toCsv(['id', 'name', 'elo', 'position', ...STAT_KEYS, 'foto'],
-                players.map(p => [p.id, p.name, p.elo, p.pos, ...STAT_KEYS.map(k => p.stats[k]), p.photo.startsWith('data:') ? '' : p.photo.split('?')[0]]));
+            const spieler = toCsv(['id', 'name', 'elo', 'position', ...STAT_KEYS, 'basis_elo', 'foto'],
+                players.map(p => [p.id, p.name, p.elo, p.pos, ...STAT_KEYS.map(k => p.stats[k]), p.baseElo, p.photo.startsWith('data:') ? '' : p.photo.split('?')[0]]));
             const presets = toCsv(['name', 'spieler_ids'], Object.entries(squadPresets).map(([n, ids]) => [n, ids.join('|')]));
 
             const rows = [];
@@ -685,7 +712,9 @@
             players = parseCsv(csv.spieler).map(r => ({
                 id: r.id, name: r.name, elo: parseInt(r.elo) || 1500, history: [],
                 pos: r.position, photo: r.foto ? r.foto + '?v=' + Date.now() : '',
-                stats: Object.fromEntries(STAT_KEYS.map(k => [k, r[k]]))
+                // alte CSVs: dri/def werden zu drl/ver (normalizeData); basis_elo fehlt -> aktuelle Elo
+                stats: Object.fromEntries([...STAT_KEYS, 'dri', 'def'].map(k => [k, r[k]])),
+                baseElo: parseInt(r.basis_elo)
             }));
             const byId = Object.fromEntries(players.map(p => [p.id, p]));
             const matches = new Map();
@@ -1212,7 +1241,7 @@
             $('editPlayerPos').innerHTML = POSITIONS.map(pos => `<option ${pos === p.pos ? 'selected' : ''}>${pos}</option>`).join('');
             $('editStatsGrid').innerHTML = STAT_KEYS.map(k => `<label class="flex items-center gap-2 border border-slate-300 rounded-lg px-2.5 py-1.5 focus-within:border-blue-500">
                 <span class="text-[11px] font-bold text-slate-500 w-8">${STAT_LABELS[k]}</span>
-                <input type="number" min="1" max="99" data-stat="${k}" value="${p.stats[k]}" class="w-full text-sm font-semibold outline-none"></label>`).join('');
+                <input type="number" min="1" max="99" data-stat="${k}" value="${statVal(p, k)}" class="w-full text-sm font-semibold outline-none"></label>`).join('');
             pendingPhoto = undefined;
             renderEditPhoto(p.photo);
             updateRatingHint();
@@ -1292,16 +1321,23 @@
             e.preventDefault();
             const p = players.find(x => x.id === $('editPlayerId').value);
             if (p) {
+                // Werte, die im Formular angezeigt wurden (Basis + Elo-Bewegung), mit den eingegebenen vergleichen
+                const shown = Object.fromEntries(STAT_KEYS.map(k => [k, statVal(p, k)]));
+                const entered = {};
+                document.querySelectorAll('#editStatsGrid [data-stat]').forEach(inp => {
+                    entered[inp.dataset.stat] = Math.max(1, Math.min(99, parseInt(inp.value) || 50));
+                });
+                const posChanged = p.pos !== $('editPlayerPos').value;
                 p.name = $('editPlayerName').value.trim();
                 p.pos = $('editPlayerPos').value;
-                document.querySelectorAll('#editStatsGrid [data-stat]').forEach(inp => {
-                    p.stats[inp.dataset.stat] = Math.max(1, Math.min(99, parseInt(inp.value) || 50));
-                });
                 const newElo = parseInt($('editPlayerElo').value) || 1500;
                 if (newElo !== p.elo) {
                     p.history.push({ seq: currentSeq(), t: new Date().toISOString(), elo: newElo, delta: newElo - p.elo, matchId: null });
                     p.elo = newElo;
                 }
+                // Nur wenn Werte oder Position geändert wurden, gelten die eingegebenen Werte ab jetzt als Basis;
+                // bei reiner Elo-Korrektur laufen die Werte automatisch mit.
+                if (posChanged || STAT_KEYS.some(k => entered[k] !== shown[k])) { p.stats = entered; p.baseElo = p.elo; }
                 if (pendingPhoto !== undefined) await storePhoto(p, pendingPhoto);
                 saveApplicationData(); renderAll();
                 showToast("Gespeichert", "Spielerdaten aktualisiert.", "info");
@@ -1442,9 +1478,14 @@
             if (!p || !confirm(`${p.name} wirklich löschen?`)) return;
             players = players.filter(x => x.id !== id);
             selectedPlayerIds.delete(id);
+            Object.keys(squadPresets).forEach(n => { squadPresets[n] = squadPresets[n].filter(x => x !== id); });
+            if (serverMode && p.photo && !p.photo.startsWith('data:')) fetch('/api/foto/' + id, { method: 'DELETE' }).catch(() => { });
             if (currentTeams) currentTeams = null;
+            closeEdit(); closeCardModal();
             saveApplicationData(); renderAll();
+            showToast('Spieler gelöscht', `${p.name} wurde entfernt. Die Spiele-Historie bleibt erhalten.`, 'info');
         }
+        $('deletePlayerBtn').onclick = () => deletePlayer($('editPlayerId').value);
 
         $('selectAllBtn').onclick = () => {
             if (selectedPlayerIds.size === players.length) selectedPlayerIds.clear();
