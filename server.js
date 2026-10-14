@@ -64,6 +64,9 @@ if (!SESSION_SECRET) SESSION_SECRET = crypto.randomBytes(32).toString('hex');
 
 const ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1']);
 try { ALLOWED_HOSTS.add(new URL(PUBLIC_URL).hostname); } catch { }
+// Die Render-Adresse bleibt neben einer eigenen Domain erreichbar; weitere Hosts (z. B. Domain ohne www) über ALLOWED_HOSTS
+try { if (process.env.RENDER_EXTERNAL_URL) ALLOWED_HOSTS.add(new URL(process.env.RENDER_EXTERNAL_URL).hostname); } catch { }
+(process.env.ALLOWED_HOSTS || '').split(',').map(s => s.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/[/:].*$/, '')).filter(Boolean).forEach(h => ALLOWED_HOSTS.add(h));
 
 const FOTO_DIR = path.join(DATA_DIR, 'fotos');
 
@@ -425,7 +428,7 @@ function zahlungenFor(session) {
 // ---------------------------------------------------------------------------
 const LOGIN_PAGE = `<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FC M:Sys – Anmelden</title>
+<title>FC M:sys – Anmelden</title>
 <style>
   body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#eef3fb,#f7f9fd);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a}
   .box{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 24px rgba(15,23,42,.08);padding:32px 28px;width:min(92vw,360px);text-align:center}
@@ -438,7 +441,7 @@ const LOGIN_PAGE = `<!doctype html>
 </style></head><body>
 <div class="box">
   <img class="logo" src="/img/msys.svg" alt="FC M:Sys">
-  <h1>FC M<span>:Sys</span></h1>
+  <h1>FC M<span>:sys</span></h1>
   <p>Bitte melde dich an, um Statistiken und Zahlungen zu sehen.</p>
   <a class="btn" href="/login">Anmelden / Registrieren</a>
   <small>Neue Accounts sehen zunächst nur die Statistiken, bis der Admin sie einem Spieler zuordnet.</small>

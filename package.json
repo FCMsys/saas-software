@@ -2,7 +2,7 @@
   "name": "fc-m-sys",
   "version": "1.0.0",
   "private": true,
-  "description": "FC M:Sys – Elo, Spieltage und Zahlungen",
+  "description": "FC M:sys – Elo, Spieltage und Zahlungen",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
