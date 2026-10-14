@@ -467,6 +467,11 @@ async function handle(req, res) {
     // Schutz gegen DNS-Rebinding: nur erlaubte Hosts
     const host = (req.headers.host || '').split(':')[0];
     if (!ALLOWED_HOSTS.has(host)) { res.writeHead(403); return res.end(); }
+    // Immer über die Hauptadresse arbeiten (Cookies gelten pro Domain, der Login-Rücksprung muss dazu passen)
+    if (PUBLIC_URL_SET && req.method === 'GET' && host !== 'localhost' && host !== '127.0.0.1' && host !== new URL(PUBLIC_URL).hostname) {
+        res.writeHead(301, { Location: PUBLIC_URL + req.url });
+        return res.end();
+    }
 
     const parsed = new URL(req.url, 'http://x');
     const url = parsed.pathname;
