@@ -150,6 +150,7 @@
 
             <nav class="flex items-stretch h-16 gap-1 sm:gap-3 text-sm font-semibold">
                 <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="players"><i class="fa-solid fa-users"></i><span class="hidden sm:inline">Spieler</span></button>
+                <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="days"><i class="fa-solid fa-calendar-days"></i><span class="hidden sm:inline">Spieltage</span></button>
                 <button class="tab-btn admin-only px-2 sm:px-3 flex items-center gap-2 transition" data-tab="match"><i class="fa-solid fa-futbol"></i><span class="hidden sm:inline">Aktuelles Spiel</span></button>
                 <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="history"><i class="fa-solid fa-chart-line"></i><span class="hidden sm:inline">Historie</span></button>
                 <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="payments"><i class="fa-solid fa-euro-sign"></i><span class="hidden sm:inline">Zahlungen</span></button>
@@ -236,6 +237,31 @@
             </div>
         </section>
 
+        <!-- ================= TAB: SPIELTAGE ================= -->
+        <section id="tab-days" class="tab-panel hidden space-y-5 fade-in">
+            <div>
+                <h2 class="text-xl font-bold tracking-tight">Spieltage</h2>
+                <p class="text-sm text-slate-500">Termine mit Zu- und Absagen. Spieler antworten per Mail-Link oder hier in der App.</p>
+            </div>
+
+            <!-- Admin: Spieltag anlegen -->
+            <form id="newDayForm" class="admin-only card p-5">
+                <h3 class="font-bold text-sm mb-3">Neuer Spieltag</h3>
+                <div class="flex flex-wrap gap-2 items-end">
+                    <label class="text-xs text-slate-500">Tag
+                        <input type="date" id="dayDatum" required class="block mt-1 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
+                    <label class="text-xs text-slate-500">Uhrzeit
+                        <input type="time" id="dayUhrzeit" value="19:00" class="block mt-1 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
+                    <label class="text-xs text-slate-500">Ort
+                        <input type="text" id="dayOrt" maxlength="80" placeholder="z. B. Halle Nord" class="block mt-1 w-52 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition"><i class="fa-solid fa-plus mr-1.5"></i>Spieltag anlegen</button>
+                </div>
+            </form>
+            <p id="daysReach" class="admin-only text-xs text-slate-500"></p>
+
+            <div id="daysList" class="space-y-4"></div>
+        </section>
+
         <!-- ================= TAB 2: AKTUELLES SPIEL ================= -->
         <section id="tab-match" class="tab-panel hidden fade-in">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -245,6 +271,14 @@
                     <div class="flex items-center justify-between mb-1">
                         <h2 class="font-bold text-base">1 · Wer spielt heute?</h2>
                         <span id="selectedCountBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">0</span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Spieltag</label>
+                        <div class="flex gap-1.5">
+                            <select id="matchDaySel" class="flex-1 min-w-0 border border-slate-300 focus:border-blue-500 rounded-lg px-2.5 py-2 text-sm outline-none bg-white"></select>
+                            <button type="button" id="matchDayReapplyBtn" title="Zusagen dieses Spieltags übernehmen" class="shrink-0 px-2.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 text-xs"><i class="fa-solid fa-rotate"></i></button>
+                        </div>
+                        <p id="matchDayInfo" class="text-[11px] text-slate-400 mt-1"></p>
                     </div>
                     <p class="text-xs text-slate-500 mb-3">Anwesende Spieler antippen.</p>
 
@@ -394,25 +428,24 @@
                 </div>
             </form>
 
-            <!-- Admin: neuer Spieltag -->
+            <!-- Admin: Zahlung für einen Spieltag anfordern -->
             <form id="addSpieltagForm" class="admin-only card p-5 space-y-3">
-                <h3 class="font-bold text-sm">Neuer Spieltag</h3>
+                <h3 class="font-bold text-sm">Zahlung anfordern</h3>
+                <p class="text-xs text-slate-500 -mt-1">Vorausgewählt sind die Spieler, die für den Spieltag zugesagt haben oder gespielt haben. Weitere kannst du dazuwählen.</p>
                 <div class="flex flex-wrap gap-2 items-end">
-                    <label class="text-xs text-slate-500">Datum
-                        <input type="date" id="stDatum" required class="block mt-1 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
-                    <label class="text-xs text-slate-500">Titel (optional)
-                        <input type="text" id="stTitel" maxlength="80" placeholder="z. B. Halle Nord" class="block mt-1 w-48 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
+                    <label class="text-xs text-slate-500">Spieltag
+                        <select id="stSpieltag" class="block mt-1 max-w-[18rem] bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></select></label>
                     <label class="text-xs text-slate-500">Betrag pro Person (€)
                         <input type="text" id="stBetrag" inputmode="decimal" required placeholder="5,00" class="block mt-1 w-28 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition"><i class="fa-solid fa-plus mr-1.5"></i>Zahlung anfordern</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition"><i class="fa-solid fa-euro-sign mr-1.5"></i>Zahlung anfordern</button>
                 </div>
                 <div>
-                    <p class="text-xs text-slate-500 mb-1.5">Teilnehmer <button type="button" id="stAllBtn" class="text-blue-700 font-semibold ml-1">alle</button> · <button type="button" id="stNoneBtn" class="text-blue-700 font-semibold">keine</button></p>
+                    <p class="text-xs text-slate-500 mb-1.5">Teilnehmer <button type="button" id="stConfirmedBtn" class="text-blue-700 font-semibold ml-1">nur Zugesagte</button> · <button type="button" id="stAllBtn" class="text-blue-700 font-semibold">alle</button> · <button type="button" id="stNoneBtn" class="text-blue-700 font-semibold">keine</button></p>
                     <div id="stTeilnehmer" class="flex flex-wrap gap-1.5"></div>
                 </div>
                 <label id="stMailRow" class="hidden items-center gap-2 text-xs text-slate-600">
                     <input type="checkbox" id="stMail" checked class="accent-blue-600">
-                    Teilnehmern mit zugeordnetem Login eine Mail schicken
+                    Teilnehmern mit zugeordnetem Login eine Mail schicken (wer schon bezahlt hat, bekommt keine)
                 </label>
             </form>
 
@@ -571,7 +604,7 @@
         let me = { role: 'admin', spielerId: null, paypal: '', authEnabled: false };   // wird in loadMe() vom Server gesetzt
         let spieltage = [];
         let kindeUsers = {};
-        const TABS = ['players', 'match', 'history', 'payments'];
+        const TABS = ['players', 'days', 'match', 'history', 'payments'];
 
         const CHART_COLORS = ['#2563eb', '#059669', '#e11d48', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5', '#c026d3', '#64748b'];
         const K_FACTOR = 32;
@@ -954,6 +987,7 @@
             const logA = apply(currentTeams.teamA, changeA);
             const logB = apply(currentTeams.teamB, changeB);
             matchHistory.push({ id: matchId, seq, iso: nowIso, result, goalsA: gA, goalsB: gB, teamA: logA, teamB: logB });
+            if (matchDayId && serverMode) markAttended(matchDayId, [...logA, ...logB].map(x => x.id));
 
             $('goalsAInput').value = '';
             $('goalsBInput').value = '';
@@ -1088,6 +1122,15 @@
 
         // ---- Tab 2: Aktuelles Spiel ----
         function renderMatchTab() {
+            // Spieltag-Auswahl
+            const days = sortedDays();
+            $('matchDaySel').innerHTML = '<option value="">— ohne Spieltag (alle Spieler) —</option>' + days.map(d => `<option value="${escapeHtml(d.id)}" ${d.id === matchDayId ? 'selected' : ''}>${escapeHtml(dayText(d))}</option>`).join('');
+            const day = days.find(d => d.id === matchDayId);
+            $('matchDayInfo').textContent = day
+                ? `${confirmedIds(day).length} zugesagt · ${players.filter(p => statusOf(day, p.id) === 'ab').length} abgesagt. Wer spielt, gilt als anwesend.`
+                : 'Ohne Spieltag stehen alle Spieler zur Auswahl.';
+            const mark = id => { const st = day ? statusOf(day, id) : ''; return st === 'zu' ? '<i class="fa-solid fa-check text-emerald-600 mr-1"></i>' : st === 'ab' ? '<i class="fa-solid fa-xmark text-rose-500 mr-1"></i>' : ''; };
+
             // Anwesenheit
             const sorted = [...players].sort((a, b) => b.elo - a.elo);
             $('attendanceList').innerHTML = '';
@@ -1095,7 +1138,7 @@
                 const on = selectedPlayerIds.has(p.id);
                 const btn = document.createElement('button');
                 btn.className = `flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-left text-sm transition ${on ? 'bg-blue-50 border-blue-500 text-blue-900' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`;
-                btn.innerHTML = `<span class="font-semibold truncate">${escapeHtml(p.name)}</span><span class="font-mono text-[11px] ${on ? 'text-blue-700' : 'text-slate-400'}">${p.elo}</span>`;
+                btn.innerHTML = `<span class="font-semibold truncate">${mark(p.id)}${escapeHtml(p.name)}</span><span class="font-mono text-[11px] ${on ? 'text-blue-700' : 'text-slate-400'}">${p.elo}</span>`;
                 btn.onclick = () => { on ? selectedPlayerIds.delete(p.id) : selectedPlayerIds.add(p.id); renderMatchTab(); };
                 $('attendanceList').appendChild(btn);
             });
@@ -1148,6 +1191,21 @@
             if (!Array.isArray(ids)) return;
             selectedPlayerIds = new Set(ids.filter(id => players.some(p => p.id === id)));
             renderMatchTab();
+        }
+
+        // ---- Spieltag im Tab "Aktuelles Spiel" ----
+        function applyMatchDay() {
+            const d = spieltage.find(x => x.id === matchDayId);
+            selectedPlayerIds = new Set(d ? confirmedIds(d) : players.map(p => p.id));
+            currentTeams = null;
+            renderMatchTab();
+        }
+        $('matchDaySel').onchange = e => { matchDayId = e.target.value; applyMatchDay(); };
+        $('matchDayReapplyBtn').onclick = () => applyMatchDay();
+
+        // Wer in einem Spiel des Spieltags gespielt hat, gilt als anwesend (wird für die Abrechnung vorausgewählt)
+        async function markAttended(dayId, ids) {
+            try { await api('POST', `/api/spieltage/${dayId}/anwesend`, { spielerIds: ids }); await loadSpieltage(); } catch (e) { /* nicht kritisch */ }
         }
 
         // ---- Tab 3: Historie ----
@@ -1296,7 +1354,7 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
             try { localStorage.setItem('matchmaster_tab', name); } catch (e) { }
             if (name === 'history') renderChart();
-            if (name === 'payments') loadPayments();
+            if (['days', 'match', 'payments'].includes(name)) loadSpieltage();
             window.scrollTo(0, 0);
         }
         document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => showTab(b.dataset.tab));
@@ -1733,19 +1791,144 @@
         const eur = cent => (cent / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
         const fmtDate = iso => new Date(iso + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
         const playerName = id => (players.find(p => p.id === id) || { name: '(gelöscht)' }).name;
-        let stSel = null;   // ausgewählte Teilnehmer im Formular "Neuer Spieltag"
+        let stSel = null;     // ausgewählte Teilnehmer im Formular "Zahlung anfordern"
+        let payDayId = '';    // Spieltag im Formular "Zahlung anfordern"
+        let matchDayId = '';  // Spieltag im Tab "Aktuelles Spiel"
+        let matchDayInit = false;
+        const todayIso = () => new Date().toLocaleDateString('sv-SE');
+        const dayText = s => `${fmtDate(s.datum)}${s.uhrzeit ? ' · ' + s.uhrzeit + ' Uhr' : ''}${s.ort || s.titel ? ' · ' + (s.ort || s.titel) : ''}`;
+        const statusOf = (s, id) => (s.antworten && s.antworten[id] && s.antworten[id].status) || '';
+        const confirmedIds = s => players.filter(p => statusOf(s, p.id) === 'zu').map(p => p.id);
+        const sortedDays = () => [...spieltage].sort((a, b) => (b.datum + (b.uhrzeit || '')).localeCompare(a.datum + (a.uhrzeit || '')));
+        const mailOf = id => (Object.values(kindeUsers).find(u => u.spielerId === id) || {}).email || '';
+        const isBilled = s => s.betragCent != null && s.teilnehmer.length > 0;
 
-        async function loadPayments() {
+        async function loadSpieltage() {
             if (!serverMode) {
-                $('myPayments').innerHTML = '<p class="text-sm text-slate-500">Zahlungen funktionieren nur mit dem Server (start.bat).</p>';
+                const msg = '<p class="text-sm text-slate-500">Spieltage und Zahlungen funktionieren nur mit dem Server (start.bat).</p>';
+                $('myPayments').innerHTML = msg;
+                $('daysList').innerHTML = `<div class="card p-5">${msg}</div>`;
                 return;
             }
             try {
                 spieltage = (await api('GET', '/api/zahlungen')).spieltage;
                 if (me.role === 'admin') kindeUsers = me.authEnabled ? await api('GET', '/api/users') : {};
-            } catch (e) { showToast('Zahlungen konnten nicht geladen werden', e.message, 'error'); return; }
+            } catch (e) { showToast('Spieltage konnten nicht geladen werden', e.message, 'error'); return; }
+            if (me.role === 'admin' && !matchDayInit && spieltage.length) {
+                matchDayInit = true;   // einmalig: den Spieltag von heute vorauswählen
+                const t = spieltage.find(d => d.datum === todayIso());
+                if (t) { matchDayId = t.id; selectedPlayerIds = new Set(confirmedIds(t)); currentTeams = null; }
+            }
+            renderDays();
             renderPayments();
+            if (me.role === 'admin') renderMatchTab();
         }
+        const loadPayments = loadSpieltage;
+
+        // ---- Tab: Spieltage ----
+        function renderDays() {
+            const isAdmin = me.role === 'admin';
+            const today = todayIso();
+            if (isAdmin && !$('dayDatum').value) $('dayDatum').value = today;
+            if (isAdmin) {
+                const reach = players.filter(p => mailOf(p.id)).length;
+                $('daysReach').textContent = me.authEnabled
+                    ? `Einladungen per Mail gehen an ${reach} von ${players.length} Spielern (nur Spieler mit zugeordnetem Login haben eine bekannte Mail-Adresse). Alle anderen trägst du hier von Hand ein.`
+                    : '';
+            }
+            const small = 'w-6 h-6 rounded transition';
+            $('daysList').innerHTML = sortedDays().map(s => {
+                const past = s.datum < today;
+                const zu = players.filter(p => statusOf(s, p.id) === 'zu').length;
+                const ab = players.filter(p => statusOf(s, p.id) === 'ab').length;
+                const mine = me.spielerId ? statusOf(s, me.spielerId) : '';
+                const sid = escapeHtml(s.id);
+
+                const own = !me.spielerId
+                    ? (me.authEnabled ? '<p class="text-xs text-slate-500 mb-3"><i class="fa-solid fa-circle-info text-blue-500 mr-1.5"></i>Sobald der Admin dein Login einem Spieler zugeordnet hat, kannst du hier zu- und absagen.</p>' : '')
+                    : past ? '' : `<div class="flex flex-wrap items-center gap-2 bg-blue-50/60 border border-blue-100 rounded-xl px-3 py-2.5 mb-3">
+                        <span class="text-sm font-semibold text-slate-700">Bist du dabei?</span>
+                        <button data-act="self" data-st="${sid}" data-s="zu" class="px-3 py-1.5 rounded-lg text-sm font-semibold border transition ${mine === 'zu' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'}">Zusagen</button>
+                        <button data-act="self" data-st="${sid}" data-s="ab" class="px-3 py-1.5 rounded-lg text-sm font-semibold border transition ${mine === 'ab' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50'}">Absagen</button>
+                    </div>`;
+
+                const chips = [...players].sort((a, b) => a.name.localeCompare(b.name)).map(p => {
+                    const st = statusOf(s, p.id), pid = escapeHtml(p.id);
+                    const cls = st === 'zu' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : st === 'ab' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-slate-200 text-slate-500';
+                    const icon = st === 'zu' ? '<i class="fa-solid fa-check text-emerald-600 w-3.5"></i>' : st === 'ab' ? '<i class="fa-solid fa-xmark text-rose-500 w-3.5"></i>' : '<i class="fa-regular fa-circle text-slate-300 w-3.5"></i>';
+                    const ctl = isAdmin ? `<span class="ml-auto flex items-center gap-0.5 shrink-0">
+                        <button data-act="tn" data-st="${sid}" data-sp="${pid}" data-s="zu" title="Zusagen" class="${small} ${st === 'zu' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-700'}"><i class="fa-solid fa-check text-[11px]"></i></button>
+                        <button data-act="tn" data-st="${sid}" data-sp="${pid}" data-s="ab" title="Absagen" class="${small} ${st === 'ab' ? 'bg-rose-100 text-rose-700' : 'text-slate-400 hover:bg-rose-50 hover:text-rose-700'}"><i class="fa-solid fa-xmark text-[11px]"></i></button>
+                        ${st ? `<button data-act="tn" data-st="${sid}" data-sp="${pid}" data-s="" title="Zurücksetzen (keine Antwort)" class="${small} text-slate-400 hover:bg-slate-100"><i class="fa-solid fa-rotate-left text-[10px]"></i></button>` : ''}
+                    </span>` : '';
+                    return `<div class="flex items-center gap-2 text-sm border rounded-lg px-2.5 py-1.5 ${cls}">${icon}<span class="truncate font-medium">${escapeHtml(p.name)}</span>${ctl}</div>`;
+                }).join('');
+
+                const invited = s.einladungAt
+                    ? 'Einladung gesendet ' + new Date(s.einladungAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                    : 'Einladung noch nicht gesendet';
+                const btnCls = 'text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition';
+                const admin = isAdmin ? `<div class="flex flex-wrap items-center gap-1.5">
+                    <button data-act="invite" data-st="${sid}" ${me.mailEnabled ? '' : 'disabled'} title="${me.mailEnabled ? 'Mail mit Zusagen-/Absagen-Link an alle Spieler mit bekannter Mail-Adresse' : 'Mail-Versand ist nicht eingerichtet'}" class="${btnCls} disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-envelope mr-1.5 text-blue-500"></i>${s.einladungAt ? 'Erneut einladen' : 'Einladung per Mail'}</button>
+                    <button data-act="match" data-st="${sid}" class="${btnCls}" title="Mit den Zusagen dieses Spieltags Teams bilden"><i class="fa-solid fa-futbol mr-1.5 text-blue-500"></i>Spiel starten</button>
+                    <button data-act="bill" data-st="${sid}" class="${btnCls}" title="Zahlung für diesen Spieltag anfordern"><i class="fa-solid fa-euro-sign mr-1.5 text-blue-500"></i>${isBilled(s) ? 'Abgerechnet · ' + eur(s.betragCent) : 'Abrechnen'}</button>
+                    <button data-act="delete" data-st="${sid}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+                </div>` : '';
+
+                return `<div class="card p-5 ${past ? 'opacity-80' : ''}">
+                    <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+                        <div>
+                            <h3 class="font-bold">${escapeHtml(fmtDate(s.datum))}${s.uhrzeit ? ' · ' + escapeHtml(s.uhrzeit) + ' Uhr' : ''}${past ? ' <span class="ml-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 align-middle">vergangen</span>' : ''}</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">${s.ort || s.titel ? `<i class="fa-solid fa-location-dot mr-1"></i>${escapeHtml(s.ort || s.titel)} · ` : ''}<b class="text-emerald-700">${zu} zugesagt</b> · ${ab} abgesagt · ${players.length - zu - ab} offen${isAdmin ? ' · ' + invited : ''}</p>
+                        </div>${admin}
+                    </div>
+                    ${own}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">${chips}</div>
+                </div>`;
+            }).join('') || '<div class="card p-5 text-sm text-slate-400">Noch keine Spieltage angelegt.</div>';
+        }
+
+        $('daysList').onclick = async e => {
+            const b = e.target.closest('[data-act]');
+            if (!b || b.disabled) return;
+            const { act, st, sp, s } = b.dataset;
+            try {
+                if (act === 'tn') await api('POST', `/api/spieltage/${st}/teilnahme`, { spielerId: sp, status: s || null });
+                else if (act === 'self') await api('POST', `/api/spieltage/${st}/antwort`, { status: s });
+                else if (act === 'invite') {
+                    const d = spieltage.find(x => x.id === st);
+                    if (!confirm(`Einladung für ${dayText(d)} jetzt per Mail an alle Spieler mit bekannter Mail-Adresse senden?`)) return;
+                    b.disabled = true;
+                    const m = (await api('POST', `/api/spieltage/${st}/einladung`)).mail;
+                    showToast(m.failed.length ? 'Einladung teilweise gesendet' : 'Einladung gesendet',
+                        `${m.sent} Mails gesendet` + (m.skipped ? `, ${m.skipped} Spieler ohne bekannte Mail` : '') + (m.failed.length ? `, ${m.failed.length} fehlgeschlagen (${m.failed[0]})` : '') + '.',
+                        m.failed.length ? 'error' : 'success');
+                } else if (act === 'delete') {
+                    if (!confirm('Spieltag samt Zu-/Absagen und Abrechnung löschen?')) return;
+                    await api('DELETE', `/api/spieltage/${st}`);
+                } else if (act === 'match') {
+                    const d = spieltage.find(x => x.id === st);
+                    matchDayId = st; selectedPlayerIds = new Set(d ? confirmedIds(d) : []); currentTeams = null;
+                    showTab('match');
+                    return;
+                } else if (act === 'bill') {
+                    payDayId = st; applyPayDay(true);
+                    showTab('payments');
+                    return;
+                }
+                await loadSpieltage();
+            } catch (err) { showToast('Fehler', err.message, 'error'); renderDays(); }
+        };
+
+        $('newDayForm').onsubmit = async e => {
+            e.preventDefault();
+            try {
+                await api('POST', '/api/spieltage', { datum: $('dayDatum').value, uhrzeit: $('dayUhrzeit').value, ort: $('dayOrt').value.trim() });
+                $('dayOrt').value = '';
+                showToast('Spieltag angelegt', 'Jetzt kannst du die Einladung per Mail senden.', 'success');
+                await loadSpieltage();
+            } catch (err) { showToast('Fehler', err.message, 'error'); }
+        };
 
         function badge(paid, via) {
             return paid
@@ -1770,7 +1953,7 @@
                     <div class="divide-y divide-slate-100">${mine.map(s => {
                         const paid = s.bezahlt[me.spielerId];
                         return `<div class="py-2.5 flex items-center gap-3 text-sm">
-                            <div class="flex-1 min-w-0"><div class="font-semibold">${fmtDate(s.datum)}</div><div class="text-xs text-slate-500 truncate">${escapeHtml(s.titel || '')}</div></div>
+                            <div class="flex-1 min-w-0"><div class="font-semibold">${fmtDate(s.datum)}</div><div class="text-xs text-slate-500 truncate">${escapeHtml(s.ort || s.titel || '')}</div></div>
                             <div class="font-mono font-bold">${eur(s.betragCent)}</div>
                             ${badge(!!paid, paid && paid.via)}
                             ${!paid && /^https:/.test(me.paypal) && s.betragCent > 0 ? `<a href="${escapeHtml(me.paypal.replace(/\/+$/, '') + '/' + (s.betragCent / 100).toFixed(2) + 'EUR')}" target="_blank" rel="noopener" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition"><i class="fa-brands fa-paypal mr-1"></i>Bezahlen</a>` : ''}
@@ -1780,24 +1963,31 @@
 
             if (!isAdmin) { $('spieltageList').innerHTML = ''; return; }
 
-            // --- Formular ---
-            if (!$('stDatum').value) $('stDatum').value = new Date().toLocaleDateString('sv-SE');
-            if (!stSel) stSel = new Set(players.map(p => p.id));
-            $('stTeilnehmer').innerHTML = [...players].sort((a, b) => a.name.localeCompare(b.name)).map(p =>
-                `<label class="flex items-center gap-1.5 text-xs border border-slate-300 rounded-full px-2.5 py-1 cursor-pointer select-none">
-                    <input type="checkbox" data-st="${escapeHtml(p.id)}" ${stSel.has(p.id) ? 'checked' : ''} class="accent-blue-600">${escapeHtml(p.name)}</label>`).join('');
+            // --- Formular: Zahlung für einen Spieltag anfordern ---
+            const days = sortedDays();
+            if (!days.some(d => d.id === payDayId)) {
+                payDayId = (days.find(d => d.datum <= todayIso()) || days[0] || {}).id || '';
+                applyPayDay(true);
+            }
+            $('stSpieltag').innerHTML = days.map(d => `<option value="${escapeHtml(d.id)}" ${d.id === payDayId ? 'selected' : ''}>${escapeHtml(dayText(d))}${isBilled(d) ? ' · abgerechnet' : ''}</option>`).join('') || '<option value="">Noch kein Spieltag angelegt</option>';
+            const payDay = days.find(d => d.id === payDayId);
+            if (!stSel) stSel = new Set();
+            $('stTeilnehmer').innerHTML = [...players].sort((a, b) => a.name.localeCompare(b.name)).map(p => {
+                const zu = payDay && statusOf(payDay, p.id) === 'zu';
+                return `<label class="flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-1 cursor-pointer select-none ${zu ? 'border-emerald-300 bg-emerald-50/60' : 'border-slate-300'}">
+                    <input type="checkbox" data-st="${escapeHtml(p.id)}" ${stSel.has(p.id) ? 'checked' : ''} class="accent-blue-600">${escapeHtml(p.name)}${zu ? ' <i class="fa-solid fa-check text-emerald-600"></i>' : ''}</label>`;
+            }).join('');
 
             if (document.activeElement !== $('paypalInput')) $('paypalInput').value = me.paypal || '';
 
             // --- Spieltage (Admin) ---
-            const mailOf = id => (Object.values(kindeUsers).find(u => u.spielerId === id) || {}).email || '';
-            $('spieltageList').innerHTML = spieltage.map(s => {
+            $('spieltageList').innerHTML = sortedDays().filter(isBilled).map(s => {
                 const paidIds = s.teilnehmer.filter(id => s.bezahlt[id]);
                 const openIds = s.teilnehmer.filter(id => !s.bezahlt[id]);
                 const mails = openIds.map(mailOf).filter(Boolean);
                 const mailto = mails.length ? 'mailto:?bcc=' + encodeURIComponent(mails.join(',')) +
                     '&subject=' + encodeURIComponent(`Fußball ${fmtDate(s.datum)}: Beitrag ${eur(s.betragCent)}`) +
-                    '&body=' + encodeURIComponent(`Hallo,\n\nfür den Spieltag am ${fmtDate(s.datum)}${s.titel ? ' (' + s.titel + ')' : ''} sind noch ${eur(s.betragCent)} offen.\n` +
+                    '&body=' + encodeURIComponent(`Hallo,\n\nfür den Spieltag am ${fmtDate(s.datum)}${s.ort || s.titel ? ' (' + (s.ort || s.titel) + ')' : ''} sind noch ${eur(s.betragCent)} offen.\n` +
                         (me.paypal ? `Bitte per PayPal (Freunde & Familie) an: ${me.paypal}\n` : '') + '\nDanke!') : '';
                 const pct = Math.round(100 * paidIds.length / s.teilnehmer.length);
                 const rows = [...s.teilnehmer].sort((a, b) => playerName(a).localeCompare(playerName(b))).map(id => {
@@ -1810,19 +2000,19 @@
                 }).join('');
                 return `<div class="card p-5">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                        <div><h3 class="font-bold">${fmtDate(s.datum)}${s.titel ? ' · ' + escapeHtml(s.titel) : ''}</h3>
+                        <div><h3 class="font-bold">${escapeHtml(dayText(s))}</h3>
                             <p class="text-xs text-slate-500">${eur(s.betragCent)} pro Person · ${paidIds.length}/${s.teilnehmer.length} bezahlt · ${eur(paidIds.length * s.betragCent)} von ${eur(s.teilnehmer.length * s.betragCent)}</p></div>
                         <div class="flex items-center gap-1.5">
                             ${openIds.length ? (mailto
                                 ? `<a href="${escapeHtml(mailto)}" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition" title="${mails.length} von ${openIds.length} offenen Spielern haben eine hinterlegte Mail"><i class="fa-solid fa-envelope mr-1.5 text-amber-500"></i>Offene erinnern (${mails.length})</a>`
                                 : '<span class="text-[11px] text-slate-400" title="Unter „Benutzer &amp; Zuordnung“ Spielern einen Login zuweisen, dann ist ihre Mail bekannt">keine Mails bekannt</span>') : ''}
-                            <button data-act="delete" data-st="${escapeHtml(s.id)}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button data-act="unbill" data-st="${escapeHtml(s.id)}" title="Abrechnung entfernen (der Spieltag bleibt bestehen)" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>
                         </div>
                     </div>
                     <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2"><div class="h-full bg-emerald-500" style="width:${pct}%"></div></div>
                     <div class="divide-y divide-slate-100">${rows}</div>
                 </div>`;
-            }).join('') || '<p class="text-sm text-slate-400">Noch keine Spieltage angelegt.</p>';
+            }).join('') || '<p class="text-sm text-slate-400">Noch keine Zahlungen angefordert. Lege unter „Spieltage“ einen Spieltag an und fordere dann hier die Zahlung an.</p>';
 
             // --- Benutzer-Zuordnung ---
             $('usersCard').classList.toggle('hidden', !me.authEnabled);
@@ -1841,9 +2031,9 @@
             const { act, st, sp, paid } = b.dataset;
             try {
                 if (act === 'toggle') await api('POST', `/api/spieltage/${st}/bezahlt`, { spielerId: sp, paid: paid === '1' });
-                if (act === 'delete') {
-                    if (!confirm('Spieltag samt Zahlungsstatus löschen?')) return;
-                    await api('DELETE', `/api/spieltage/${st}`);
+                if (act === 'unbill') {
+                    if (!confirm('Abrechnung für diesen Spieltag entfernen? Der Spieltag und die Zu-/Absagen bleiben bestehen.')) return;
+                    await api('DELETE', `/api/spieltage/${st}/abrechnung`);
                 }
                 await loadPayments();
             } catch (err) { showToast('Fehler', err.message, 'error'); }
@@ -1877,17 +2067,27 @@
         $('stAllBtn').onclick = () => { stSel = new Set(players.map(p => p.id)); renderPayments(); };
         $('stNoneBtn').onclick = () => { stSel = new Set(); renderPayments(); };
 
+        // Teilnehmer der Abrechnung vorbelegen: schon abgerechnet -> bisherige Liste, sonst alle, die zugesagt haben oder gespielt haben
+        function applyPayDay(skipRender) {
+            const d = spieltage.find(x => x.id === payDayId);
+            stSel = new Set(d ? (isBilled(d) ? d.teilnehmer : confirmedIds(d)) : []);
+            if (d && isBilled(d)) $('stBetrag').value = (d.betragCent / 100).toFixed(2).replace('.', ',');
+            if (!skipRender) renderPayments();
+        }
+        $('stSpieltag').onchange = e => { payDayId = e.target.value; applyPayDay(); };
+        $('stConfirmedBtn').onclick = () => { const d = spieltage.find(x => x.id === payDayId); stSel = new Set(d ? confirmedIds(d) : []); renderPayments(); };
+
         $('addSpieltagForm').onsubmit = async e => {
             e.preventDefault();
+            if (!payDayId) return showToast('Spieltag fehlt', 'Lege zuerst unter „Spieltage“ einen Spieltag an.', 'error');
             const betrag = parseFloat($('stBetrag').value.replace(',', '.'));
             if (!(betrag >= 0) || !stSel || !stSel.size) return showToast('Angaben fehlen', 'Betrag und mindestens ein Teilnehmer nötig.', 'error');
             try {
-                const r = await api('POST', '/api/spieltage', { datum: $('stDatum').value, titel: $('stTitel').value.trim(), betragCent: Math.round(betrag * 100), teilnehmer: [...stSel], mail: $('stMail').checked });
-                $('stTitel').value = ''; $('stBetrag').value = '';
+                const r = await api('POST', `/api/spieltage/${payDayId}/abrechnung`, { betragCent: Math.round(betrag * 100), teilnehmer: [...stSel], mail: $('stMail').checked });
                 const m = r && r.mail;
                 const mailInfo = !m ? '' : ` Mails: ${m.sent} gesendet` + (m.skipped ? `, ${m.skipped} ohne Login/Mail` : '') + (m.failed.length ? `, ${m.failed.length} fehlgeschlagen (${m.failed[0]})` : '') + '.';
-                showToast('Spieltag angelegt', `${stSel.size} Teilnehmer, ${eur(Math.round(betrag * 100))} pro Person.${mailInfo}`, m && m.failed.length ? 'error' : 'success');
-                await loadPayments();
+                showToast('Zahlung angefordert', `${stSel.size} Teilnehmer, ${eur(Math.round(betrag * 100))} pro Person.${mailInfo}`, m && m.failed.length ? 'error' : 'success');
+                await loadSpieltage();
             } catch (err) { showToast('Fehler', err.message, 'error'); }
         };
 

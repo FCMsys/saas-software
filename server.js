@@ -163,8 +163,12 @@ const loadStatMode = () => { const m = readJson('settings.json', {}).mode; retur
 const loadTiers = () => { const t = readJson('settings.json', {}).tiers; return validTiers(t) ? { silber: t.silber, gold: t.gold, ikone: t.ikone } : { ...DEFAULT_TIERS }; };
 // users.json: { <kinde-sub>: { email, name, role, spielerId, lastLogin } }
 const loadUsers = () => readJson('users.json', {});
-// zahlungen.json: { spieltage: [{ id, datum, titel, betragCent, teilnehmer:[spielerId], bezahlt:{ [spielerId]: { via, at } } }] }
-const loadZahlungen = () => { const z = readJson('zahlungen.json', {}); if (!Array.isArray(z.spieltage)) z.spieltage = []; return z; };
+// zahlungen.json: { paypal, spieltage: [{
+//     id, datum, uhrzeit, ort, titel, einladungAt,
+//     antworten: { [spielerId]: { status: 'zu'|'ab', at, by: 'mail'|'app'|'admin'|'spiel' } },   // Zu-/Absagen zum Spieltag
+//     betragCent|null, teilnehmer: [spielerId], bezahlt: { [spielerId]: { via, at } }              // Abrechnung (null = noch nicht abgerechnet)
+// }] }
+const loadZahlungen = () => { const z = readJson('zahlungen.json', {}); if (!Array.isArray(z.spieltage)) z.spieltage = []; z.spieltage.forEach(normSpieltag); return z; };
 
 // ---------------------------------------------------------------------------
 // HTTP-Helfer
@@ -398,15 +402,121 @@ async function mailZahlungsanforderung(spieltag) {
     const pay = !paypal ? '' : /^https:/i.test(paypal)
         ? `Bezahlen: ${paypal.replace(/\/+$/, '')}/${(spieltag.betragCent / 100).toFixed(2)}EUR\n`
         : `Bitte per PayPal (Freunde & Familie) an: ${paypal}\n`;
-    const text = `Hallo Sportsfreund,\n\nfür den Spieltag am ${fmtDe(spieltag.datum)}${spieltag.titel ? ' (' + spieltag.titel + ')' : ''} sind ${fmtEur(spieltag.betragCent)} fällig.\n` +
+    const text = `Hallo Sportsfreund,\n\nfür den Spieltag am ${fmtDe(spieltag.datum)}${spieltag.ort || spieltag.titel ? ' (' + (spieltag.ort || spieltag.titel) + ')' : ''} sind ${fmtEur(spieltag.betragCent)} fällig.\n` +
         pay + (PUBLIC_URL_SET ? `\nMehr Infos: ${PUBLIC_URL}\n` : '') + '\nDanke!\nFC:MSys';
-    for (const id of spieltag.teilnehmer) {
+    for (const id of spieltag.teilnehmer.filter(x => !spieltag.bezahlt[x])) {   // wer schon bezahlt hat, bekommt keine Mail
         const email = (users.find(u => u.spielerId === id) || {}).email;
-        if (!email || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) { result.skipped++; continue; }
+        if (!email || !EMAIL_RE.test(email)) { result.skipped++; continue; }
         try { await sendMail({ to: email, subject, text }); result.sent++; }
         catch (e) { console.error(`Mail an ${email} fehlgeschlagen:`, e.message); result.failed.push(email + ': ' + e.message); }
     }
     return result;
+}
+
+// ---------------------------------------------------------------------------
+// Spieltage: Einladung per Mail, Zu-/Absagen
+// ---------------------------------------------------------------------------
+const EMAIL_RE = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+const berlinToday = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+const fmtDay = s => new Date(s.datum + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) + (s.uhrzeit ? ' · ' + s.uhrzeit + ' Uhr' : '');
+const escHtml = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function normSpieltag(s) {
+    s.antworten = s.antworten || {}; s.uhrzeit = s.uhrzeit || ''; s.ort = s.ort || ''; s.titel = s.titel || '';
+    if (s.betragCent === undefined) s.betragCent = null;
+    s.teilnehmer = s.teilnehmer || []; s.bezahlt = s.bezahlt || {};
+    return s;
+}
+
+// Spielernamen (id -> Name) aus spieler.csv, wird für Mails und Prüfungen gebraucht
+function csvRows(text) {
+    text = text.replace(/^\uFEFF/, '');
+    const rows = []; let row = [], cur = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+        else if (c === '"') q = true;
+        else if (c === ';') { row.push(cur); cur = ''; }
+        else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+        else if (c !== '\r') cur += c;
+    }
+    if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+    return rows;
+}
+function playerNames() {
+    const rows = csvRows(readFile('spieler.csv'));
+    const head = rows[0] || [], iId = head.indexOf('id'), iName = head.indexOf('name'), names = new Map();
+    if (iId >= 0 && iName >= 0) rows.slice(1).forEach(r => { if (r[iId]) names.set(r[iId], r[iName] || ''); });
+    return names;
+}
+
+// Antwort-Link in der Mail: signiert, gilt bis 3 Tage nach dem Spieltag, ändert beim Aufruf nichts (nur ein Klick auf der Seite)
+const rsvpToken = (s, pid) => makeToken({ sid: s.id, pid, exp: new Date(s.datum + 'T23:59:59').getTime() + 3 * 86400e3 });
+const rsvpLink = (s, pid, a) => `${PUBLIC_URL}/rsvp?t=${rsvpToken(s, pid)}&a=${a}`;
+
+// Einladung an alle Spieler, deren Login einem Spieler zugeordnet ist (nur dort ist eine Mail-Adresse bekannt)
+async function mailEinladung(s) {
+    const result = { sent: 0, failed: [], skipped: 0 };
+    const users = Object.values(loadUsers());
+    const subject = `Fußball ${fmtDay(s)}: Bist du dabei?`;
+    for (const [id, name] of playerNames()) {
+        const email = (users.find(u => u.spielerId === id) || {}).email;
+        if (!email || !EMAIL_RE.test(email)) { result.skipped++; continue; }
+        const text = `Hallo ${name},\n\nbist du beim nächsten Spieltag dabei?\n\nWann: ${fmtDay(s)}\n${s.ort ? 'Wo: ' + s.ort + '\n' : ''}\nZusagen: ${rsvpLink(s, id, 'zu')}\nAbsagen: ${rsvpLink(s, id, 'ab')}\n\nDeine Antwort kannst du über denselben Link jederzeit noch ändern.\n\nFC M:sys`;
+        try { await sendMail({ to: email, subject, text }); result.sent++; }
+        catch (e) { console.error(`Einladung an ${email} fehlgeschlagen:`, e.message); result.failed.push(email + ': ' + e.message); }
+    }
+    return result;
+}
+
+const RSVP_STYLE = `body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#eef3fb,#f7f9fd);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a}
+  .box{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 24px rgba(15,23,42,.08);padding:28px 24px;width:min(92vw,380px);text-align:center}
+  .logo{display:block;height:72px;width:auto;margin:0 auto 12px}
+  h1{font-size:19px;margin:0 0 6px}p{font-size:14px;color:#475569;margin:0 0 14px;line-height:1.5}
+  .info{background:#f1f5f9;border-radius:10px;padding:10px 12px;font-size:14px;color:#0f172a;margin-bottom:14px}
+  .row{display:flex;gap:10px}button{flex:1;font:inherit;font-weight:700;padding:14px 8px;border:2px solid;border-radius:10px;cursor:pointer;background:#fff}
+  .yes{color:#059669;border-color:#059669}.yes.on{background:#059669;color:#fff}.no{color:#e11d48;border-color:#e11d48}.no.on{background:#e11d48;color:#fff}
+  .pick{box-shadow:0 0 0 4px rgba(37,99,235,.25)}small{display:block;margin-top:12px;font-size:12px;color:#94a3b8}`;
+const rsvpPage = (res, code, inner) => {
+    res.writeHead(code, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+    res.end(`<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>FC M:sys – Spieltag</title><style>${RSVP_STYLE}</style></head><body><div class="box"><img class="logo" src="/img/msys.svg" alt="FC M:sys">${inner}</div></body></html>`);
+};
+
+// Öffentliche Seite für die Links aus der Mail: GET zeigt nur an, erst der Klick (POST) speichert. Mail-Scanner, die Links vorab aufrufen, ändern so nichts.
+async function handleRsvp(req, res, parsed) {
+    let token = parsed.searchParams.get('t'), pick = parsed.searchParams.get('a');
+    let action = null;
+    if (req.method === 'POST') {
+        const form = new URLSearchParams(await readBody(req, 1e4));
+        token = form.get('t'); action = form.get('a');
+    }
+    const payload = readToken(token);
+    if (!payload || !payload.sid || !payload.pid) return rsvpPage(res, 400, '<h1>Link ungültig</h1><p>Dieser Link ist ungültig oder abgelaufen. Bitte nutze den Link aus der aktuellen Einladung oder melde dich in der App an.</p>');
+    const z = loadZahlungen();
+    const st = z.spieltage.find(x => x.id === payload.sid);
+    if (!st) return rsvpPage(res, 404, '<h1>Spieltag nicht gefunden</h1><p>Diesen Spieltag gibt es nicht mehr.</p>');
+    const name = playerNames().get(payload.pid) || 'Spieler';
+    const vorbei = st.datum < berlinToday();
+    let note = '';
+    if (action === 'zu' || action === 'ab') {
+        if (vorbei) note = '<p><b>Der Spieltag ist vorbei, die Antwort wurde nicht mehr geändert.</b></p>';
+        else {
+            st.antworten[payload.pid] = { status: action, at: new Date().toISOString(), by: 'mail' };
+            await writeJson('zahlungen.json', z);
+            note = action === 'zu' ? '<p><b style="color:#059669">Danke, du bist dabei!</b></p>' : '<p><b style="color:#e11d48">Schade, du hast abgesagt.</b></p>';
+        }
+        pick = action;
+    }
+    const cur = (st.antworten[payload.pid] || {}).status;
+    const curText = cur === 'zu' ? 'Aktuell: zugesagt' : cur === 'ab' ? 'Aktuell: abgesagt' : 'Noch keine Antwort';
+    rsvpPage(res, 200, `<h1>Hallo ${escHtml(name)}</h1>
+      ${note}
+      <div class="info"><b>${escHtml(fmtDay(st))}</b>${st.ort ? '<br>' + escHtml(st.ort) : ''}</div>
+      ${vorbei ? '<p>Der Spieltag ist vorbei.</p>' : `<form method="post" action="/rsvp"><input type="hidden" name="t" value="${escHtml(token)}">
+        <div class="row">
+          <button name="a" value="zu" class="yes${cur === 'zu' ? ' on' : ''}${pick === 'zu' && cur !== 'zu' ? ' pick' : ''}">Zusagen</button>
+          <button name="a" value="ab" class="no${cur === 'ab' ? ' on' : ''}${pick === 'ab' && cur !== 'ab' ? ' pick' : ''}">Absagen</button>
+        </div></form><small>${curText} · du kannst deine Antwort jederzeit ändern.</small>`}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -420,13 +530,20 @@ function spielerIdOf(session) {
 
 function zahlungenFor(session) {
     const z = loadZahlungen();
-    const list = [...z.spieltage].sort((a, b) => b.datum.localeCompare(a.datum));
+    const list = [...z.spieltage].sort((a, b) => (b.datum + b.uhrzeit).localeCompare(a.datum + a.uhrzeit));
     if (session.role === 'admin') return list;
     const mine = spielerIdOf(session);
-    // Spieler sehen nur ihre eigenen Spieltage und ihren eigenen Status
-    return list.filter(s => mine && s.teilnehmer.includes(mine)).map(s => ({
-        ...s, teilnehmer: [mine], bezahlt: s.bezahlt[mine] ? { [mine]: s.bezahlt[mine] } : {}
-    }));
+    // Spieler sehen alle Spieltage mit den Zu-/Absagen, aber nur ihren eigenen Zahlungsstatus
+    return list.map(s => {
+        const billed = !!mine && s.betragCent != null && s.teilnehmer.includes(mine);
+        return {
+            id: s.id, datum: s.datum, uhrzeit: s.uhrzeit, ort: s.ort, titel: s.titel, einladungAt: s.einladungAt || null,
+            antworten: Object.fromEntries(Object.entries(s.antworten).map(([id, a]) => [id, { status: a.status }])),
+            betragCent: billed ? s.betragCent : null,
+            teilnehmer: billed ? [mine] : [],
+            bezahlt: billed && s.bezahlt[mine] ? { [mine]: s.bezahlt[mine] } : {}
+        };
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -489,6 +606,9 @@ async function handle(req, res) {
         res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
         return res.end(fs.readFileSync(path.join(ROOT, 'src', 'img', imgFile)));
     }
+
+    // Zu-/Absage über den Link aus der Mail (signierter Token, kein Login nötig)
+    if (url === '/rsvp' && (method === 'GET' || method === 'POST')) return handleRsvp(req, res, parsed);
 
     // --- ohne Login erreichbar ---
     if (AUTH_ENABLED && method === 'GET' && url === '/login') return startLogin(res);
@@ -582,43 +702,101 @@ async function handle(req, res) {
 
     if (url === '/api/spieltage' && method === 'POST') {
         if (!requireAdmin()) return;
-        const b = await readJsonBody(req, 1e5);
-        const betragCent = Math.round(Number(b.betragCent));
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(b.datum || '') || !(betragCent >= 0 && betragCent <= 100000) || !Array.isArray(b.teilnehmer) || !b.teilnehmer.length) {
-            return sendJson(res, 400, { ok: false, error: 'Datum, Betrag und Teilnehmer erforderlich' });
-        }
+        const b = await readJsonBody(req, 1e4);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(b.datum || '')) return sendJson(res, 400, { ok: false, error: 'Datum erforderlich' });
+        const uhrzeit = String(b.uhrzeit || '').trim();
+        if (uhrzeit && !/^([01]\d|2[0-3]):[0-5]\d$/.test(uhrzeit)) return sendJson(res, 400, { ok: false, error: 'Uhrzeit im Format HH:MM' });
         const z = loadZahlungen();
-        const spieltag = {
+        const spieltag = normSpieltag({
             id: 'st_' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex'),
-            datum: b.datum, titel: String(b.titel || '').slice(0, 80), betragCent,
-            teilnehmer: [...new Set(b.teilnehmer.map(String))], bezahlt: {}
-        };
+            datum: b.datum, uhrzeit, ort: String(b.ort || '').trim().slice(0, 80)
+        });
         z.spieltage.push(spieltag);
         await writeJson('zahlungen.json', z);
-        const mail = MAIL_ENABLED && b.mail !== false ? await mailZahlungsanforderung(spieltag) : null;
-        return sendJson(res, 200, { ok: true, mail });
+        return sendJson(res, 200, { ok: true, id: spieltag.id });
     }
 
-    const stApi = /^\/api\/spieltage\/([\w-]+)(?:\/(bezahlt))?$/.exec(url);
+    const stApi = /^\/api\/spieltage\/([\w-]+)(?:\/(bezahlt|einladung|teilnahme|antwort|anwesend|abrechnung))?$/.exec(url);
     if (stApi) {
         const [, id, action] = stApi;
+        const z = loadZahlungen();
+        const s = z.spieltage.find(x => x.id === id);
+        const known = playerNames();
+        const isPlayer = pid => typeof pid === 'string' && (!known.size || known.has(pid));
+        const setAnswer = (pid, status, by) => { if (status) s.antworten[pid] = { status, at: new Date().toISOString(), by }; else delete s.antworten[pid]; };
+        const ok = async extra => { await writeJson('zahlungen.json', z); return sendJson(res, 200, { ok: true, ...extra }); };
+
         if (!action && method === 'DELETE') {
             if (!requireAdmin()) return;
-            const z = loadZahlungen();
-            z.spieltage = z.spieltage.filter(s => s.id !== id);
-            await writeJson('zahlungen.json', z);
-            return sendJson(res, 200, { ok: true });
+            z.spieltage = z.spieltage.filter(x => x.id !== id);
+            return ok();
         }
+        if (!s) return sendJson(res, 404, { ok: false, error: 'Spieltag nicht gefunden' });
+
         if (action === 'bezahlt' && method === 'POST') {
             if (!requireAdmin()) return;
             const b = await readJsonBody(req, 1e4);
-            const z = loadZahlungen();
-            const s = z.spieltage.find(x => x.id === id);
-            if (!s || !s.teilnehmer.includes(b.spielerId)) return sendJson(res, 404, { ok: false, error: 'Nicht gefunden' });
+            if (!s.teilnehmer.includes(b.spielerId)) return sendJson(res, 404, { ok: false, error: 'Nicht gefunden' });
             if (b.paid) s.bezahlt[b.spielerId] = { via: 'manuell', at: new Date().toISOString() };
             else delete s.bezahlt[b.spielerId];
+            return ok();
+        }
+
+        // Admin: Zusage/Absage/Zurücksetzen für einen Spieler
+        if (action === 'teilnahme' && method === 'POST') {
+            if (!requireAdmin()) return;
+            const b = await readJsonBody(req, 1e4);
+            if (!isPlayer(b.spielerId)) return sendJson(res, 400, { ok: false, error: 'Unbekannter Spieler' });
+            if (b.status && b.status !== 'zu' && b.status !== 'ab') return sendJson(res, 400, { ok: false, error: 'Status zu, ab oder leer' });
+            setAnswer(b.spielerId, b.status || null, 'admin');
+            return ok();
+        }
+
+        // Eingeloggter Spieler: eigene Zu-/Absage (auch nachträglich ändern, solange der Spieltag nicht vorbei ist)
+        if (action === 'antwort' && method === 'POST') {
+            const pid = spielerIdOf(session);
+            if (!pid) return sendJson(res, 400, { ok: false, error: 'Dein Login ist noch keinem Spieler zugeordnet' });
+            const b = await readJsonBody(req, 1e3);
+            if (b.status !== 'zu' && b.status !== 'ab') return sendJson(res, 400, { ok: false, error: 'Status zu oder ab' });
+            if (s.datum < berlinToday()) return sendJson(res, 400, { ok: false, error: 'Der Spieltag ist vorbei' });
+            setAnswer(pid, b.status, 'app');
+            return ok();
+        }
+
+        // Admin: Spieler, die tatsächlich gespielt haben, gelten als anwesend (zugesagt)
+        if (action === 'anwesend' && method === 'POST') {
+            if (!requireAdmin()) return;
+            const b = await readJsonBody(req, 1e5);
+            (Array.isArray(b.spielerIds) ? b.spielerIds : []).filter(isPlayer).forEach(pid => { if ((s.antworten[pid] || {}).status !== 'zu') setAnswer(pid, 'zu', 'spiel'); });
+            return ok();
+        }
+
+        // Admin: Einladung per Mail an alle Spieler mit bekanntem Login
+        if (action === 'einladung' && method === 'POST') {
+            if (!requireAdmin()) return;
+            if (!MAIL_ENABLED) return sendJson(res, 400, { ok: false, error: 'Mail-Versand ist nicht eingerichtet' });
+            const mail = await mailEinladung(s);
+            if (mail.sent) s.einladungAt = new Date().toISOString();
+            return ok({ mail });
+        }
+
+        // Admin: Abrechnung für den Spieltag (Betrag + Teilnehmer), optional mit Mail
+        if (action === 'abrechnung' && method === 'POST') {
+            if (!requireAdmin()) return;
+            const b = await readJsonBody(req, 1e5);
+            const betragCent = Math.round(Number(b.betragCent));
+            const teilnehmer = Array.isArray(b.teilnehmer) ? [...new Set(b.teilnehmer.map(String))].filter(isPlayer) : [];
+            if (!(betragCent >= 0 && betragCent <= 100000) || !teilnehmer.length) return sendJson(res, 400, { ok: false, error: 'Betrag und Teilnehmer erforderlich' });
+            s.betragCent = betragCent; s.teilnehmer = teilnehmer;
+            Object.keys(s.bezahlt).forEach(pid => { if (!teilnehmer.includes(pid)) delete s.bezahlt[pid]; });
             await writeJson('zahlungen.json', z);
-            return sendJson(res, 200, { ok: true });
+            const mail = MAIL_ENABLED && b.mail !== false ? await mailZahlungsanforderung(s) : null;
+            return sendJson(res, 200, { ok: true, mail });
+        }
+        if (action === 'abrechnung' && method === 'DELETE') {
+            if (!requireAdmin()) return;
+            s.betragCent = null; s.teilnehmer = []; s.bezahlt = {};
+            return ok();
         }
     }
 
