@@ -155,6 +155,10 @@ async function fotoGet(id, ext) {
     return r.ok ? Buffer.from(await r.arrayBuffer()) : null;
 }
 
+// settings.json: { tiers: { silber, gold, ikone } }  Elo, ab der ein Spieler in die jeweilige Karten-Stufe springt
+const DEFAULT_TIERS = { silber: 1450, gold: 1600, ikone: 1730 };
+const validTiers = t => !!t && ['silber', 'gold', 'ikone'].every(k => Number.isInteger(t[k]) && t[k] >= 100 && t[k] <= 3000) && t.silber < t.gold && t.gold < t.ikone;
+const loadTiers = () => { const t = readJson('settings.json', {}).tiers; return validTiers(t) ? { silber: t.silber, gold: t.gold, ikone: t.ikone } : { ...DEFAULT_TIERS }; };
 // users.json: { <kinde-sub>: { email, name, role, spielerId, lastLogin } }
 const loadUsers = () => readJson('users.json', {});
 // zahlungen.json: { spieltage: [{ id, datum, titel, betragCent, teilnehmer:[spielerId], bezahlt:{ [spielerId]: { via, at } } }] }
@@ -524,7 +528,7 @@ async function handle(req, res) {
     if (method === 'GET' && url === '/api/me') {
         return sendJson(res, 200, {
             sub: session.sub, name: session.name, email: session.email, role: session.role,
-            spielerId: spielerIdOf(session), authEnabled: AUTH_ENABLED, mailEnabled: MAIL_ENABLED, paypal: loadZahlungen().paypal || ''
+            spielerId: spielerIdOf(session), authEnabled: AUTH_ENABLED, mailEnabled: MAIL_ENABLED, paypal: loadZahlungen().paypal || '', tiers: loadTiers()
         });
     }
 
@@ -540,6 +544,16 @@ async function handle(req, res) {
         z.paypal = v;
         await writeJson('zahlungen.json', z);
         return sendJson(res, 200, { ok: true });
+    }
+
+    // Elo-Grenzen der Karten-Stufen (Silber/Gold/Ikone); alle sehen sie (über /api/me), nur Admins ändern sie
+    if (url === '/api/einstellungen/stufen' && method === 'PUT') {
+        if (!requireAdmin()) return;
+        const b = await readJsonBody(req, 1e3);
+        const tiers = { silber: Number(b.silber), gold: Number(b.gold), ikone: Number(b.ikone) };
+        if (!validTiers(tiers)) return sendJson(res, 400, { ok: false, error: 'Ganze Zahlen von 100 bis 3000, aufsteigend: Silber < Gold < Ikone' });
+        await writeJson('settings.json', { ...readJson('settings.json', {}), tiers });
+        return sendJson(res, 200, { ok: true, tiers });
     }
 
     // --- Benutzer-Zuordnung (Kinde-User <-> Spieler) ---
