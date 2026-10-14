@@ -460,8 +460,8 @@
     <!-- SETTINGS: KARTEN-STUFEN -->
     <div id="settingsModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[70] hidden items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 class="text-base font-bold mb-1">Karten-Stufen</h3>
-            <p class="text-xs text-slate-500 mb-4">Ab welcher Elo ein Spieler in die nächste Stufe springt. Gilt für alle.</p>
+            <h3 class="text-base font-bold mb-1">Karten-Einstellungen</h3>
+            <p class="text-xs text-slate-500 mb-4">Ab welcher Elo ein Spieler in die nächste Stufe springt und wie sich die Werte mit der Elo bewegen. Gilt für alle.</p>
             <form id="settingsForm" class="space-y-3">
                 <div class="flex items-center gap-3"><span class="w-20 text-sm font-semibold text-orange-800">Bronze</span><span class="text-xs text-slate-400">bis unter Silber</span></div>
                 <label class="flex items-center gap-3"><span class="w-20 text-sm font-semibold text-slate-600">Silber ab</span>
@@ -470,8 +470,14 @@
                     <input type="number" id="tierGold" min="100" max="3000" required class="flex-1 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none"></label>
                 <label class="flex items-center gap-3"><span class="w-20 text-sm font-semibold text-indigo-700">Ikone ab</span>
                     <input type="number" id="tierIkone" min="100" max="3000" required class="flex-1 border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none"></label>
+                <label class="flex items-center gap-3"><span class="w-20 text-sm font-semibold text-slate-600">Werte</span>
+                    <select id="statModeSel" class="flex-1 border border-slate-300 focus:border-blue-500 rounded-lg px-2 py-2 text-sm outline-none bg-white">
+                        <option value="zufall">Punkte zufällig verteilt (Spielgefühl)</option>
+                        <option value="deterministisch">Punkte fest verteilt (reproduzierbar)</option>
+                    </select></label>
                 <p id="tierPreview" class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"></p>
                 <p id="tierError" class="text-xs text-rose-600 hidden"></p>
+                <button type="button" id="alignAllBtn" class="w-full text-xs text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 transition" title="Mittel der Einzelwerte wird auf den Gesamtwert gezogen"><i class="fa-solid fa-rotate mr-1.5"></i>Alle Spielerwerte neu aus der Elo berechnen</button>
                 <div class="flex gap-2 pt-1">
                     <button type="button" id="tierDefaultBtn" class="px-3 text-slate-500 hover:bg-slate-100 text-sm font-semibold rounded-lg transition" title="Standardwerte einsetzen">Standard</button>
                     <button type="button" id="tierCancelBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-2.5 rounded-lg transition">Abbrechen</button>
@@ -518,7 +524,7 @@
                     <label class="block text-xs font-semibold text-slate-500 mb-1">Karten-Werte (1–99)</label>
                     <div id="editStatsGrid" class="grid grid-cols-3 gap-2"></div>
                 </div>
-                <p class="text-[11px] text-slate-400 -mt-2">Die Werte bewegen sich automatisch mit der Elo (10 Elo ≈ 1 Punkt). Ändern setzt den neuen Wert als Ausgangspunkt.</p>
+                <p class="text-[11px] text-slate-400 -mt-2">Bei Elo-Änderungen verteilt das System die Punkte automatisch auf die Werte (+1 Gesamtwert = 6 Punkte, nach Position gewichtet). Von Hand gesetzte Werte bleiben, wie du sie einträgst.</p>
                 <div class="flex gap-2 pt-2">
                     <button type="button" id="deletePlayerBtn" title="Spieler löschen" class="px-3.5 text-rose-600 hover:bg-rose-50 border border-rose-200 text-sm font-semibold rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
                     <button type="button" id="cancelEditBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-2.5 rounded-lg transition">Abbrechen</button>
@@ -575,37 +581,90 @@
             squadPresets = { "Alle 10": DEFAULT_ROSTER.map(p => p.id) };
             matchHistory = [];
             normalizeData();
+            players.forEach(alignStats);
         }
 
         // ---- Rating-Card ----
         const STAT_KEYS = ['tem', 'sch', 'pas', 'drl', 'ver', 'phy'];
         const STAT_LABELS = { tem: 'TEM', sch: 'SCH', pas: 'PAS', drl: 'DRL', ver: 'VER', phy: 'PHY' };
-        // Wie stark sich ein Wert je Position mit der Elo bewegt (1 = so viel wie die Gesamtwertung:
-        // 10 Elo = 1 Punkt). Stürmer gewinnen mehr Schuss, Verteidiger mehr Verteidigung usw.
-        const STAT_WEIGHTS = {
-            ST:  { tem: 1.0, sch: 1.3, pas: .8, drl: 1.1, ver: .4, phy: 1.0 },
-            LF:  { tem: 1.0, sch: 1.1, pas: 1.0, drl: 1.3, ver: .5, phy: .9 },
-            RF:  { tem: 1.0, sch: 1.1, pas: 1.0, drl: 1.3, ver: .5, phy: .9 },
-            ZOM: { tem: 1.0, sch: 1.0, pas: 1.3, drl: 1.1, ver: .6, phy: .8 },
-            ZM:  { tem: 1.0, sch: .9, pas: 1.2, drl: 1.0, ver: .9, phy: 1.0 },
-            ZDM: { tem: 1.0, sch: .6, pas: 1.0, drl: .7, ver: 1.3, phy: 1.2 },
-            LV:  { tem: 1.0, sch: .6, pas: .9, drl: 1.0, ver: 1.2, phy: 1.1 },
-            RV:  { tem: 1.0, sch: .6, pas: .9, drl: 1.0, ver: 1.2, phy: 1.1 },
-            IV:  { tem: 1.0, sch: .4, pas: .7, drl: .5, ver: 1.5, phy: 1.4 },
-            TW:  { tem: 1.0, sch: .5, pas: .8, drl: .5, ver: 1.3, phy: 1.0 }
+        // ---- Spielerwerte aus der Elo (Portierung von src/logic/calculation_system.py) ----
+        //  GES = RUNDEN((Elo + 337) / 29), max. 99 · +1 GES = 6 Punkte, die nach Positionsgewicht auf die 6 Werte verteilt werden.
+        //  Werte am Deckel (99) bzw. Boden (1) werden übersprungen, die Punkte gehen an Werte mit Spielraum.
+        const ATTR_WEIGHTS = {
+            IV:  { tem: .10, sch: .10, pas: .15, drl: .10, ver: .30, phy: .25 },
+            LV:  { tem: .25, sch: .10, pas: .15, drl: .10, ver: .20, phy: .20 },
+            RV:  { tem: .25, sch: .10, pas: .15, drl: .10, ver: .20, phy: .20 },
+            ZDM: { tem: .10, sch: .10, pas: .25, drl: .15, ver: .20, phy: .20 },
+            ZM:  { tem: .15, sch: .15, pas: .30, drl: .20, ver: .10, phy: .10 },
+            ZOM: { tem: .15, sch: .20, pas: .30, drl: .20, ver: .10, phy: .05 },
+            ST:  { tem: .20, sch: .30, pas: .10, drl: .15, ver: .05, phy: .20 },
+            LF:  { tem: .30, sch: .15, pas: .20, drl: .20, ver: .05, phy: .10 },
+            RF:  { tem: .30, sch: .15, pas: .20, drl: .20, ver: .05, phy: .10 }
         };
-        // Angezeigter Wert = Basiswert + Elo-Änderung seit dem Setzen der Basis (stateless, daher ohne Rundungsdrift)
-        function statVal(p, k) {
-            const w = (STAT_WEIGHTS[p.pos] || STAT_WEIGHTS.ZM)[k];
-            return Math.max(1, Math.min(99, Math.round(p.stats[k] + (p.elo - p.baseElo) / 10 * w)));
+        const weightsFor = pos => ATTR_WEIGHTS[pos] || ATTR_WEIGHTS.IV;   // TW steht nicht in der Vorlage -> wie IV
+        const statVal = (p, k) => p.stats[k];
+        let statMode = 'zufall';   // 'zufall' (Spielgefühl) oder 'deterministisch' (Erwartungswert); Einstellung vom Admin
+
+        function gesFromElo(elo) { return Math.max(1, Math.min(99, Math.floor((elo + 337) / 29 + 0.5))); }
+        function eloFromGes(ges) { return 29 * ges - 337; }
+        const sumOf = o => Object.values(o).reduce((a, b) => a + b, 0);
+
+        // Erwartungswert, Rundung nach größtem Nachkomma-Rest, mit Cap-Umverteilung
+        function distributeDeterministic(points, w, attrs) {
+            const deltas = Object.fromEntries(STAT_KEYS.map(k => [k, 0]));
+            let open = points;
+            while (open !== 0) {
+                const sign = open > 0 ? 1 : -1;
+                const head = Object.fromEntries(STAT_KEYS.map(k => [k, sign > 0 ? 99 - (attrs[k] + deltas[k]) : (attrs[k] + deltas[k]) - 1]));
+                const cand = STAT_KEYS.filter(k => head[k] > 0);
+                if (!cand.length) break;   // alle am Anschlag: Rest verfällt
+                const total = Math.abs(open);
+                const share = Object.fromEntries(cand.map(k => [k, total * w[k]]));
+                const frac = k => share[k] - Math.floor(share[k] + 1e-9);
+                const alloc = Object.fromEntries(cand.map(k => [k, Math.min(head[k], Math.floor(share[k] + 1e-9))]));
+                const rest = total - sumOf(alloc);
+                if (rest > 0) {
+                    const order = [...cand].sort((a, b) => frac(b) - frac(a));
+                    for (let i = 0; i < rest; i++) { const k = order[i % order.length]; if (alloc[k] < head[k]) alloc[k]++; }
+                }
+                const given = sumOf(alloc);
+                cand.forEach(k => { deltas[k] += sign * alloc[k]; });
+                open -= sign * given;
+                if (given === 0) break;
+            }
+            return deltas;
         }
+
+        // Jeder Punkt wird einzeln gezogen, Chance = Positionsgewicht; volle Werte scheiden aus der Ziehung aus
+        function distributeRandom(points, w, attrs) {
+            const deltas = Object.fromEntries(STAT_KEYS.map(k => [k, 0]));
+            for (let i = 0; i < Math.abs(points); i++) {
+                const free = STAT_KEYS.filter(k => points > 0 ? attrs[k] + deltas[k] < 99 : attrs[k] + deltas[k] > 1);
+                if (!free.length) break;
+                let r = Math.random() * free.reduce((a, k) => a + w[k], 0), pick = free[free.length - 1];
+                for (const k of free) { r -= w[k]; if (r < 0) { pick = k; break; } }
+                deltas[pick] += points > 0 ? 1 : -1;
+            }
+            return deltas;
+        }
+
+        // gesOld = null: Voll-Ausrichtung (Mittel der Werte == neues GES); sonst nur die GES-Änderung verteilen
+        function adjustAttrs(attrs, eloNew, pos, gesOld, mode) {
+            const w = weightsFor(pos), gesNew = gesFromElo(eloNew);
+            const delta = gesOld == null ? 6 * gesNew - sumOf(attrs) : 6 * (gesNew - gesOld);
+            const d = (mode === 'deterministisch' ? distributeDeterministic : distributeRandom)(delta, w, attrs);
+            return Object.fromEntries(STAT_KEYS.map(k => [k, Math.min(99, Math.max(1, attrs[k] + d[k]))]));
+        }
+        const applyEloToStats = (p, eloOld, eloNew) => { p.stats = adjustAttrs(p.stats, eloNew, p.pos, gesFromElo(eloOld), statMode); };
+        const alignStats = p => { p.stats = adjustAttrs(p.stats, p.elo, p.pos, null, statMode); };
+
         const POSITIONS = ['ST', 'LF', 'RF', 'ZOM', 'ZM', 'ZDM', 'LV', 'RV', 'IV', 'TW'];
         const TIER_NAMES = { bronze: 'Bronze', silber: 'Silber', gold: 'Gold', ikone: 'Ikone' };
 
-        // Elo -> Gesamtwertung 1-99: 1500 Elo = 65, je 10 Elo ein Punkt
-        function ratingFromElo(elo) { return Math.max(1, Math.min(99, Math.round(65 + (elo - 1500) / 10))); }
+        // Gesamtwert (GES) aus der Elo, siehe oben
+        function ratingFromElo(elo) { return gesFromElo(elo); }
         // Elo-Grenzen der Stufen (vom Admin einstellbar, Standard siehe Server)
-        const DEFAULT_TIERS = { silber: 1450, gold: 1600, ikone: 1730 };
+        const DEFAULT_TIERS = { silber: 1548, gold: 1838, ikone: 2215 };   // = GES 65 / 75 / 88
         let tiers = { ...DEFAULT_TIERS };
         function tierFor(elo, t = tiers) { return elo >= t.ikone ? 'ikone' : elo >= t.gold ? 'gold' : elo >= t.silber ? 'silber' : 'bronze'; }
 
@@ -641,7 +700,6 @@
                     const v = old[k] ?? (k === 'drl' ? old.dri : k === 'ver' ? old.def : undefined);
                     p.stats[k] = Math.max(1, Math.min(99, parseInt(v) || 50));
                 });
-                if (!Number.isFinite(p.baseElo)) p.baseElo = p.elo;   // Elo, zu der die Basiswerte gelten
             });
             players.forEach(p => {
                 if (!Array.isArray(p.history) || p.history.length === 0) {
@@ -714,8 +772,8 @@
         }
 
         function stateToCsv() {
-            const spieler = toCsv(['id', 'name', 'elo', 'position', ...STAT_KEYS, 'basis_elo', 'foto'],
-                players.map(p => [p.id, p.name, p.elo, p.pos, ...STAT_KEYS.map(k => p.stats[k]), p.baseElo, p.photo.startsWith('data:') ? '' : p.photo.split('?')[0]]));
+            const spieler = toCsv(['id', 'name', 'elo', 'position', ...STAT_KEYS, 'foto'],
+                players.map(p => [p.id, p.name, p.elo, p.pos, ...STAT_KEYS.map(k => p.stats[k]), p.photo.startsWith('data:') ? '' : p.photo.split('?')[0]]));
             const presets = toCsv(['name', 'spieler_ids'], Object.entries(squadPresets).map(([n, ids]) => [n, ids.join('|')]));
 
             const rows = [];
@@ -740,9 +798,8 @@
             players = parseCsv(csv.spieler).map(r => ({
                 id: r.id, name: r.name, elo: parseInt(r.elo) || 1500, history: [],
                 pos: r.position, photo: r.foto ? r.foto + '?v=' + Date.now() : '',
-                // alte CSVs: dri/def werden zu drl/ver (normalizeData); basis_elo fehlt -> aktuelle Elo
-                stats: Object.fromEntries([...STAT_KEYS, 'dri', 'def'].map(k => [k, r[k]])),
-                baseElo: parseInt(r.basis_elo)
+                // alte CSVs: dri/def werden zu drl/ver (normalizeData)
+                stats: Object.fromEntries([...STAT_KEYS, 'dri', 'def'].map(k => [k, r[k]]))
             }));
             const byId = Object.fromEntries(players.map(p => [p.id, p]));
             const matches = new Map();
@@ -888,6 +945,7 @@
                 const player = players.find(x => x.id === p.id);
                 const before = player.elo;
                 player.elo = Math.max(100, before + change);
+                applyEloToStats(player, before, player.elo);
                 const delta = player.elo - before;
                 player.history.push({ seq, t: nowIso, elo: player.elo, delta, matchId });
                 return { id: player.id, name: player.name, before, after: player.elo, delta };
@@ -1255,6 +1313,7 @@
             const p = { id: "p_" + Date.now(), name, elo, history: [{ seq: currentSeq(), t: new Date().toISOString(), elo, delta: 0, matchId: null }] };
             players.push(p);
             normalizeData();
+            alignStats(p);
             selectedPlayerIds.add(p.id);
             saveApplicationData();
             renderAll();
@@ -1349,24 +1408,24 @@
             e.preventDefault();
             const p = players.find(x => x.id === $('editPlayerId').value);
             if (p) {
-                // Werte, die im Formular angezeigt wurden (Basis + Elo-Bewegung), mit den eingegebenen vergleichen
+                // Werte, die im Formular angezeigt wurden, mit den eingegebenen vergleichen
                 const shown = Object.fromEntries(STAT_KEYS.map(k => [k, statVal(p, k)]));
                 const entered = {};
                 document.querySelectorAll('#editStatsGrid [data-stat]').forEach(inp => {
                     entered[inp.dataset.stat] = Math.max(1, Math.min(99, parseInt(inp.value) || 50));
                 });
-                const posChanged = p.pos !== $('editPlayerPos').value;
                 p.name = $('editPlayerName').value.trim();
                 p.pos = $('editPlayerPos').value;
                 const newElo = parseInt($('editPlayerElo').value) || 1500;
+                const eloOld = p.elo;
                 if (newElo !== p.elo) {
                     p.history.push({ seq: currentSeq(), t: new Date().toISOString(), elo: newElo, delta: newElo - p.elo, matchId: null });
                     p.elo = newElo;
                 }
-                // Nur wenn Werte oder Position geändert wurden, gelten die eingegebenen Werte ab jetzt als Basis;
-                // bei reiner Elo-Korrektur laufen die Werte automatisch mit.
-                if (posChanged || STAT_KEYS.some(k => entered[k] !== shown[k])) { p.stats = entered; p.baseElo = p.elo; }
-                if (pendingPhoto !== undefined) await storePhoto(p, pendingPhoto);
+                // Von Hand geänderte Werte gelten so; bei reiner Elo-Korrektur verteilt das System die Punkte (6 je GES)
+                if (STAT_KEYS.some(k => entered[k] !== shown[k])) p.stats = entered;
+                else if (newElo !== eloOld) applyEloToStats(p, eloOld, newElo);
+                                if (pendingPhoto !== undefined) await storePhoto(p, pendingPhoto);
                 saveApplicationData(); renderAll();
                 showToast("Gespeichert", "Spielerdaten aktualisiert.", "info");
                 if (!$('cardModal').classList.contains('hidden')) openCardModal(p.id, { replay: false });
@@ -1514,6 +1573,7 @@
         }
         function openSettings() {
             $('tierSilber').value = tiers.silber; $('tierGold').value = tiers.gold; $('tierIkone').value = tiers.ikone;
+            $('statModeSel').value = statMode;
             updateTierPreview();
             $('settingsModal').classList.replace('hidden', 'flex');
         }
@@ -1527,11 +1587,20 @@
             const t = tierInputs();
             if (!tiersValid(t)) return updateTierPreview();
             try {
-                if (serverMode) await api('PUT', '/api/einstellungen/stufen', t);
-                tiers = t;
+                const mode = $('statModeSel').value;
+                if (serverMode) await api('PUT', '/api/einstellungen/stufen', { ...t, mode });
+                tiers = t; statMode = mode;
                 closeSettings(); renderAll();
                 showToast('Gespeichert', 'Karten-Stufen aktualisiert.', 'success');
             } catch (err) { showToast('Fehler', err.message, 'error'); }
+        };
+
+        $('alignAllBtn').onclick = () => {
+            if (!confirm('Die Einzelwerte ALLER Spieler werden so neu berechnet, dass ihr Mittel dem Gesamtwert aus der Elo entspricht. Von Hand gesetzte Werte gehen dabei verloren. Fortfahren?')) return;
+            statMode = $('statModeSel').value;
+            players.forEach(alignStats);
+            saveApplicationData(); renderAll();
+            showToast('Werte neu berechnet', 'Alle Spieler wurden an ihre Elo angeglichen. (Verteilung wird erst mit „Speichern“ dauerhaft übernommen.)', 'success');
         };
 
         function deletePlayer(id) {
@@ -1647,6 +1716,7 @@
                     if (res.status === 401) { location.href = '/login'; return false; }
                     if (res.ok) me = await res.json();
                     if (me.tiers) tiers = me.tiers;
+                    if (me.statMode) statMode = me.statMode;
                 } catch (e) { /* kein Server -> lokaler Modus */ }
             }
             document.body.classList.toggle('role-player', me.role !== 'admin');

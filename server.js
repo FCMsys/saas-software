@@ -155,9 +155,11 @@ async function fotoGet(id, ext) {
     return r.ok ? Buffer.from(await r.arrayBuffer()) : null;
 }
 
-// settings.json: { tiers: { silber, gold, ikone } }  Elo, ab der ein Spieler in die jeweilige Karten-Stufe springt
-const DEFAULT_TIERS = { silber: 1450, gold: 1600, ikone: 1730 };
+// settings.json: { tiers: { silber, gold, ikone }, mode }  Elo, ab der ein Spieler in die jeweilige Karten-Stufe springt, und Verteilungsmodus
+const DEFAULT_TIERS = { silber: 1548, gold: 1838, ikone: 2215 };   // = GES 65 / 75 / 88 (GES = (Elo + 337) / 29)
+const STAT_MODES = ['zufall', 'deterministisch'];   // Verteilung der Wertepunkte bei Elo-Änderungen
 const validTiers = t => !!t && ['silber', 'gold', 'ikone'].every(k => Number.isInteger(t[k]) && t[k] >= 100 && t[k] <= 3000) && t.silber < t.gold && t.gold < t.ikone;
+const loadStatMode = () => { const m = readJson('settings.json', {}).mode; return STAT_MODES.includes(m) ? m : 'zufall'; };
 const loadTiers = () => { const t = readJson('settings.json', {}).tiers; return validTiers(t) ? { silber: t.silber, gold: t.gold, ikone: t.ikone } : { ...DEFAULT_TIERS }; };
 // users.json: { <kinde-sub>: { email, name, role, spielerId, lastLogin } }
 const loadUsers = () => readJson('users.json', {});
@@ -528,7 +530,7 @@ async function handle(req, res) {
     if (method === 'GET' && url === '/api/me') {
         return sendJson(res, 200, {
             sub: session.sub, name: session.name, email: session.email, role: session.role,
-            spielerId: spielerIdOf(session), authEnabled: AUTH_ENABLED, mailEnabled: MAIL_ENABLED, paypal: loadZahlungen().paypal || '', tiers: loadTiers()
+            spielerId: spielerIdOf(session), authEnabled: AUTH_ENABLED, mailEnabled: MAIL_ENABLED, paypal: loadZahlungen().paypal || '', tiers: loadTiers(), statMode: loadStatMode()
         });
     }
 
@@ -552,8 +554,10 @@ async function handle(req, res) {
         const b = await readJsonBody(req, 1e3);
         const tiers = { silber: Number(b.silber), gold: Number(b.gold), ikone: Number(b.ikone) };
         if (!validTiers(tiers)) return sendJson(res, 400, { ok: false, error: 'Ganze Zahlen von 100 bis 3000, aufsteigend: Silber < Gold < Ikone' });
-        await writeJson('settings.json', { ...readJson('settings.json', {}), tiers });
-        return sendJson(res, 200, { ok: true, tiers });
+        const mode = b.mode === undefined ? loadStatMode() : b.mode;
+        if (!STAT_MODES.includes(mode)) return sendJson(res, 400, { ok: false, error: 'Unbekannter Verteilungsmodus' });
+        await writeJson('settings.json', { ...readJson('settings.json', {}), tiers, mode });
+        return sendJson(res, 200, { ok: true, tiers, mode });
     }
 
     // --- Benutzer-Zuordnung (Kinde-User <-> Spieler) ---
