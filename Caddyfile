@@ -1,0 +1,11 @@
+# HTTPS-Zertifikate holt Caddy selbst (Let's Encrypt). Voraussetzung: DNS-A-Einträge von
+# www.fc-msys.de und fc-msys.de zeigen auf die IP des VPS, Ports 80 und 443 sind offen.
+www.fc-msys.de {
+	encode gzip
+	reverse_proxy app:3000
+}
+
+# Domain ohne www leitet auf www weiter
+fc-msys.de {
+	redir https://www.fc-msys.de{uri} permanent
+}

@@ -1,0 +1,38 @@
+# FC M:sys auf dem VPS: App + Caddy (holt und erneuert das HTTPS-Zertifikat automatisch)
+#   docker compose up -d --build
+# Alle Einstellungen (Kinde, Supabase, SMTP, PUBLIC_URL, ...) stehen in der Datei ".env" neben dieser Datei.
+name: fc-m-sys    # fester Projektname -> Volumes heißen fc-m-sys_daten usw.
+
+services:
+  app:
+    build: .
+    image: fc-m-sys:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Diese beiden Werte gelten immer im Container und überschreiben die .env (dort steht lokal z. B. PORT=3001)
+      PORT: "3000"
+      HOST: "0.0.0.0"
+    volumes:
+      - daten:/app/daten        # nur relevant ohne Supabase (lokale CSV-/JSON-Dateien und Fotos)
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data          # Zertifikate (nicht löschen, sonst gibt es Neuausstellungen)
+      - caddy_config:/config
+
+volumes:
+  daten:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,16 @@
+# Nie ins Image: Geheimnisse, lokale Daten, Werkzeuge
+.env
+.env.*
+!.env.example
+daten/
+.git/
+.gitignore
+node_modules/
+scripts/
+supabase/
+src/logic/
+*.md
+Dockerfile
+docker-compose.yml
+Caddyfile
+*.tmp

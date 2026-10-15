@@ -33,20 +33,19 @@ const KINDE_CLIENT_SECRET = process.env.KINDE_CLIENT_SECRET || '';
 const KINDE_ORG_CODE = process.env.KINDE_ORG_CODE || '';
 const KINDE_AUDIENCE = process.env.KINDE_AUDIENCE || '';
 
-// Mailversand über SMTP (z. B. Gmail mit App-Passwort). Ohne SMTP_USER/SMTP_PASS keine Mails.
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
+// Mailversand direkt über SMTP (IONOS: smtp.ionos.de, Port 465 mit TLS, Benutzer = volle Postfach-Adresse).
+// Ohne SMTP_USER/SMTP_PASS werden keine Mails verschickt.
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.ionos.de';
 const SMTP_PORT = parseInt(process.env.SMTP_PORT, 10) || 465;   // 465 = TLS, sonst STARTTLS (z. B. 587)
 const SMTP_USER = process.env.SMTP_USER || '';
 const SMTP_PASS = (process.env.SMTP_PASS || '').replace(/\s+/g, '');
-// Alternativ per Brevo-HTTP-API (nötig auf Hostern, die ausgehendes SMTP sperren, z. B. Render Free)
-const BREVO_API_KEY = process.env.BREVO_API_KEY || '';
-const MAIL_FROM = process.env.MAIL_FROM || (BREVO_API_KEY ? '' : SMTP_USER);   // Brevo verlangt einen dort bestätigten Absender
-const MAIL_ENABLED = !!(BREVO_API_KEY ? MAIL_FROM : (SMTP_USER && SMTP_PASS));
+// Absender: bei IONOS muss die Adresse zum Postfach gehören (oder ein Alias davon sein)
+const MAIL_FROM = process.env.MAIL_FROM || SMTP_USER;
+const MAIL_ENABLED = !!(SMTP_USER && SMTP_PASS);
 // Fallback, falls Kinde keine Rollen ins Token schreibt: kommagetrennte Admin-E-Mail-Adressen
 const ADMIN_EMAILS = new Set((process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
 const AUTH_ENABLED =!!(KINDE_DOMAIN && KINDE_CLIENT_ID);
-// Auf Render setzt die Plattform RENDER_EXTERNAL_URL automatisch
-const PUBLIC_URL_SET = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '';
+const PUBLIC_URL_SET = process.env.PUBLIC_URL || '';
 const PUBLIC_URL = (PUBLIC_URL_SET || `http://localhost:${PORT}`).replace(/\/+$/, '');
 const SECURE_COOKIE = PUBLIC_URL.startsWith('https://');
 const HOST = process.env.HOST || (AUTH_ENABLED ? '0.0.0.0' : '127.0.0.1');
@@ -64,8 +63,7 @@ if (!SESSION_SECRET) SESSION_SECRET = crypto.randomBytes(32).toString('hex');
 
 const ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1']);
 try { ALLOWED_HOSTS.add(new URL(PUBLIC_URL).hostname); } catch { }
-// Die Render-Adresse bleibt neben einer eigenen Domain erreichbar; weitere Hosts (z. B. Domain ohne www) über ALLOWED_HOSTS
-try { if (process.env.RENDER_EXTERNAL_URL) ALLOWED_HOSTS.add(new URL(process.env.RENDER_EXTERNAL_URL).hostname); } catch { }
+// Weitere erlaubte Hosts (z. B. die Domain ohne www) über ALLOWED_HOSTS, kommagetrennt
 (process.env.ALLOWED_HOSTS || '').split(',').map(s => s.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/[/:].*$/, '')).filter(Boolean).forEach(h => ALLOWED_HOSTS.add(h));
 
 const FOTO_DIR = path.join(DATA_DIR, 'fotos');
@@ -390,18 +388,8 @@ function smtpSend(msg) {
 
 const maskMail = a => String(a).replace(/^(.).*(@.*)$/, '$1***$2');
 async function sendMail(msg) {
-    if (!BREVO_API_KEY) { await smtpSend(msg); console.log(`Mail an ${maskMail(msg.to)} per SMTP angenommen`); return; }
-    const m = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/.exec(MAIL_FROM);
-    const sender = m ? { ...(m[1] ? { name: m[1] } : {}), email: m[2] } : { email: MAIL_FROM.trim() };
-    const r = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json', accept: 'application/json' },
-        body: JSON.stringify({ sender, to: [{ email: msg.to }], subject: msg.subject, textContent: msg.text })
-    });
-    const body = await r.text().catch(() => '');
-    if (!r.ok) throw new Error(`Brevo ${r.status}: ${body.slice(0, 200)}`);
-    let id = ''; try { id = JSON.parse(body).messageId || ''; } catch { }
-    console.log(`Mail an ${maskMail(msg.to)} bei Brevo angenommen ${id}`);
+    await smtpSend(msg);
+    console.log(`Mail an ${maskMail(msg.to)} per SMTP angenommen`);
 }
 
 const fmtDe = iso => iso.split('-').reverse().join('.');
@@ -714,11 +702,11 @@ async function handle(req, res) {
     // Testmail an die eigene Adresse des angemeldeten Admins: zeigt bei Problemen die Fehlermeldung des Mail-Dienstes
     if (url === '/api/mailtest' && method === 'POST') {
         if (!requireAdmin()) return;
-        if (!MAIL_ENABLED) return sendJson(res, 400, { ok: false, error: BREVO_API_KEY ? 'BREVO_API_KEY ist gesetzt, aber MAIL_FROM fehlt' : 'Mail-Versand ist nicht eingerichtet (BREVO_API_KEY bzw. SMTP_*)' });
+        if (!MAIL_ENABLED) return sendJson(res, 400, { ok: false, error: 'Mail-Versand ist nicht eingerichtet (SMTP_USER und SMTP_PASS fehlen)' });
         if (!EMAIL_RE.test(session.email || '')) return sendJson(res, 400, { ok: false, error: 'Dein Login hat keine E-Mail-Adresse' });
         try {
             await sendMail({ to: session.email, subject: 'FC M:sys – Testmail', text: 'Hallo,\n\ndas ist eine Testmail aus FC M:sys. Der Mail-Versand funktioniert.\n\nFC M:sys' });
-            return sendJson(res, 200, { ok: true, to: maskMail(session.email), via: BREVO_API_KEY ? 'Brevo-API' : 'SMTP ' + SMTP_HOST, from: MAIL_FROM });
+            return sendJson(res, 200, { ok: true, to: maskMail(session.email), via: 'SMTP ' + SMTP_HOST, from: MAIL_FROM });
         } catch (e) { console.error('Testmail fehlgeschlagen:', e.message); return sendJson(res, 502, { ok: false, error: e.message }); }
     }
 
@@ -890,7 +878,7 @@ loadStore().then(() => {
         console.log(`FC-M:Sys läuft auf ${AUTH_ENABLED ? PUBLIC_URL : addr}`);
         console.log(`Login: ${AUTH_ENABLED ? 'Kinde (' + KINDE_DOMAIN + ')' : 'AUS (lokaler Modus, jeder ist Admin)'}`);
         console.log(`Daten: ${USE_SUPABASE ? 'Supabase (' + SUPABASE_URL + ')' : DATA_DIR}`);
-        console.log(`Mail: ${MAIL_ENABLED ? (BREVO_API_KEY ? 'Brevo-API, Absender ' + MAIL_FROM : 'SMTP ' + SMTP_HOST) : (BREVO_API_KEY ? 'AUS – BREVO_API_KEY ist gesetzt, aber MAIL_FROM fehlt' : 'AUS')}`);
+        console.log(`Mail: ${MAIL_ENABLED ? 'SMTP ' + SMTP_HOST + ':' + SMTP_PORT + ', Absender ' + MAIL_FROM : 'AUS (SMTP_USER/SMTP_PASS fehlen)'}`);
         console.log('Zum Beenden: Strg+C');
         if (process.platform === 'win32' && !AUTH_ENABLED && !process.env.NO_OPEN) exec(`start "" ${addr}`);
     });

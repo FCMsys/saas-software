@@ -1,40 +1,89 @@
-# FC-M:Sys auf Render veröffentlichen (kostenlos mit Supabase)
+# FC M:sys auf dem IONOS-VPS (Docker)
 
-## 1. Supabase einrichten
-1. Projekt anlegen auf supabase.com (Region EU).
-2. **SQL Editor** → Inhalt von `supabase/schema.sql` einfügen und ausführen.
-3. **Project Settings → API**: `Project URL` und den **secret**-Key (alt: `service_role`) notieren.
+Aufbau: `docker compose` startet zwei Container.
+- **app**: der Node-Server (Port 3000, nur intern erreichbar)
+- **caddy**: nimmt Port 80/443 an, holt das HTTPS-Zertifikat selbst (Let's Encrypt) und leitet an die App weiter
 
-## 2. Bestehende Daten übertragen (einmalig)
-In `.env` eintragen: `SUPABASE_URL=…` und `SUPABASE_SERVICE_KEY=…`, dann:
+Mails gehen direkt über den IONOS-SMTP-Server (`smtp.ionos.de:465`), die Daten liegen weiter in Supabase (oder lokal im Docker-Volume, siehe unten).
 
+## 1. DNS (bei IONOS)
+Beide Einträge auf die öffentliche IPv4-Adresse des VPS stellen:
+
+| Typ | Name | Wert |
+|---|---|---|
+| A | `www` | IP des VPS |
+| A | `@` | IP des VPS |
+
+Danach kurz warten und prüfen: `nslookup www.fc-msys.de`.
+
+## 2. VPS vorbereiten (Ubuntu/Debian)
+```bash
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER      # danach einmal ab- und wieder anmelden
 ```
-node scripts/migrate-to-supabase.js
+Im IONOS-Cloud-Panel unter **Netzwerk → Firewall-Richtlinien** müssen die Ports **80** und **443** (TCP, und 443 UDP) eingehend erlaubt sein. Läuft auf dem Server `ufw`: `sudo ufw allow 80,443/tcp && sudo ufw allow 443/udp`.
+
+## 3. Code auf den Server
+```bash
+git clone https://github.com/FCMsys/saas-software.git fc-m-sys
+cd fc-m-sys
+```
+(Bei privatem Repo mit Access-Token oder Deploy-Key; alternativ den Projektordner per `scp` kopieren.)
+
+## 4. `.env` anlegen
+```bash
+cp .env.example .env
+nano .env
+```
+Wichtig:
+- `PUBLIC_URL=https://www.fc-msys.de` (Zeile einkommentieren)
+- `SESSION_SECRET` (zufälliger Wert, siehe Kommentar in der Datei)
+- `KINDE_*`, `ADMIN_EMAILS` wie bisher
+- `SUPABASE_URL` und `SUPABASE_SERVICE_KEY` wie bisher (dann bleiben alle Daten, wie sie sind)
+- `SMTP_PASS` = Passwort des Postfachs `info@fc-msys.de`
+- `PORT` und `HOST` **nicht** eintragen
+
+## 5. Starten
+```bash
+docker compose up -d --build
+docker compose logs -f           # Strg+C beendet nur die Anzeige
+```
+Im Log der App stehen: `Daten: Supabase …`, `Mail: SMTP smtp.ionos.de:465, Absender …`. Caddy meldet, sobald das Zertifikat da ist.
+
+Dann `https://www.fc-msys.de` öffnen und anmelden. In der App unter dem Regler-Symbol (Karten-Einstellungen) gibt es **„Mail-Versand testen“**: schickt eine Testmail an deine eigene Adresse und zeigt Fehlermeldungen direkt an.
+
+## 6. Kinde
+Bei der App FC-M:Sys unter Details müssen stehen:
+- Allowed callback URLs: `https://www.fc-msys.de/callback`
+- Allowed logout redirect URLs: `https://www.fc-msys.de`
+
+## Updates einspielen
+```bash
+cd fc-m-sys
+git pull
+docker compose up -d --build
+```
+Die Container starten bei einem Server-Neustart von selbst wieder (`restart: unless-stopped`).
+
+## Nützliche Befehle
+```bash
+docker compose ps                  # läuft alles? (app sollte "healthy" sein)
+docker compose logs app --tail 100
+docker compose restart app
+docker compose down                # stoppt alles (Daten und Zertifikate bleiben in den Volumes)
 ```
 
-Danach kannst du lokal mit denselben Variablen gegen Supabase testen (`start.bat`). Ohne die beiden Variablen nutzt der Server weiter den Ordner `daten`.
+## Daten
+- **Mit Supabase (empfohlen, wie bisher):** nichts weiter zu tun. Das Docker-Volume `daten` bleibt ungenutzt.
+- **Ohne Supabase:** `SUPABASE_*` in der `.env` leer lassen. Dann speichert der Server in das Volume `fc-m-sys_daten`. Bestehende Daten vorher mit `node scripts/migrate-to-supabase.js` (aus Supabase) bzw. den Dateien aus `daten/` übernehmen. Sicherung des Volumes:
+  ```bash
+  docker run --rm -v fc-m-sys_daten:/d -v "$PWD":/b alpine tar czf /b/daten-backup.tgz -C /d .
+  ```
 
-## 3. GitHub
-```
-git init
-git add .
-git commit -m "FC-M:Sys"
-git branch -M main
-git remote add origin https://github.com/<DEIN-NAME>/<REPO>.git
-git push -u origin main
-```
-Die `.gitignore` hält `.env` und `daten/` aus dem Repository. Prüfe vor dem Push mit `git status`, dass keine `.env` dabei ist.
+## Mail-Hinweise
+- `SMTP_USER` ist die komplette Adresse, `MAIL_FROM` muss dieselbe Adresse (oder ein Alias des Postfachs) sein, sonst lehnt IONOS mit „Unauthorized sender address“ ab.
+- Gehen Mails nicht raus, zuerst den Testknopf in der App benutzen: Die Meldung nennt den Grund (Passwort falsch, Port gesperrt, Absender nicht erlaubt).
+- Ausgehend muss Port 465 offen sein. Bei IONOS-VPS ist er normalerweise erlaubt; sonst im Panel die Firewall bzw. den Mailversand freischalten.
 
-## 4. Render
-1. Render → **New → Blueprint** → das GitHub-Repo wählen (liest `render.yaml`), oder **New → Web Service** mit Build Command leer und Start Command `node server.js`.
-2. Unter **Environment** setzen: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `KINDE_DOMAIN`, `KINDE_CLIENT_ID`, `KINDE_CLIENT_SECRET`, `KINDE_ORG_CODE`, `KINDE_AUDIENCE`, `ADMIN_EMAILS`, optional `BREVO_API_KEY` und `MAIL_FROM`.
-   `SESSION_SECRET` erzeugt Render selbst, `PUBLIC_URL` ergibt sich aus der Render-Adresse.
-3. Nach dem ersten Deploy die Adresse (`https://<name>.onrender.com`) in Kinde bei **FC-M:Sys → Details** eintragen:
-   - Allowed callback URLs: `https://<name>.onrender.com/callback`
-   - Allowed logout redirect URLs: `https://<name>.onrender.com`
-
-## Hinweise zum Free-Tarif
-- Render schläft nach ca. 15 Minuten ohne Aufruf ein; der erste Aufruf danach dauert bis zu einer Minute.
-- Render Free sperrt ausgehendes SMTP. Deshalb für Mails `BREVO_API_KEY` statt `SMTP_*` verwenden.
-- Supabase pausiert Free-Projekte nach etwa einer Woche ohne Aktivität (im Dashboard wieder startbar).
-- Der Server muss als genau **eine** Instanz laufen (die Daten werden im Speicher gepuffert).
+## Umzug von Render
+Erst wenn die App auf dem VPS läuft und das Zertifikat da ist: DNS-Einträge (siehe oben) auf den VPS umstellen und den Render-Dienst anhalten. Bis das DNS überall angekommen ist, kann es etwas dauern.
