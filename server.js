@@ -38,9 +38,9 @@ const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
 const SMTP_PORT = parseInt(process.env.SMTP_PORT, 10) || 465;   // 465 = TLS, sonst STARTTLS (z. B. 587)
 const SMTP_USER = process.env.SMTP_USER || '';
 const SMTP_PASS = (process.env.SMTP_PASS || '').replace(/\s+/g, '');
-const MAIL_FROM = process.env.MAIL_FROM || SMTP_USER;
 // Alternativ per Brevo-HTTP-API (nötig auf Hostern, die ausgehendes SMTP sperren, z. B. Render Free)
 const BREVO_API_KEY = process.env.BREVO_API_KEY || '';
+const MAIL_FROM = process.env.MAIL_FROM || (BREVO_API_KEY ? '' : SMTP_USER);   // Brevo verlangt einen dort bestätigten Absender
 const MAIL_ENABLED = !!(BREVO_API_KEY ? MAIL_FROM : (SMTP_USER && SMTP_PASS));
 // Fallback, falls Kinde keine Rollen ins Token schreibt: kommagetrennte Admin-E-Mail-Adressen
 const ADMIN_EMAILS = new Set((process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
@@ -313,10 +313,20 @@ async function finishLogin(req, res, query) {
 const headerSafe = s => String(s).replace(/[\r\n]+/g, ' ').trim();
 const encodeWord = s => /^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${Buffer.from(s, 'utf8').toString('base64')}?=`;
 
+// Absender-Header: Name immer in Anführungszeichen (ein Doppelpunkt wie in "FC M:sys" würde sonst den Header zerstören
+// und z. B. IONOS lehnt die Mail dann als "Unauthorized sender address" ab); Nicht-ASCII-Namen werden kodiert
+function fromHeader() {
+    const m = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/.exec(MAIL_FROM);
+    if (!m) return headerSafe(MAIL_FROM);
+    const name = headerSafe(m[1]);
+    if (!name) return `<${m[2]}>`;
+    return `${/^[\x20-\x7e]*$/.test(name) ? '"' + name.replace(/["\\]/g, '\\$&') + '"' : encodeWord(name)} <${m[2]}>`;
+}
+
 function buildMessage({ to, subject, text }) {
     const body = Buffer.from(text.replace(/\r?\n/g, '\r\n'), 'utf8').toString('base64').replace(/.{1,76}/g, '$&\r\n');
     return [
-        `From: ${headerSafe(MAIL_FROM)}`, `To: ${headerSafe(to)}`, `Subject: ${encodeWord(headerSafe(subject))}`,
+        `From: ${fromHeader()}`, `To: ${headerSafe(to)}`, `Subject: ${encodeWord(headerSafe(subject))}`,
         `Date: ${new Date().toUTCString()}`, `Message-ID: <${crypto.randomBytes(12).toString('hex')}@fcmsys>`,
         'MIME-Version: 1.0', 'Content-Type: text/plain; charset=utf-8', 'Content-Transfer-Encoding: base64', '', body
     ].join('\r\n');
@@ -378,8 +388,9 @@ function smtpSend(msg) {
     });
 }
 
+const maskMail = a => String(a).replace(/^(.).*(@.*)$/, '$1***$2');
 async function sendMail(msg) {
-    if (!BREVO_API_KEY) return smtpSend(msg);
+    if (!BREVO_API_KEY) { await smtpSend(msg); console.log(`Mail an ${maskMail(msg.to)} per SMTP angenommen`); return; }
     const m = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/.exec(MAIL_FROM);
     const sender = m ? { ...(m[1] ? { name: m[1] } : {}), email: m[2] } : { email: MAIL_FROM.trim() };
     const r = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -387,22 +398,25 @@ async function sendMail(msg) {
         headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json', accept: 'application/json' },
         body: JSON.stringify({ sender, to: [{ email: msg.to }], subject: msg.subject, textContent: msg.text })
     });
-    if (!r.ok) throw new Error(`Brevo ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`);
+    const body = await r.text().catch(() => '');
+    if (!r.ok) throw new Error(`Brevo ${r.status}: ${body.slice(0, 200)}`);
+    let id = ''; try { id = JSON.parse(body).messageId || ''; } catch { }
+    console.log(`Mail an ${maskMail(msg.to)} bei Brevo angenommen ${id}`);
 }
 
 const fmtDe = iso => iso.split('-').reverse().join('.');
 const fmtEur = cent => (cent / 100).toFixed(2).replace('.', ',') + ' €';
 
 // Schickt die Zahlungsanforderung an alle Teilnehmer, deren Login einem Spieler zugeordnet ist
-async function mailZahlungsanforderung(spieltag) {
+async function mailZahlungsanforderung(spieltag, { reminder = false } = {}) {
     const result = { sent: 0, failed: [], skipped: 0 };
     const paypal = loadZahlungen().paypal || '';
     const users = Object.values(loadUsers());
-    const subject = `Fußball ${fmtDe(spieltag.datum)}: Beitrag ${fmtEur(spieltag.betragCent)}`;
+    const subject = `${reminder ? 'Erinnerung: ' : ''}Fußball ${fmtDe(spieltag.datum)}: Beitrag ${fmtEur(spieltag.betragCent)}`;
     const pay = !paypal ? '' : /^https:/i.test(paypal)
         ? `Bezahlen: ${paypal.replace(/\/+$/, '')}/${(spieltag.betragCent / 100).toFixed(2)}EUR\n`
         : `Bitte per PayPal (Freunde & Familie) an: ${paypal}\n`;
-    const text = `Hallo Sportsfreund,\n\nfür den Spieltag am ${fmtDe(spieltag.datum)}${spieltag.ort || spieltag.titel ? ' (' + (spieltag.ort || spieltag.titel) + ')' : ''} sind ${fmtEur(spieltag.betragCent)} fällig.\n` +
+    const text = `Hallo Sportsfreund,\n\nfür den Spieltag am ${fmtDe(spieltag.datum)}${spieltag.ort || spieltag.titel ? ' (' + (spieltag.ort || spieltag.titel) + ')' : ''} sind ${fmtEur(spieltag.betragCent)} ${reminder ? 'noch offen' : 'fällig'}.\n` +
         pay + (PUBLIC_URL_SET ? `\nMehr Infos: ${PUBLIC_URL}\n` : '') + '\nDanke!\nFC:MSys';
     for (const id of spieltag.teilnehmer.filter(x => !spieltag.bezahlt[x])) {   // wer schon bezahlt hat, bekommt keine Mail
         const email = (users.find(u => u.spielerId === id) || {}).email;
@@ -697,6 +711,17 @@ async function handle(req, res) {
         return sendJson(res, 200, { ok: true });
     }
 
+    // Testmail an die eigene Adresse des angemeldeten Admins: zeigt bei Problemen die Fehlermeldung des Mail-Dienstes
+    if (url === '/api/mailtest' && method === 'POST') {
+        if (!requireAdmin()) return;
+        if (!MAIL_ENABLED) return sendJson(res, 400, { ok: false, error: BREVO_API_KEY ? 'BREVO_API_KEY ist gesetzt, aber MAIL_FROM fehlt' : 'Mail-Versand ist nicht eingerichtet (BREVO_API_KEY bzw. SMTP_*)' });
+        if (!EMAIL_RE.test(session.email || '')) return sendJson(res, 400, { ok: false, error: 'Dein Login hat keine E-Mail-Adresse' });
+        try {
+            await sendMail({ to: session.email, subject: 'FC M:sys – Testmail', text: 'Hallo,\n\ndas ist eine Testmail aus FC M:sys. Der Mail-Versand funktioniert.\n\nFC M:sys' });
+            return sendJson(res, 200, { ok: true, to: maskMail(session.email), via: BREVO_API_KEY ? 'Brevo-API' : 'SMTP ' + SMTP_HOST, from: MAIL_FROM });
+        } catch (e) { console.error('Testmail fehlgeschlagen:', e.message); return sendJson(res, 502, { ok: false, error: e.message }); }
+    }
+
     // --- Spieltage & Zahlungen ---
     if (url === '/api/zahlungen' && method === 'GET') return sendJson(res, 200, { spieltage: zahlungenFor(session) });
 
@@ -716,7 +741,7 @@ async function handle(req, res) {
         return sendJson(res, 200, { ok: true, id: spieltag.id });
     }
 
-    const stApi = /^\/api\/spieltage\/([\w-]+)(?:\/(bezahlt|einladung|teilnahme|antwort|anwesend|abrechnung))?$/.exec(url);
+    const stApi = /^\/api\/spieltage\/([\w-]+)(?:\/(bezahlt|einladung|teilnahme|antwort|anwesend|abrechnung|erinnerung))?$/.exec(url);
     if (stApi) {
         const [, id, action] = stApi;
         const z = loadZahlungen();
@@ -793,6 +818,13 @@ async function handle(req, res) {
             const mail = MAIL_ENABLED && b.mail !== false ? await mailZahlungsanforderung(s) : null;
             return sendJson(res, 200, { ok: true, mail });
         }
+        // Admin: Zahlungserinnerung per Mail an alle, die noch nicht bezahlt haben
+        if (action === 'erinnerung' && method === 'POST') {
+            if (!requireAdmin()) return;
+            if (!MAIL_ENABLED) return sendJson(res, 400, { ok: false, error: 'Mail-Versand ist nicht eingerichtet' });
+            if (s.betragCent == null || !s.teilnehmer.length) return sendJson(res, 400, { ok: false, error: 'Für diesen Spieltag gibt es noch keine Abrechnung' });
+            return sendJson(res, 200, { ok: true, mail: await mailZahlungsanforderung(s, { reminder: true }) });
+        }
         if (action === 'abrechnung' && method === 'DELETE') {
             if (!requireAdmin()) return;
             s.betragCent = null; s.teilnehmer = []; s.bezahlt = {};
@@ -858,7 +890,7 @@ loadStore().then(() => {
         console.log(`FC-M:Sys läuft auf ${AUTH_ENABLED ? PUBLIC_URL : addr}`);
         console.log(`Login: ${AUTH_ENABLED ? 'Kinde (' + KINDE_DOMAIN + ')' : 'AUS (lokaler Modus, jeder ist Admin)'}`);
         console.log(`Daten: ${USE_SUPABASE ? 'Supabase (' + SUPABASE_URL + ')' : DATA_DIR}`);
-        console.log(`Mail: ${MAIL_ENABLED ? (BREVO_API_KEY ? 'Brevo-API' : 'SMTP ' + SMTP_HOST) : 'AUS'}`);
+        console.log(`Mail: ${MAIL_ENABLED ? (BREVO_API_KEY ? 'Brevo-API, Absender ' + MAIL_FROM : 'SMTP ' + SMTP_HOST) : (BREVO_API_KEY ? 'AUS – BREVO_API_KEY ist gesetzt, aber MAIL_FROM fehlt' : 'AUS')}`);
         console.log('Zum Beenden: Strg+C');
         if (process.platform === 'win32' && !AUTH_ENABLED && !process.env.NO_OPEN) exec(`start "" ${addr}`);
     });

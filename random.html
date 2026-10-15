@@ -510,6 +510,7 @@
                     </select></label>
                 <p id="tierPreview" class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"></p>
                 <p id="tierError" class="text-xs text-rose-600 hidden"></p>
+                <button type="button" id="mailTestBtn" class="hidden w-full text-xs text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 transition" title="Schickt eine Testmail an deine eigene Adresse und zeigt Fehler des Mail-Dienstes an"><i class="fa-solid fa-paper-plane mr-1.5"></i>Mail-Versand testen (Testmail an mich)</button>
                 <button type="button" id="alignAllBtn" class="w-full text-xs text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 transition" title="Mittel der Einzelwerte wird auf den Gesamtwert gezogen"><i class="fa-solid fa-rotate mr-1.5"></i>Alle Spielerwerte neu aus der Elo berechnen</button>
                 <div class="flex gap-2 pt-1">
                     <button type="button" id="tierDefaultBtn" class="px-3 text-slate-500 hover:bg-slate-100 text-sm font-semibold rounded-lg transition" title="Standardwerte einsetzen">Standard</button>
@@ -1632,6 +1633,7 @@
         function openSettings() {
             $('tierSilber').value = tiers.silber; $('tierGold').value = tiers.gold; $('tierIkone').value = tiers.ikone;
             $('statModeSel').value = statMode;
+            $('mailTestBtn').classList.toggle('hidden', !me.mailEnabled);
             updateTierPreview();
             $('settingsModal').classList.replace('hidden', 'flex');
         }
@@ -1653,6 +1655,14 @@
             } catch (err) { showToast('Fehler', err.message, 'error'); }
         };
 
+        $('mailTestBtn').onclick = async () => {
+            const b = $('mailTestBtn'); b.disabled = true;
+            try {
+                const r = await api('POST', '/api/mailtest');
+                showToast('Testmail gesendet', `An ${r.to} über ${r.via} (Absender ${r.from}). Schau auch im Spam-Ordner nach.`, 'success');
+            } catch (err) { showToast('Mail-Versand fehlgeschlagen', err.message, 'error'); }
+            b.disabled = false;
+        };
         $('alignAllBtn').onclick = () => {
             if (!confirm('Die Einzelwerte ALLER Spieler werden so neu berechnet, dass ihr Mittel dem Gesamtwert aus der Elo entspricht. Von Hand gesetzte Werte gehen dabei verloren. Fortfahren?')) return;
             statMode = $('statModeSel').value;
@@ -2004,7 +2014,9 @@
                             <p class="text-xs text-slate-500">${eur(s.betragCent)} pro Person · ${paidIds.length}/${s.teilnehmer.length} bezahlt · ${eur(paidIds.length * s.betragCent)} von ${eur(s.teilnehmer.length * s.betragCent)}</p></div>
                         <div class="flex items-center gap-1.5">
                             ${openIds.length ? (mailto
-                                ? `<a href="${escapeHtml(mailto)}" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition" title="${mails.length} von ${openIds.length} offenen Spielern haben eine hinterlegte Mail"><i class="fa-solid fa-envelope mr-1.5 text-amber-500"></i>Offene erinnern (${mails.length})</a>`
+                                ? (me.mailEnabled
+                                    ? `<button data-act="remind" data-st="${escapeHtml(s.id)}" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition" title="Mail an alle offenen Spieler mit bekannter Mail-Adresse (${mails.length} von ${openIds.length})"><i class="fa-solid fa-envelope mr-1.5 text-amber-500"></i>Offene erinnern (${mails.length})</button>`
+                                    : `<a href="${escapeHtml(mailto)}" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition" title="Öffnet dein Mailprogramm (Mail-Versand der App ist nicht eingerichtet)"><i class="fa-solid fa-envelope mr-1.5 text-amber-500"></i>Offene erinnern (${mails.length})</a>`)
                                 : '<span class="text-[11px] text-slate-400" title="Unter „Benutzer &amp; Zuordnung“ Spielern einen Login zuweisen, dann ist ihre Mail bekannt">keine Mails bekannt</span>') : ''}
                             <button data-act="unbill" data-st="${escapeHtml(s.id)}" title="Abrechnung entfernen (der Spieltag bleibt bestehen)" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>
                         </div>
@@ -2031,6 +2043,12 @@
             const { act, st, sp, paid } = b.dataset;
             try {
                 if (act === 'toggle') await api('POST', `/api/spieltage/${st}/bezahlt`, { spielerId: sp, paid: paid === '1' });
+                if (act === 'remind') {
+                    if (!confirm('Zahlungserinnerung jetzt per Mail an alle Spieler senden, die noch nicht bezahlt haben?')) return;
+                    b.disabled = true;
+                    const m = (await api('POST', `/api/spieltage/${st}/erinnerung`)).mail;
+                    showToast(m.failed.length ? 'Erinnerung teilweise gesendet' : 'Erinnerung gesendet', `${m.sent} Mails gesendet` + (m.skipped ? `, ${m.skipped} ohne bekannte Mail` : '') + (m.failed.length ? `, ${m.failed.length} fehlgeschlagen (${m.failed[0]})` : '') + '.', m.failed.length ? 'error' : 'success');
+                }
                 if (act === 'unbill') {
                     if (!confirm('Abrechnung für diesen Spieltag entfernen? Der Spieltag und die Zu-/Absagen bleiben bestehen.')) return;
                     await api('DELETE', `/api/spieltage/${st}/abrechnung`);
