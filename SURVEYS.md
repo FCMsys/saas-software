@@ -1,0 +1,28 @@
+# Spieltagsumfragen
+
+## Ablauf
+
+Ein Admin schließt einen Spieltag in der Spieltagskarte ab, nachdem alle Einzelspiele gespeichert sind. Die App ermittelt die tatsächlichen Teilnehmer ausschließlich aus `spiele.csv` über die Spalte `match_day_id`. Für alte Spiele ohne diese Zuordnung wird keine Teilnahme vermutet; die Umfrage lässt sich in diesem Fall nicht starten.
+
+Der Abschlusszeitpunkt wird als ISO-Zeitstempel in `umfragen.json` gespeichert. Die Umfrage endet genau 48 Stunden danach. Der Server prüft die Frist bei jedem Abruf und jeder Einreichung; ein gezielter Timer veröffentlicht die Ergebnisse. Nach einem Neustart werden fällige Umfragen beim Start nachgezogen. Antworten können pro zugeordnetem Spieler und Spieltag nur einmal eingereicht werden.
+
+Teilnehmer mit gültiger Login-Zuordnung erhalten eine E-Mail. Spieler ohne E-Mail finden die Umfrage weiterhin im Bereich **Spieltage**. Fehlgeschlagene Versandversuche sind in der Admin-Ansicht sichtbar und können dort erneut angestoßen werden. Ein nach einem Serverabbruch unklarer SMTP-Versand wird nicht automatisch wiederholt, um mögliche Doppel-E-Mails zu vermeiden.
+
+Der Umfrage-Link führt über den regulären Login zurück zur persönlichen Umfrage. Nicht angemeldete Nutzer müssen sich anmelden; die Zuordnung des Kontos zu einem Spielerprofil bleibt erforderlich.
+
+## Fragen und Auswertung
+
+Jeder Fragebogen wird beim Spieltagsabschluss einmalig erzeugt und gespeichert. Paarungen enthalten nur tatsächliche Teilnehmer, schließen den Befragten aus, verwenden bevorzugt GES-Abstände bis 3 und niemals mehr als 5. Paarungen und Attributauswahl werden pro Spieltag möglichst gleichmäßig verteilt. Bei zu wenigen geeigneten Spielern entfallen Vergleichsfragen.
+
+Attributvergleiche verwenden ein regularisiertes Bradley-Terry-Modell mit den vorhandenen Attributen als unsicheren Startwerten. Das Modell wird deterministisch aus allen bisher eingegangenen Vergleichsantworten neu berechnet; die Antwortstufen entsprechen Präferenzen von 0,9 / 0,65 / 0,5 / 0,35 / 0,1. Werte werden auf ganze Zahlen von 1 bis 99 begrenzt. Änderungen werden mit Zeitpunkt, Spieler, Attribut und Vorher-/Nachher-Wert protokolliert. Die Elo-Berechnung und der daraus abgeleitete GES-Wert bleiben davon getrennt.
+
+Die Tagesleistungsvergleiche werden während der Umfrage aggregiert angezeigt. Nominierungen für **Man of the Match** und **Überraschung des Spieltags** bleiben serverseitig verborgen. Erst nach Ablauf der Frist werden Ranglisten und gleichplatzierte Gewinner veröffentlicht.
+
+## Speicherung und Betrieb
+
+- `spiele.csv`: neue Spiele speichern `match_day_id`; ältere Zeilen bleiben ohne Zuordnung.
+- `umfragen.json`: Abschlusszeit, Frist, Teilnehmer, gespeicherte Fragebögen, Einreichungen, Versandstatus, Rating-Ausgangswerte, aktuelle Werte, Änderungsverlauf und veröffentlichte Auszeichnungen.
+- `spieler.csv`: bestehende Attribute bleiben erhalten; die über Umfragen ermittelten Werte werden beim Laden der App serverseitig eingeblendet und durch spätere CSV-Speicherungen nicht zurückgesetzt.
+- Wie die übrigen lokalen/Supabase-Daten ist auch der Umfragezustand für eine einzelne Serverinstanz ausgelegt.
+
+Automatisierte Prüfungen: `node --test test/survey.test.js test/survey-api.test.js`.
