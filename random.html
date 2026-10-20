@@ -537,7 +537,7 @@
                         <label class="text-xs text-rose-700"><input id="adRemoveImage" type="checkbox" class="accent-rose-600 mr-1">Vorhandenes Bild entfernen</label>
                     </div>
                 </div>
-                <p class="text-xs text-slate-500">Nach 5 Sekunden Inaktivität startet der Flieger. Jeder Überflug dauert 8 Sekunden. Solange die Seite inaktiv bleibt, startet er direkt am gegenüberliegenden Rand auf einer neuen zufälligen Höhe. Ein begonnener Überflug läuft auch bei Aktivität zu Ende. Er lässt sich nicht anklicken oder schließen.</p>
+                <p class="text-xs text-slate-500">Nach 5 Sekunden Inaktivität startet der Flieger. Jeder Überflug dauert 8 Sekunden. Danach bleibt er eine Sekunde verschwunden und startet bei anhaltender Inaktivität am gegenüberliegenden Rand auf einer neuen zufälligen Höhe. Ein begonnener Überflug läuft auch bei Aktivität zu Ende. Er lässt sich nicht anklicken oder schließen.</p>
                 <div class="flex items-center gap-3">
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">Werbung speichern</button>
                     <span id="adSaveStatus" class="text-xs text-slate-500"></span>
@@ -710,6 +710,7 @@
         const TABS = ['players', 'days', 'match', 'history', 'payments', 'advertising'];
         const AD_IDLE_MS = 5000;
         const AD_FLY_MS = 8000;
+        const AD_GAP_MS = 1000;
         let adConfig = { enabled: false, text: '', image: '' };
         let adTimer = null;
         let adFlying = false;
@@ -1986,11 +1987,11 @@
             }
         }
 
-        function scheduleAdFlyer() {
+        function scheduleAdFlyer(minDelay = 0) {
             clearTimeout(adTimer);
             if (!adConfig.enabled || adFlying || document.visibilityState === 'hidden') return;
             const idleFor = Date.now() - adLastActivity;
-            const delay = Math.max(0, AD_IDLE_MS - idleFor);
+            const delay = Math.max(minDelay, AD_IDLE_MS - idleFor);
             adTimer = setTimeout(showAdFlyer, delay);
         }
 
@@ -2011,8 +2012,8 @@
             adFlying = true;
 
             const frames = adDirection > 0
-                ? [{ transform: 'translateX(calc(-100% - 50vw))' }, { transform: 'translateX(50vw)' }]
-                : [{ transform: 'translateX(50vw)' }, { transform: 'translateX(calc(-100% - 50vw))' }];
+                ? [{ transform: 'translateX(calc(-100% - 100vw))' }, { transform: 'translateX(100vw)' }]
+                : [{ transform: 'translateX(100vw)' }, { transform: 'translateX(calc(-100% - 100vw))' }];
             const animation = flyer.animate(
                 frames,
                 { duration: AD_FLY_MS, easing: 'linear', fill: 'forwards' }
@@ -2024,7 +2025,7 @@
                 flyer.style.transform = '';
                 adFlying = false;
                 animation.cancel();
-                scheduleAdFlyer();
+                scheduleAdFlyer(AD_GAP_MS);
             };
         }
 
