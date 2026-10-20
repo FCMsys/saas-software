@@ -166,7 +166,13 @@ const loadUsers = () => readJson('users.json', {});
 //     antworten: { [spielerId]: { status: 'zu'|'ab', at, by: 'mail'|'app'|'admin'|'spiel' } },   // Zu-/Absagen zum Spieltag
 //     betragCent|null, teilnehmer: [spielerId], bezahlt: { [spielerId]: { via, at } }              // Abrechnung (null = noch nicht abgerechnet)
 // }] }
-const loadZahlungen = () => { const z = readJson('zahlungen.json', {}); if (!Array.isArray(z.spieltage)) z.spieltage = []; z.spieltage.forEach(normSpieltag); return z; };
+const loadZahlungen = () => {
+    const z = readJson('zahlungen.json', {});
+    if (!Array.isArray(z.spieltage)) z.spieltage = [];
+    if (!Array.isArray(z.kassenbuch)) z.kassenbuch = [];
+    z.spieltage.forEach(normSpieltag);
+    return z;
+};
 
 // ---------------------------------------------------------------------------
 // HTTP-Helfer
@@ -396,23 +402,103 @@ const fmtDe = iso => iso.split('-').reverse().join('.');
 const fmtEur = cent => (cent / 100).toFixed(2).replace('.', ',') + ' €';
 
 // Schickt die Zahlungsanforderung an alle Teilnehmer, deren Login einem Spieler zugeordnet ist
-async function mailZahlungsanforderung(spieltag, { reminder = false } = {}) {
+async function mailZahlungsanforderung(spieltag, { reminder = false, openAmounts = {} } = {}) {
     const result = { sent: 0, failed: [], skipped: 0 };
     const paypal = loadZahlungen().paypal || '';
     const users = Object.values(loadUsers());
-    const subject = `${reminder ? 'Erinnerung: ' : ''}Fußball ${fmtDe(spieltag.datum)}: Beitrag ${fmtEur(spieltag.betragCent)}`;
-    const pay = !paypal ? '' : /^https:/i.test(paypal)
-        ? `Bezahlen: ${paypal.replace(/\/+$/, '')}/${(spieltag.betragCent / 100).toFixed(2)}EUR\n`
-        : `Bitte per PayPal (Freunde & Familie) an: ${paypal}\n`;
-    const text = `Hallo Sportsfreund,\n\nfür den Spieltag am ${fmtDe(spieltag.datum)}${spieltag.ort || spieltag.titel ? ' (' + (spieltag.ort || spieltag.titel) + ')' : ''} sind ${fmtEur(spieltag.betragCent)} ${reminder ? 'noch offen' : 'fällig'}.\n` +
-        pay + (PUBLIC_URL_SET ? `\nMehr Infos: ${PUBLIC_URL}\n` : '') + '\nDanke!\nFC:MSys';
-    for (const id of spieltag.teilnehmer.filter(x => !spieltag.bezahlt[x])) {   // wer schon bezahlt hat, bekommt keine Mail
+    const subject = `${reminder ? 'Erinnerung: ' : ''}Fußball ${fmtDe(spieltag.datum)}: Beitrag`;
+    for (const id of spieltag.teilnehmer) {
+        const betragCent = Number.isSafeInteger(openAmounts[id]) ? openAmounts[id] : spieltag.bezahlt[id] ? 0 : spieltag.betragCent;
+        if (betragCent <= 0) continue;
         const email = (users.find(u => u.spielerId === id) || {}).email;
         if (!email || !EMAIL_RE.test(email)) { result.skipped++; continue; }
+        const pay = !paypal ? '' : /^https:/i.test(paypal)
+            ? `Bezahlen: ${paypal.replace(/\/+$/, '')}/${(betragCent / 100).toFixed(2)}EUR\n`
+            : `Bitte per PayPal (Freunde & Familie) an: ${paypal}\n`;
+        const text = `Hallo Sportsfreund,\n\nfür den Spieltag am ${fmtDe(spieltag.datum)}${spieltag.ort || spieltag.titel ? ' (' + (spieltag.ort || spieltag.titel) + ')' : ''} sind ${fmtEur(betragCent)} ${reminder ? 'noch offen' : 'fällig'}.\n` +
+            pay + (PUBLIC_URL_SET ? `\nMehr Infos: ${PUBLIC_URL}\n` : '') + '\nDanke!\nFC:MSys';
         try { await sendMail({ to: email, subject, text }); result.sent++; }
         catch (e) { console.error(`Mail an ${email} fehlgeschlagen:`, e.message); result.failed.push(email + ': ' + e.message); }
     }
     return result;
+}
+
+function cashSummary(z) {
+    const knownPlayers = playerNames();
+    const playerIdForEntry = entry => {
+        if (entry.spielerId && knownPlayers.has(entry.spielerId)) return entry.spielerId;
+        const normalizeName = value => String(value || '').toLocaleLowerCase('de-DE').replace(/[^a-z0-9äöüß]/g, '');
+        const name = normalizeName(entry.gegenkonto);
+        if (!name) return null;
+        return [...knownPlayers].find(([, playerName]) => normalizeName(playerName) === name)?.[0] || null;
+    };
+    const events = [];
+    let incomeCent = 0, expensesCent = 0;
+    (z.kassenbuch || []).forEach((entry, index) => {
+        const amount = Number(entry.betragCent) || 0;
+        if (entry.typ === 'einnahme') incomeCent += amount;
+        if (entry.typ === 'ausgabe' || entry.typ === 'auszahlung') expensesCent += amount;
+        events.push({
+            datum: entry.datum || '', order: 0, index, type: 'credit',
+            playerId: playerIdForEntry(entry), amount: entry.typ === 'auszahlung' ? -amount : amount
+        });
+    });
+    (z.spieltage || []).filter(s => s.betragCent != null).forEach((s, dayIndex) => {
+        s.teilnehmer.forEach((playerId, playerIndex) => {
+            events.push({
+                datum: s.datum, order: 1, index: dayIndex * 10000 + playerIndex, type: 'charge',
+                spieltag: s, playerId, amount: s.betragCent, key: `${s.id}:${playerId}`
+            });
+        });
+    });
+    events.sort((a, b) => a.datum.localeCompare(b.datum) || a.order - b.order || a.index - b.index);
+
+    const balances = new Map();
+    const debts = new Map();
+    const chargeStatus = {};
+    const balanceOf = id => balances.get(id) || 0;
+    const changeBalance = (id, amount) => balances.set(id, balanceOf(id) + amount);
+    const reduceDebts = (id, amount) => {
+        const list = debts.get(id) || [];
+        let remaining = amount;
+        for (const debt of list) {
+            const paid = Math.min(remaining, debt.openCent);
+            debt.openCent -= paid;
+            debt.creditAppliedCent += paid;
+            remaining -= paid;
+            if (remaining <= 0) break;
+        }
+        debts.set(id, list.filter(debt => debt.openCent > 0));
+    };
+
+    for (const event of events) {
+        if (!event.playerId) continue;
+        if (event.type === 'credit') {
+            if (event.amount > 0) reduceDebts(event.playerId, event.amount);
+            changeBalance(event.playerId, event.amount);
+            continue;
+        }
+        const before = balanceOf(event.playerId);
+        const creditAppliedCent = Math.min(event.amount, Math.max(0, before));
+        const dueCent = event.amount - creditAppliedCent;
+        const payment = event.spieltag.bezahlt[event.playerId];
+        const paidCent = !payment ? 0 : Number.isSafeInteger(payment.betragCent)
+            ? Math.min(dueCent, payment.betragCent)
+            : dueCent;
+        const state = { creditAppliedCent, dueCent, paidCent, openCent: dueCent - paidCent };
+        chargeStatus[event.key] = state;
+        changeBalance(event.playerId, -event.amount + paidCent);
+        if (state.openCent > 0) {
+            const list = debts.get(event.playerId) || [];
+            list.push(state);
+            debts.set(event.playerId, list);
+        }
+        incomeCent += paidCent;
+    }
+
+    const playerBalances = Object.fromEntries([...knownPlayers.keys()].map(id => [id, balanceOf(id)]));
+    const outstandingCent = Object.values(playerBalances).reduce((sum, balance) => sum + Math.max(0, -balance), 0);
+    return { incomeCent, expensesCent, balanceCent: incomeCent - expensesCent, outstandingCent, playerBalances, chargeStatus };
 }
 
 // ---------------------------------------------------------------------------
@@ -535,15 +621,19 @@ function zahlungenFor(session) {
     const list = [...z.spieltage].sort((a, b) => (b.datum + b.uhrzeit).localeCompare(a.datum + a.uhrzeit));
     if (session.role === 'admin') return list;
     const mine = spielerIdOf(session);
+    const cash = mine ? cashSummary(z) : null;
     // Spieler sehen alle Spieltage mit den Zu-/Absagen, aber nur ihren eigenen Zahlungsstatus
     return list.map(s => {
         const billed = !!mine && s.betragCent != null && s.teilnehmer.includes(mine);
+        const account = billed ? cash.chargeStatus[`${s.id}:${mine}`] : null;
         return {
             id: s.id, datum: s.datum, uhrzeit: s.uhrzeit, ort: s.ort, titel: s.titel, einladungAt: s.einladungAt || null,
             antworten: Object.fromEntries(Object.entries(s.antworten).map(([id, a]) => [id, { status: a.status }])),
             betragCent: billed ? s.betragCent : null,
             teilnehmer: billed ? [mine] : [],
-            bezahlt: billed && s.bezahlt[mine] ? { [mine]: s.bezahlt[mine] } : {}
+            bezahlt: billed && s.bezahlt[mine] ? { [mine]: s.bezahlt[mine] } : {},
+            guthabenCent: mine ? cash.playerBalances[mine] || 0 : 0,
+            ...(account ? { creditAppliedCent: account.creditAppliedCent, paidCent: account.paidCent, offenCent: account.openCent } : {})
         };
     });
 }
@@ -650,9 +740,13 @@ async function handle(req, res) {
     }
 
     if (method === 'GET' && url === '/api/me') {
+        const spielerId = spielerIdOf(session);
+        const z = loadZahlungen();
+        const cash = spielerId ? cashSummary(z) : null;
         return sendJson(res, 200, {
             sub: session.sub, name: session.name, email: session.email, role: session.role,
-            spielerId: spielerIdOf(session), authEnabled: AUTH_ENABLED, mailEnabled: MAIL_ENABLED, paypal: loadZahlungen().paypal || '', tiers: loadTiers(), statMode: loadStatMode()
+            spielerId, guthabenCent: spielerId ? cash.playerBalances[spielerId] || 0 : 0,
+            authEnabled: AUTH_ENABLED, mailEnabled: MAIL_ENABLED, paypal: z.paypal || '', tiers: loadTiers(), statMode: loadStatMode()
         });
     }
 
@@ -713,6 +807,53 @@ async function handle(req, res) {
     // --- Spieltage & Zahlungen ---
     if (url === '/api/zahlungen' && method === 'GET') return sendJson(res, 200, { spieltage: zahlungenFor(session) });
 
+    const kasseApi = /^\/api\/kasse(?:\/([\w-]+))?$/.exec(url);
+    if (kasseApi) {
+        if (!requireAdmin()) return;
+        const z = loadZahlungen();
+        if (!kasseApi[1] && method === 'GET') {
+            return sendJson(res, 200, { eintraege: z.kassenbuch, summary: cashSummary(z) });
+        }
+        if (!kasseApi[1] && method === 'POST') {
+            const b = await readJsonBody(req, 1e4);
+            if (!b || typeof b !== 'object' || Array.isArray(b)) return sendJson(res, 400, { ok: false, error: 'Ungültige Buchung' });
+            const datum = typeof b.datum === 'string' ? b.datum : '';
+            const beschreibung = typeof b.beschreibung === 'string' ? b.beschreibung.trim().slice(0, 120) : '';
+            const gegenkonto = typeof b.gegenkonto === 'string' ? b.gegenkonto.trim().slice(0, 80) : '';
+            const betragCent = Number(b.betragCent);
+            const spielerId = typeof b.spielerId === 'string' && b.spielerId ? b.spielerId : null;
+            if (!['einnahme', 'ausgabe', 'auszahlung'].includes(b.typ)) return sendJson(res, 400, { ok: false, error: 'Unbekannte Buchungsart' });
+            const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(datum) ? new Date(datum + 'T00:00:00Z') : null;
+            if (!parsedDate || !Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== datum) {
+                return sendJson(res, 400, { ok: false, error: 'Ungültiges Datum' });
+            }
+            if (!beschreibung) return sendJson(res, 400, { ok: false, error: 'Beschreibung erforderlich' });
+            if (!Number.isSafeInteger(betragCent) || betragCent < 1 || betragCent > 100000000) {
+                return sendJson(res, 400, { ok: false, error: 'Betrag muss zwischen 0,01 € und 1.000.000,00 € liegen' });
+            }
+            if (spielerId && !playerNames().has(spielerId)) return sendJson(res, 400, { ok: false, error: 'Unbekannter Spieler' });
+            if (b.typ === 'auszahlung' && !spielerId) return sendJson(res, 400, { ok: false, error: 'Für eine Guthabenauszahlung muss ein Spielerkonto ausgewählt werden' });
+            if (b.typ === 'auszahlung' && cashSummary(z).playerBalances[spielerId] < betragCent) {
+                return sendJson(res, 400, { ok: false, error: 'Das Spielerguthaben reicht für diese Auszahlung nicht aus' });
+            }
+            const eintrag = {
+                id: 'k_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex'),
+                typ: b.typ, datum, beschreibung, betragCent, spielerId, gegenkonto
+            };
+            z.kassenbuch.push(eintrag);
+            await writeJson('zahlungen.json', z);
+            return sendJson(res, 201, { ok: true, eintrag });
+        }
+        if (kasseApi[1] && method === 'DELETE') {
+            const before = z.kassenbuch.length;
+            z.kassenbuch = z.kassenbuch.filter(x => x.id !== kasseApi[1]);
+            if (z.kassenbuch.length === before) return sendJson(res, 404, { ok: false, error: 'Buchung nicht gefunden' });
+            await writeJson('zahlungen.json', z);
+            return sendJson(res, 200, { ok: true });
+        }
+        return sendJson(res, 405, { ok: false, error: 'Methode nicht erlaubt' }, { Allow: kasseApi[1] ? 'DELETE' : 'GET, POST' });
+    }
+
     if (url === '/api/spieltage' && method === 'POST') {
         if (!requireAdmin()) return;
         const b = await readJsonBody(req, 1e4);
@@ -750,8 +891,15 @@ async function handle(req, res) {
             if (!requireAdmin()) return;
             const b = await readJsonBody(req, 1e4);
             if (!s.teilnehmer.includes(b.spielerId)) return sendJson(res, 404, { ok: false, error: 'Nicht gefunden' });
-            if (b.paid) s.bezahlt[b.spielerId] = { via: 'manuell', at: new Date().toISOString() };
-            else delete s.bezahlt[b.spielerId];
+            if (b.paid) {
+                const state = cashSummary(z).chargeStatus[`${s.id}:${b.spielerId}`];
+                const dueCent = state ? state.openCent : s.betragCent;
+                const betragCent = Number(b.betragCent);
+                if (!Number.isSafeInteger(betragCent) || betragCent !== dueCent || betragCent <= 0) {
+                    return sendJson(res, 400, { ok: false, error: 'Der zu erfassende Betrag hat sich geändert. Bitte aktualisieren und erneut versuchen.' });
+                }
+                s.bezahlt[b.spielerId] = { via: 'manuell', at: new Date().toISOString(), betragCent };
+            } else delete s.bezahlt[b.spielerId];
             return ok();
         }
 
@@ -803,7 +951,9 @@ async function handle(req, res) {
             s.betragCent = betragCent; s.teilnehmer = teilnehmer;
             Object.keys(s.bezahlt).forEach(pid => { if (!teilnehmer.includes(pid)) delete s.bezahlt[pid]; });
             await writeJson('zahlungen.json', z);
-            const mail = MAIL_ENABLED && b.mail !== false ? await mailZahlungsanforderung(s) : null;
+            const summary = cashSummary(z);
+            const openAmounts = Object.fromEntries(teilnehmer.map(pid => [pid, summary.chargeStatus[`${s.id}:${pid}`]?.openCent || 0]));
+            const mail = MAIL_ENABLED && b.mail !== false ? await mailZahlungsanforderung(s, { openAmounts }) : null;
             return sendJson(res, 200, { ok: true, mail });
         }
         // Admin: Zahlungserinnerung per Mail an alle, die noch nicht bezahlt haben
@@ -811,7 +961,9 @@ async function handle(req, res) {
             if (!requireAdmin()) return;
             if (!MAIL_ENABLED) return sendJson(res, 400, { ok: false, error: 'Mail-Versand ist nicht eingerichtet' });
             if (s.betragCent == null || !s.teilnehmer.length) return sendJson(res, 400, { ok: false, error: 'Für diesen Spieltag gibt es noch keine Abrechnung' });
-            return sendJson(res, 200, { ok: true, mail: await mailZahlungsanforderung(s, { reminder: true }) });
+            const summary = cashSummary(z);
+            const openAmounts = Object.fromEntries(s.teilnehmer.map(pid => [pid, summary.chargeStatus[`${s.id}:${pid}`]?.openCent || 0]));
+            return sendJson(res, 200, { ok: true, mail: await mailZahlungsanforderung(s, { reminder: true, openAmounts }) });
         }
         if (action === 'abrechnung' && method === 'DELETE') {
             if (!requireAdmin()) return;

@@ -418,6 +418,54 @@
             <!-- Meine Beiträge -->
             <div id="myPayments" class="card p-5"></div>
 
+            <!-- Admin: Saison-Kassenbuch -->
+            <section id="cashOverview" class="admin-only card p-5 space-y-4">
+                <div>
+                    <h3 class="font-bold text-base">Saison-Kasse</h3>
+                    <p class="text-xs text-slate-500 mt-1">Der Kassenstand zeigt tatsächliche Einnahmen minus Ausgaben; Spielerguthaben wird getrennt geführt. Vorleistungen erhöhen das Guthaben der zahlenden Person, Beiträge werden zuerst daraus verrechnet.</p>
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-3"><div class="text-xs text-emerald-700">Einnahmen</div><div id="cashIncome" class="text-lg font-bold text-emerald-800">0,00 €</div></div>
+                    <div class="rounded-xl bg-rose-50 border border-rose-100 p-3"><div class="text-xs text-rose-700">Ausgaben</div><div id="cashExpenses" class="text-lg font-bold text-rose-800">0,00 €</div></div>
+                    <div class="rounded-xl bg-blue-50 border border-blue-100 p-3"><div class="text-xs text-blue-700">Kontostand</div><div id="cashBalance" class="text-lg font-bold text-blue-800">0,00 €</div></div>
+                    <div class="rounded-xl bg-amber-50 border border-amber-100 p-3"><div class="text-xs text-amber-700">Beiträge noch offen</div><div id="cashOutstanding" class="text-lg font-bold text-amber-800">0,00 €</div></div>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-sm mb-2">Spielerguthaben</h4>
+                    <div id="playerBalances" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"></div>
+                </div>
+                <form id="cashEntryForm" class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <h4 class="font-semibold text-sm">Einnahme oder Ausgabe buchen</h4>
+                    <div class="flex flex-wrap gap-2 items-end">
+                        <label class="text-xs text-slate-500">Art
+                            <select id="cashEntryType" class="block mt-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none">
+                                <option value="ausgabe">Ausgabe</option>
+                                <option value="einnahme">Einnahme</option>
+                                <option value="auszahlung">Guthaben an Spieler auszahlen</option>
+                            </select>
+                        </label>
+                        <label class="text-xs text-slate-500">Datum
+                            <input type="date" id="cashEntryDate" required class="block mt-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none">
+                        </label>
+                        <label class="text-xs text-slate-500 flex-1 min-w-40">Beschreibung
+                            <input type="text" id="cashEntryDescription" maxlength="120" required placeholder="z. B. Platzgebühr Saison" class="block mt-1 w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none">
+                        </label>
+                        <label class="text-xs text-slate-500">Betrag (€)
+                            <input type="text" id="cashEntryAmount" inputmode="decimal" required placeholder="240,00" class="block mt-1 w-28 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none">
+                        </label>
+                        <label class="text-xs text-slate-500 flex-1 min-w-44">Spielerkonto (optional)
+                            <select id="cashEntryPlayerId" class="block mt-1 w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none"></select>
+                        </label>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">Buchen</button>
+                    </div>
+                    <p class="text-[11px] text-slate-500">Spielerkonto auswählen: Vorleistung oder Einzahlung erhöht das Guthaben; eine Auszahlung reduziert es.</p>
+                </form>
+                <div>
+                    <h4 class="font-semibold text-sm mb-2">Buchungen</h4>
+                    <div id="cashTransactions" class="divide-y divide-slate-100"></div>
+                </div>
+            </section>
+
             <!-- Admin: PayPal-Empfänger -->
             <form id="paypalForm" class="admin-only card p-5">
                 <h3 class="font-bold text-sm mb-1">PayPal-Empfänger</h3>
@@ -431,7 +479,7 @@
             <!-- Admin: Zahlung für einen Spieltag anfordern -->
             <form id="addSpieltagForm" class="admin-only card p-5 space-y-3">
                 <h3 class="font-bold text-sm">Zahlung anfordern</h3>
-                <p class="text-xs text-slate-500 -mt-1">Vorausgewählt sind die Spieler, die für den Spieltag zugesagt haben oder gespielt haben. Weitere kannst du dazuwählen.</p>
+                <p class="text-xs text-slate-500 -mt-1">Vorausgewählt sind die Spieler, die für den Spieltag zugesagt haben oder gespielt haben. Guthaben wird zuerst verrechnet; weitere Teilnehmer kannst du dazuwählen.</p>
                 <div class="flex flex-wrap gap-2 items-end">
                     <label class="text-xs text-slate-500">Spieltag
                         <select id="stSpieltag" class="block mt-1 max-w-[18rem] bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></select></label>
@@ -604,11 +652,51 @@
         let activeTab = 'players';
         let me = { role: 'admin', spielerId: null, paypal: '', authEnabled: false };   // wird in loadMe() vom Server gesetzt
         let spieltage = [];
+        let kassenbuchEntries = [];
+        let kassenbuchSummary = null;
         let kindeUsers = {};
         const TABS = ['players', 'days', 'match', 'history', 'payments'];
 
         const CHART_COLORS = ['#2563eb', '#059669', '#e11d48', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5', '#c026d3', '#64748b'];
         const K_FACTOR = 32;
+        const CURRENT_GAME_STORAGE_KEY = 'matchmaster_current_game_v1';
+
+        function saveCurrentGame() {
+            try {
+                if (!currentTeams) {
+                    localStorage.removeItem(CURRENT_GAME_STORAGE_KEY);
+                    return;
+                }
+                localStorage.setItem(CURRENT_GAME_STORAGE_KEY, JSON.stringify({
+                    teamA: currentTeams.teamA.map(p => p.id),
+                    teamB: currentTeams.teamB.map(p => p.id),
+                    selectedPlayerIds: Array.from(selectedPlayerIds),
+                    matchDayId
+                }));
+            } catch (e) { /* Browser-Speicher ist optional */ }
+        }
+
+        function restoreCurrentGame() {
+            try {
+                const raw = localStorage.getItem(CURRENT_GAME_STORAGE_KEY);
+                if (!raw) return;
+                const saved = JSON.parse(raw);
+                if (!Array.isArray(saved.teamA) || !Array.isArray(saved.teamB)) return;
+                const byId = new Map(players.map(p => [p.id, p]));
+                const teamA = saved.teamA.map(id => byId.get(id)).filter(Boolean);
+                const teamB = saved.teamB.map(id => byId.get(id)).filter(Boolean);
+                if (!teamA.length || !teamB.length) {
+                    localStorage.removeItem(CURRENT_GAME_STORAGE_KEY);
+                    return;
+                }
+                currentTeams = { teamA, teamB };
+                selectedPlayerIds = new Set(
+                    (Array.isArray(saved.selectedPlayerIds) ? saved.selectedPlayerIds : [...saved.teamA, ...saved.teamB])
+                        .filter(id => byId.has(id))
+                );
+                matchDayId = typeof saved.matchDayId === 'string' ? saved.matchDayId : '';
+            } catch (e) { /* Veralteter oder nicht verfügbarer Browser-Speicher */ }
+        }
 
         function defaultState() {
             players = JSON.parse(JSON.stringify(DEFAULT_ROSTER));
@@ -993,6 +1081,7 @@
             $('goalsAInput').value = '';
             $('goalsBInput').value = '';
             currentTeams = null;
+            saveCurrentGame();
             saveApplicationData();
             renderAll();
 
@@ -1020,6 +1109,7 @@
                 if (eloA <= eloB) { teamA.push(p); eloA += p.elo; } else { teamB.push(p); eloB += p.elo; }
             });
             currentTeams = { teamA, teamB };
+            saveCurrentGame();
             renderMatchTab();
         }
 
@@ -1029,6 +1119,7 @@
             const iA = teamA.findIndex(p => p.id === id);
             if (iA >= 0) teamB.push(...teamA.splice(iA, 1));
             else { const iB = teamB.findIndex(p => p.id === id); if (iB >= 0) teamA.push(...teamB.splice(iB, 1)); }
+            saveCurrentGame();
             renderMatchTab();
         }
 
@@ -1199,6 +1290,7 @@
             const d = spieltage.find(x => x.id === matchDayId);
             selectedPlayerIds = new Set(d ? confirmedIds(d) : players.map(p => p.id));
             currentTeams = null;
+            saveCurrentGame();
             renderMatchTab();
         }
         $('matchDaySel').onchange = e => { matchDayId = e.target.value; applyMatchDay(); };
@@ -1678,7 +1770,7 @@
             selectedPlayerIds.delete(id);
             Object.keys(squadPresets).forEach(n => { squadPresets[n] = squadPresets[n].filter(x => x !== id); });
             if (serverMode && p.photo && !p.photo.startsWith('data:')) fetch('/api/foto/' + id, { method: 'DELETE' }).catch(() => { });
-            if (currentTeams) currentTeams = null;
+            if (currentTeams) { currentTeams = null; saveCurrentGame(); }
             closeEdit(); closeCardModal();
             saveApplicationData(); renderAll();
             showToast('Spieler gelöscht', `${p.name} wurde entfernt. Die Spiele-Historie bleibt erhalten.`, 'info');
@@ -1727,7 +1819,7 @@
         $('resetDataBtn').onclick = () => {
             if (!confirm("Alles auf den Standard-Kader zurücksetzen? Spiele und Verlauf gehen verloren (auch in den CSV-Dateien).")) return;
             defaultState();
-            hiddenInChart.clear(); currentTeams = null;
+            hiddenInChart.clear(); currentTeams = null; saveCurrentGame();
             selectedPlayerIds = new Set(players.map(p => p.id));
             saveApplicationData(); renderAll();
             showToast("Zurückgesetzt", "Standard-Kader wiederhergestellt.", "info");
@@ -1756,6 +1848,7 @@
                     normalizeData();
                     selectedPlayerIds = new Set(players.map(p => p.id));
                     currentTeams = null;
+                    saveCurrentGame();
                     saveApplicationData(); renderAll();
                     showToast("Import erfolgreich", `${players.length} Spieler, ${matchHistory.length} Spiele geladen.`, "success");
                 } catch (err) {
@@ -1818,16 +1911,27 @@
                 const msg = '<p class="text-sm text-slate-500">Spieltage und Zahlungen funktionieren nur mit dem Server (start.bat).</p>';
                 $('myPayments').innerHTML = msg;
                 $('daysList').innerHTML = `<div class="card p-5">${msg}</div>`;
+                $('cashOverview').classList.add('hidden');
                 return;
             }
             try {
                 spieltage = (await api('GET', '/api/zahlungen')).spieltage;
+                const ownAccount = spieltage.find(s => Number.isSafeInteger(s.guthabenCent));
+                if (ownAccount) me.guthabenCent = ownAccount.guthabenCent;
+                if (me.role === 'admin') {
+                    const cash = await api('GET', '/api/kasse');
+                    kassenbuchEntries = cash.eintraege;
+                    kassenbuchSummary = cash.summary;
+                } else {
+                    kassenbuchEntries = [];
+                    kassenbuchSummary = null;
+                }
                 if (me.role === 'admin') kindeUsers = me.authEnabled ? await api('GET', '/api/users') : {};
             } catch (e) { showToast('Spieltage konnten nicht geladen werden', e.message, 'error'); return; }
             if (me.role === 'admin' && !matchDayInit && spieltage.length) {
                 matchDayInit = true;   // einmalig: den Spieltag von heute vorauswählen
                 const t = spieltage.find(d => d.datum === todayIso());
-                if (t) { matchDayId = t.id; selectedPlayerIds = new Set(confirmedIds(t)); currentTeams = null; }
+                if (t && !currentTeams) { matchDayId = t.id; selectedPlayerIds = new Set(confirmedIds(t)); }
             }
             renderDays();
             renderPayments();
@@ -1918,7 +2022,7 @@
                     await api('DELETE', `/api/spieltage/${st}`);
                 } else if (act === 'match') {
                     const d = spieltage.find(x => x.id === st);
-                    matchDayId = st; selectedPlayerIds = new Set(d ? confirmedIds(d) : []); currentTeams = null;
+                    matchDayId = st; selectedPlayerIds = new Set(d ? confirmedIds(d) : []); currentTeams = null; saveCurrentGame();
                     showTab('match');
                     return;
                 } else if (act === 'bill') {
@@ -1951,27 +2055,106 @@
 
             // --- Meine Beiträge ---
             const mine = me.spielerId ? spieltage.filter(s => s.teilnehmer.includes(me.spielerId)) : [];
-            const open = mine.filter(s => !s.bezahlt[me.spielerId]);
+            const amountOpen = s => Number.isSafeInteger(s.offenCent)
+                ? s.offenCent
+                : s.bezahlt[me.spielerId] ? 0 : s.betragCent;
+            const open = mine.filter(s => amountOpen(s) > 0);
             const my = $('myPayments');
             my.classList.toggle('hidden', !me.spielerId && !me.authEnabled);
             if (!me.spielerId) {
                 my.innerHTML = '<p class="text-sm text-slate-500"><i class="fa-solid fa-circle-info mr-1.5 text-blue-500"></i>Dein Login ist noch keinem Spieler zugeordnet. Bitte den Admin, dich unter „Benutzer &amp; Zuordnung“ zuzuweisen.</p>';
             } else {
+                const credit = Number(me.guthabenCent) || 0;
+                const accountText = credit > 0 ? `Guthaben: ${eur(credit)}` : credit < 0 ? `Offen: ${eur(-credit)}` : 'Guthaben: 0,00 €';
+                const accountClass = credit < 0 ? 'text-rose-600' : credit > 0 ? 'text-emerald-600' : 'text-slate-500';
                 my.innerHTML = `<div class="flex items-center justify-between mb-3"><h3 class="font-bold text-sm">Meine Beiträge · ${escapeHtml(playerName(me.spielerId))}</h3>
-                    <span class="text-sm font-bold ${open.length ? 'text-amber-600' : 'text-emerald-600'}">${open.length ? 'Offen: ' + eur(open.reduce((s, x) => s + x.betragCent, 0)) : 'Alles bezahlt'}</span></div>
+                    <span class="text-sm font-bold ${accountClass}">${accountText}</span></div>
                     ${open.length && me.paypal && !/^https:/.test(me.paypal) ? `<p class="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-2"><i class="fa-brands fa-paypal text-blue-600 mr-1.5"></i>Bezahlen per PayPal an <b class="select-all">${escapeHtml(me.paypal)}</b> (Freunde &amp; Familie, damit keine Gebühren anfallen). Der Admin hakt es danach ab.</p>` : ''}
                     <div class="divide-y divide-slate-100">${mine.map(s => {
-                        const paid = s.bezahlt[me.spielerId];
+                        const due = amountOpen(s);
+                        const credited = s.creditAppliedCent || 0;
+                        const paid = s.paidCent || 0;
+                        const status = due === 0
+                            ? `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">${credited > 0 && paid > 0 ? 'Guthaben + Zahlung' : credited > 0 ? 'aus Guthaben beglichen' : 'bezahlt'}</span>`
+                            : badge(false);
                         return `<div class="py-2.5 flex items-center gap-3 text-sm">
-                            <div class="flex-1 min-w-0"><div class="font-semibold">${fmtDate(s.datum)}</div><div class="text-xs text-slate-500 truncate">${escapeHtml(s.ort || s.titel || '')}</div></div>
-                            <div class="font-mono font-bold">${eur(s.betragCent)}</div>
-                            ${badge(!!paid, paid && paid.via)}
-                            ${!paid && /^https:/.test(me.paypal) && s.betragCent > 0 ? `<a href="${escapeHtml(me.paypal.replace(/\/+$/, '') + '/' + (s.betragCent / 100).toFixed(2) + 'EUR')}" target="_blank" rel="noopener" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition"><i class="fa-brands fa-paypal mr-1"></i>Bezahlen</a>` : ''}
+                            <div class="flex-1 min-w-0"><div class="font-semibold">${fmtDate(s.datum)}</div><div class="text-xs text-slate-500 truncate">${escapeHtml(s.ort || s.titel || '')}${credited ? ` · ${eur(credited)} aus Guthaben` : ''}${paid ? ` · ${eur(paid)} bezahlt` : ''}</div></div>
+                            <div class="font-mono font-bold">${eur(due || s.betragCent)}</div>
+                            ${status}
+                            ${due > 0 && /^https:/.test(me.paypal) ? `<a href="${escapeHtml(me.paypal.replace(/\/+$/, '') + '/' + (due / 100).toFixed(2) + 'EUR')}" target="_blank" rel="noopener" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition"><i class="fa-brands fa-paypal mr-1"></i>Bezahlen</a>` : ''}
                         </div>`;
                     }).join('') || '<p class="py-3 text-sm text-slate-400">Noch keine Spieltage für dich.</p>'}</div>`;
             }
 
             if (!isAdmin) { $('spieltageList').innerHTML = ''; return; }
+
+            // --- Saison-Kasse (Spielerbeiträge, Guthaben und manuelle Buchungen) ---
+            const paidBookings = [];
+            const creditBookings = [];
+            spieltage.filter(isBilled).forEach(s => s.teilnehmer.forEach(id => {
+                const state = kassenbuchSummary.chargeStatus[`${s.id}:${id}`];
+                if (state && state.paidCent > 0) {
+                    paidBookings.push({
+                        typ: 'einnahme',
+                        datum: s.bezahlt[id] && s.bezahlt[id].at ? s.bezahlt[id].at.slice(0, 10) : s.datum,
+                        beschreibung: `Beitrag · ${dayText(s)}`,
+                        gegenkonto: playerName(id),
+                        betragCent: state.paidCent,
+                        id: `paid-${s.id}-${id}`,
+                        manual: false
+                    });
+                }
+                if (state && state.creditAppliedCent > 0) {
+                    creditBookings.push({
+                        typ: 'verrechnung',
+                        datum: s.datum,
+                        beschreibung: `Beitrag · ${dayText(s)}`,
+                        gegenkonto: playerName(id),
+                        betragCent: state.creditAppliedCent,
+                        id: `credit-${s.id}-${id}`,
+                        manual: false
+                    });
+                }
+            }));
+            const manualBookings = kassenbuchEntries.map(e => ({ ...e, manual: true }));
+            const allBookings = [...paidBookings, ...creditBookings, ...manualBookings].sort((a, b) => b.datum.localeCompare(a.datum));
+            const summary = kassenbuchSummary;
+            $('cashIncome').textContent = eur(summary.incomeCent);
+            $('cashExpenses').textContent = eur(summary.expensesCent);
+            $('cashBalance').textContent = eur(summary.balanceCent);
+            $('cashBalance').className = `text-lg font-bold ${summary.balanceCent < 0 ? 'text-rose-800' : 'text-blue-800'}`;
+            $('cashOutstanding').textContent = eur(summary.outstandingCent);
+            $('playerBalances').innerHTML = [...players].sort((a, b) => a.name.localeCompare(b.name)).map(p => {
+                const balance = summary.playerBalances[p.id] || 0;
+                const text = balance > 0 ? `Guthaben ${eur(balance)}` : balance < 0 ? `offen ${eur(-balance)}` : 'ausgeglichen';
+                const color = balance > 0 ? 'text-emerald-700' : balance < 0 ? 'text-rose-700' : 'text-slate-500';
+                return `<div class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"><span class="font-medium truncate">${escapeHtml(p.name)}</span><span class="font-semibold whitespace-nowrap ${color}">${text}</span></div>`;
+            }).join('') || '<p class="text-sm text-slate-400">Noch keine Spieler angelegt.</p>';
+            $('cashTransactions').innerHTML = allBookings.map(e => {
+                const isIncome = e.typ === 'einnahme';
+                const isExpense = e.typ === 'ausgabe' || e.typ === 'auszahlung';
+                const date = e.datum ? fmtDate(e.datum) : '—';
+                const sourceName = e.spielerId ? playerName(e.spielerId) : e.gegenkonto;
+                const source = sourceName ? ` · ${escapeHtml(sourceName)}` : '';
+                const remove = e.manual
+                    ? `<button data-cash-delete="${escapeHtml(e.id)}" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition" title="Buchung löschen"><i class="fa-solid fa-trash text-xs"></i></button>`
+                    : '';
+                const amountClass = isIncome ? 'text-emerald-700' : isExpense ? 'text-rose-700' : 'text-blue-700';
+                const sign = isIncome ? '+' : isExpense ? '−' : '↘';
+                const amountText = isIncome || isExpense ? eur(e.betragCent) : `${eur(e.betragCent)} Guthaben`;
+                return `<div class="py-2.5 flex items-center gap-3 text-sm">
+                    <span class="w-20 shrink-0 text-xs text-slate-500">${date}</span>
+                    <span class="flex-1 min-w-0"><b class="font-semibold">${escapeHtml(e.beschreibung)}</b><span class="text-xs text-slate-500">${source}</span></span>
+                    <span class="font-mono font-semibold whitespace-nowrap ${amountClass}">${sign}${amountText}</span>
+                    ${remove}
+                </div>`;
+            }).join('') || '<p class="py-3 text-sm text-slate-400">Noch keine Einnahmen oder Ausgaben erfasst.</p>';
+
+            const selectedCashPlayer = $('cashEntryPlayerId').value;
+            $('cashEntryPlayerId').innerHTML = '<option value="">— keinem Spielerkonto zuordnen —</option>' +
+                [...players].sort((a, b) => a.name.localeCompare(b.name))
+                    .map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+            $('cashEntryPlayerId').value = players.some(p => p.id === selectedCashPlayer) ? selectedCashPlayer : '';
 
             // --- Formular: Zahlung für einen Spieltag anfordern ---
             const days = sortedDays();
@@ -1992,26 +2175,39 @@
 
             // --- Spieltage (Admin) ---
             $('spieltageList').innerHTML = sortedDays().filter(isBilled).map(s => {
-                const paidIds = s.teilnehmer.filter(id => s.bezahlt[id]);
-                const openIds = s.teilnehmer.filter(id => !s.bezahlt[id]);
+                const states = Object.fromEntries(s.teilnehmer.map(id => [
+                    id,
+                    kassenbuchSummary.chargeStatus[`${s.id}:${id}`] || { creditAppliedCent: 0, paidCent: 0, openCent: s.bezahlt[id] ? 0 : s.betragCent }
+                ]));
+                const paidIds = s.teilnehmer.filter(id => states[id].openCent === 0);
+                const openIds = s.teilnehmer.filter(id => states[id].openCent > 0);
+                const cashPaidCent = s.teilnehmer.reduce((sum, id) => sum + states[id].paidCent, 0);
+                const creditAppliedCent = s.teilnehmer.reduce((sum, id) => sum + states[id].creditAppliedCent, 0);
                 const mails = openIds.map(mailOf).filter(Boolean);
                 const mailto = mails.length ? 'mailto:?bcc=' + encodeURIComponent(mails.join(',')) +
-                    '&subject=' + encodeURIComponent(`Fußball ${fmtDate(s.datum)}: Beitrag ${eur(s.betragCent)}`) +
-                    '&body=' + encodeURIComponent(`Hallo,\n\nfür den Spieltag am ${fmtDate(s.datum)}${s.ort || s.titel ? ' (' + (s.ort || s.titel) + ')' : ''} sind noch ${eur(s.betragCent)} offen.\n` +
+                    '&subject=' + encodeURIComponent(`Fußball ${fmtDate(s.datum)}: offener Beitrag`) +
+                    '&body=' + encodeURIComponent(`Hallo,\n\nfür den Spieltag am ${fmtDate(s.datum)}${s.ort || s.titel ? ' (' + (s.ort || s.titel) + ')' : ''} ist noch ein individueller Betrag offen. Bitte prüfe den nach Verrechnung deines Guthabens offenen Betrag in der App.\n` +
                         (me.paypal ? `Bitte per PayPal (Freunde & Familie) an: ${me.paypal}\n` : '') + '\nDanke!') : '';
                 const pct = Math.round(100 * paidIds.length / s.teilnehmer.length);
                 const rows = [...s.teilnehmer].sort((a, b) => playerName(a).localeCompare(playerName(b))).map(id => {
-                    const p = s.bezahlt[id];
+                    const state = states[id];
+                    const paid = s.bezahlt[id];
+                    const status = state.openCent === 0
+                        ? `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">${state.creditAppliedCent ? 'aus Guthaben beglichen' : 'bezahlt'}</span>`
+                        : badge(false);
+                    const detail = state.creditAppliedCent ? `<span class="text-[11px] text-blue-700 ml-2">${eur(state.creditAppliedCent)} Guthaben verrechnet</span>` : '';
+                    const due = state.openCent;
                     return `<div class="py-2 flex items-center gap-3 text-sm">
-                        <span class="flex-1 font-medium">${escapeHtml(playerName(id))}</span>
-                        ${badge(!!p, p && p.via)}
-                        <button data-act="toggle" data-st="${escapeHtml(s.id)}" data-sp="${escapeHtml(id)}" data-paid="${p ? 0 : 1}" class="text-xs font-semibold px-2.5 py-1 rounded-lg border ${p ? 'border-slate-300 text-slate-500 hover:bg-slate-50' : 'border-blue-300 text-blue-700 hover:bg-blue-50'} transition">${p ? 'Zurücksetzen' : 'Als bezahlt markieren'}</button>
+                        <span class="flex-1 font-medium">${escapeHtml(playerName(id))}${detail}</span>
+                        ${status}
+                        ${due > 0 ? `<span class="font-mono text-xs text-amber-700">${eur(due)} offen</span>` : ''}
+                        ${paid ? `<button data-act="toggle" data-st="${escapeHtml(s.id)}" data-sp="${escapeHtml(id)}" data-paid="0" class="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-300 text-slate-500 hover:bg-slate-50 transition">Zurücksetzen</button>` : due > 0 ? `<button data-act="toggle" data-st="${escapeHtml(s.id)}" data-sp="${escapeHtml(id)}" data-paid="1" data-due="${due}" class="text-xs font-semibold px-2.5 py-1 rounded-lg border border-blue-300 text-blue-700 hover:bg-blue-50 transition">Als bezahlt markieren</button>` : ''}
                     </div>`;
                 }).join('');
                 return `<div class="card p-5">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
                         <div><h3 class="font-bold">${escapeHtml(dayText(s))}</h3>
-                            <p class="text-xs text-slate-500">${eur(s.betragCent)} pro Person · ${paidIds.length}/${s.teilnehmer.length} bezahlt · ${eur(paidIds.length * s.betragCent)} von ${eur(s.teilnehmer.length * s.betragCent)}</p></div>
+                            <p class="text-xs text-slate-500">${eur(s.betragCent)} pro Person · ${paidIds.length}/${s.teilnehmer.length} beglichen · ${eur(cashPaidCent)} eingegangen${creditAppliedCent ? ` · ${eur(creditAppliedCent)} aus Guthaben` : ''}</p></div>
                         <div class="flex items-center gap-1.5">
                             ${openIds.length ? (mailto
                                 ? (me.mailEnabled
@@ -2042,7 +2238,7 @@
             if (!b) return;
             const { act, st, sp, paid } = b.dataset;
             try {
-                if (act === 'toggle') await api('POST', `/api/spieltage/${st}/bezahlt`, { spielerId: sp, paid: paid === '1' });
+                if (act === 'toggle') await api('POST', `/api/spieltage/${st}/bezahlt`, { spielerId: sp, paid: paid === '1', ...(paid === '1' ? { betragCent: Number(b.dataset.due) } : {}) });
                 if (act === 'remind') {
                     if (!confirm('Zahlungserinnerung jetzt per Mail an alle Spieler senden, die noch nicht bezahlt haben?')) return;
                     b.disabled = true;
@@ -2075,6 +2271,39 @@
                 me.paypal = v;
                 showToast('PayPal-Empfänger gespeichert', v || 'Angabe entfernt.', 'success');
                 renderPayments();
+            } catch (err) { showToast('Fehler', err.message, 'error'); }
+        };
+
+        $('cashEntryDate').value = todayIso();
+        $('cashEntryForm').onsubmit = async e => {
+            e.preventDefault();
+            const amount = Number($('cashEntryAmount').value.trim().replace(',', '.'));
+            if (!Number.isFinite(amount) || Math.round(amount * 100) <= 0) {
+                showToast('Ungültiger Betrag', 'Bitte einen Betrag größer als 0,00 € eingeben.', 'error');
+                return;
+            }
+            try {
+                await api('POST', '/api/kasse', {
+                    typ: $('cashEntryType').value,
+                    datum: $('cashEntryDate').value,
+                    beschreibung: $('cashEntryDescription').value.trim(),
+                    betragCent: Math.round(amount * 100),
+                    spielerId: $('cashEntryPlayerId').value || null
+                });
+                $('cashEntryDescription').value = '';
+                $('cashEntryAmount').value = '';
+                $('cashEntryPlayerId').value = '';
+                showToast('Buchung gespeichert', 'Die Saison-Kasse wurde aktualisiert.', 'success');
+                await loadPayments();
+            } catch (err) { showToast('Fehler', err.message, 'error'); }
+        };
+        $('cashTransactions').onclick = async e => {
+            const button = e.target.closest('[data-cash-delete]');
+            if (!button) return;
+            if (!confirm('Diese Kassenbuchung wirklich löschen?')) return;
+            try {
+                await api('DELETE', `/api/kasse/${encodeURIComponent(button.dataset.cashDelete)}`);
+                await loadPayments();
             } catch (err) { showToast('Fehler', err.message, 'error'); }
         };
 
@@ -2132,6 +2361,7 @@
             if (!(await loadMe())) return;
             await initData();
             selectedPlayerIds = new Set(players.map(p => p.id));
+            restoreCurrentGame();
             renderAll();
             let tab = 'players';
             try { tab = localStorage.getItem('matchmaster_tab') || tab; } catch (e) { }
