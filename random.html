@@ -22,9 +22,12 @@
         .card { background: #fff; border: 1px solid #e3e9f4; border-radius: 1rem; box-shadow: 0 1px 2px rgba(30,58,138,.04), 0 8px 24px -12px rgba(30,58,138,.10); }
         .fade-in { animation: fade .18s ease-out; }
         @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-        #adFlyer { position: fixed; left: 50%; z-index: 55; max-width: min(88vw, 760px); min-width: min(280px, 88vw); pointer-events: none; }
+        #adFlyer { position: fixed; left: 0; z-index: 55; max-width: 96vw; pointer-events: none; }
         #adFlyer.ad-flyer-visible { display: flex; }
-        #adFlyer img { max-width: 22vw; max-height: 72px; object-fit: contain; }
+        .ad-flyer-banner { min-width: min(260px, 68vw); max-width: min(680px, 78vw); min-height: 62px; }
+        .ad-flyer-banner img { max-width: 22vw; max-height: 58px; object-fit: contain; }
+        #adFlyer.ad-flyer-left { flex-direction: row-reverse; }
+        #adFlyer.ad-flyer-left #adPlane { transform: scaleX(-1); }
         @media (prefers-reduced-motion: reduce) { #adFlyer { transition: none; } }
 
         /* ===================== FUT-STYLE PLAYER CARD ===================== */
@@ -534,7 +537,7 @@
                         <label class="text-xs text-rose-700"><input id="adRemoveImage" type="checkbox" class="accent-rose-600 mr-1">Vorhandenes Bild entfernen</label>
                     </div>
                 </div>
-                <p class="text-xs text-slate-500">Der Flieger startet nach 5 Sekunden Inaktivität, bleibt 8 Sekunden sichtbar und kommt bei anhaltender Inaktivität frühestens nach weiteren 30 Sekunden wieder. Er lässt sich nicht anklicken oder schließen.</p>
+                <p class="text-xs text-slate-500">Nach 5 Sekunden Inaktivität startet der Flieger. Jeder Überflug dauert 8 Sekunden. Solange die Seite inaktiv bleibt, startet er direkt am gegenüberliegenden Rand auf einer neuen zufälligen Höhe. Ein begonnener Überflug läuft auch bei Aktivität zu Ende. Er lässt sich nicht anklicken oder schließen.</p>
                 <div class="flex items-center gap-3">
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">Werbung speichern</button>
                     <span id="adSaveStatus" class="text-xs text-slate-500"></span>
@@ -543,9 +546,18 @@
         </section>
     </main>
 
-    <div id="adFlyer" class="hidden items-center gap-3 rounded-xl border border-amber-300 bg-amber-100/95 px-4 py-3 shadow-xl" aria-hidden="true">
-        <img id="adFlyerImage" class="hidden" alt="">
-        <span id="adFlyerText" class="font-extrabold text-slate-900 text-base sm:text-lg"></span>
+    <div id="adFlyer" class="hidden items-center" aria-hidden="true">
+        <div class="ad-flyer-banner flex items-center justify-center gap-3 rounded-lg border-2 border-amber-700 bg-amber-100 px-4 py-3 shadow-xl">
+            <img id="adFlyerImage" class="hidden" alt="">
+            <span id="adFlyerText" class="font-extrabold text-slate-900 text-base sm:text-lg text-center"></span>
+        </div>
+        <span class="w-8 sm:w-14 border-t-2 border-dashed border-slate-600 shrink-0" aria-hidden="true"></span>
+        <svg id="adPlane" class="w-20 sm:w-28 h-14 shrink-0 drop-shadow-md" viewBox="0 0 120 70" aria-hidden="true">
+            <path d="M5 37 48 32 67 10 79 8 75 31 108 24 117 29 115 37 77 43 69 60 58 62 55 45 13 50Z" fill="#1d4ed8" stroke="#172554" stroke-width="2" stroke-linejoin="round"/>
+            <path d="m48 32 19-22 12-2-4 23M55 45 69 60 58 62Z" fill="#2563eb" stroke="#172554" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="m91 27 14-2 9 4-1 8-15 2Z" fill="#facc15" stroke="#172554" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M6 37 1 35M6 41 1 43" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/>
+        </svg>
     </div>
 
     <footer class="2xl:hidden max-w-6xl mx-auto px-4 sm:px-6 pb-8 pt-2 flex items-center justify-end gap-4 text-slate-400">
@@ -698,7 +710,6 @@
         const TABS = ['players', 'days', 'match', 'history', 'payments', 'advertising'];
         const AD_IDLE_MS = 5000;
         const AD_FLY_MS = 8000;
-        const AD_REPEAT_MS = 30000;
         let adConfig = { enabled: false, text: '', image: '' };
         let adTimer = null;
         let adFlying = false;
@@ -1979,7 +1990,7 @@
             clearTimeout(adTimer);
             if (!adConfig.enabled || adFlying || document.visibilityState === 'hidden') return;
             const idleFor = Date.now() - adLastActivity;
-            const delay = idleFor < AD_IDLE_MS ? AD_IDLE_MS - idleFor : AD_REPEAT_MS;
+            const delay = Math.max(0, AD_IDLE_MS - idleFor);
             adTimer = setTimeout(showAdFlyer, delay);
         }
 
@@ -1994,16 +2005,16 @@
             if (adConfig.image) image.src = adConfig.image;
             const availableHeight = Math.max(0, window.innerHeight - flyer.offsetHeight);
             flyer.style.top = `${Math.round(Math.random() * availableHeight)}px`;
+            flyer.classList.toggle('ad-flyer-left', adDirection < 0);
             flyer.classList.remove('hidden');
             flyer.classList.add('ad-flyer-visible');
             adFlying = true;
 
-            const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            const offset = adDirection * 110;
+            const frames = adDirection > 0
+                ? [{ transform: 'translateX(calc(-100% - 50vw))' }, { transform: 'translateX(50vw)' }]
+                : [{ transform: 'translateX(50vw)' }, { transform: 'translateX(calc(-100% - 50vw))' }];
             const animation = flyer.animate(
-                reducedMotion
-                    ? [{ transform: 'translateX(-50%)' }, { transform: 'translateX(-50%)' }]
-                    : [{ transform: `translateX(calc(-50% + ${-offset}vw))` }, { transform: `translateX(calc(-50% + ${offset}vw))` }],
+                frames,
                 { duration: AD_FLY_MS, easing: 'linear', fill: 'forwards' }
             );
             adDirection *= -1;
