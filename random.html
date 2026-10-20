@@ -1922,6 +1922,17 @@
                     const cash = await api('GET', '/api/kasse');
                     kassenbuchEntries = cash.eintraege;
                     kassenbuchSummary = cash.summary;
+                    if (me.spielerId) {
+                        me.guthabenCent = cash.summary.playerBalances[me.spielerId] || 0;
+                        spieltage.forEach(s => {
+                            const state = cash.summary.chargeStatus[`${s.id}:${me.spielerId}`];
+                            if (state) {
+                                s.offenCent = state.openCent;
+                                s.creditAppliedCent = state.creditAppliedCent;
+                                s.paidCent = state.paidCent;
+                            }
+                        });
+                    }
                 } else {
                     kassenbuchEntries = [];
                     kassenbuchSummary = null;
