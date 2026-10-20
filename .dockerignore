@@ -8,7 +8,6 @@ daten/
 node_modules/
 scripts/
 supabase/
-src/logic/
 *.md
 Dockerfile
 docker-compose.yml
