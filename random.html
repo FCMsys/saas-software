@@ -710,6 +710,9 @@
         let adConfig = { enabled: false, text: '', image: '' };
         let adTimer = null;
         let adFlying = false;
+        let adAnimation = null;
+        let adFormDirty = false;
+        let adSyncTimer = null;
         let adLastActivity = Date.now();
         let adDirection = Math.random() < 0.5 ? 1 : -1;
         let adPreviewObjectUrl = '';
@@ -1961,25 +1964,29 @@
             wrap.classList.remove('hidden');
         }
 
-        async function loadAdConfig() {
+        async function loadAdConfig(updateForm = true) {
             if (!serverMode) return;
             try {
-                adConfig = await api('GET', '/api/werbung');
-                $('adEnabled').checked = adConfig.enabled;
-                $('adText').value = adConfig.text || '';
-                $('adImage').value = '';
-                $('adRemoveImage').checked = false;
-                updateAdPreview(adConfig.image || '');
-                $('adSaveStatus').textContent = adConfig.image ? 'Aktuelles Bild geladen.' : 'Noch kein Bild hinterlegt.';
-                if (adConfig.enabled) {
-                    $('adFlyerText').textContent = adConfig.text || '';
-                    $('adFlyerText').classList.toggle('hidden', !adConfig.text);
-                    $('adFlyerImage').classList.toggle('hidden', !adConfig.image);
-                    if (adConfig.image) $('adFlyerImage').src = adConfig.image;
+                const config = await api('GET', '/api/werbung');
+                adConfig = config;
+                if (updateForm) {
+                    $('adEnabled').checked = config.enabled;
+                    $('adText').value = config.text || '';
+                    $('adImage').value = '';
+                    $('adRemoveImage').checked = false;
+                    updateAdPreview(config.image || '');
+                    $('adSaveStatus').textContent = config.image ? 'Aktuelles Bild geladen.' : 'Noch kein Bild hinterlegt.';
+                    adFormDirty = false;
                 }
+                $('adFlyerText').textContent = config.text || '';
+                $('adFlyerText').classList.toggle('hidden', !config.text);
+                $('adFlyerImage').classList.toggle('hidden', !config.image);
+                if (config.image) $('adFlyerImage').src = config.image;
+                if (!config.enabled) stopAdFlyer();
                 scheduleAdFlyer();
             } catch (err) {
-                showToast('Werbung konnte nicht geladen werden', err.message, 'error');
+                if (updateForm) showToast('Werbung konnte nicht geladen werden', err.message, 'error');
+                else console.error('Werbung konnte nicht aktualisiert werden:', err.message);
             }
         }
 
@@ -2014,15 +2021,33 @@
                 frames,
                 { duration: AD_FLY_MS, easing: 'linear', fill: 'forwards' }
             );
+            adAnimation = animation;
             adDirection *= -1;
             animation.onfinish = () => {
+                if (adAnimation !== animation) return;
                 flyer.classList.add('hidden');
                 flyer.classList.remove('ad-flyer-visible');
                 flyer.style.transform = '';
                 adFlying = false;
+                adAnimation = null;
                 animation.cancel();
                 scheduleAdFlyer(AD_GAP_MS);
             };
+        }
+
+        function stopAdFlyer() {
+            clearTimeout(adTimer);
+            adTimer = null;
+            if (adAnimation) {
+                adAnimation.onfinish = null;
+                adAnimation.cancel();
+                adAnimation = null;
+            }
+            const flyer = $('adFlyer');
+            flyer.classList.add('hidden');
+            flyer.classList.remove('ad-flyer-visible');
+            flyer.style.transform = '';
+            adFlying = false;
         }
 
         function initAdFlyer() {
@@ -2039,6 +2064,9 @@
                 if (document.visibilityState === 'hidden') clearTimeout(adTimer);
                 else { adLastActivity = Date.now(); scheduleAdFlyer(); }
             });
+            adSyncTimer = setInterval(() => {
+                if (!adFormDirty) loadAdConfig(false);
+            }, 15000);
         }
 
         const eur = cent => (cent / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
@@ -2436,6 +2464,7 @@
         };
 
         $('adImage').onchange = () => {
+            adFormDirty = true;
             const file = $('adImage').files[0];
             if (!file) return;
             if (!['image/png', 'image/jpeg'].includes(file.type) || file.size > 2 * 1024 * 1024) {
@@ -2446,6 +2475,11 @@
             $('adRemoveImage').checked = false;
             updateAdPreview(URL.createObjectURL(file));
             $('adSaveStatus').textContent = 'Neues Bild ausgewählt.';
+        };
+        $('adForm').oninput = () => { adFormDirty = true; };
+        $('adForm').onchange = e => {
+            adFormDirty = true;
+            if (e.target === $('adEnabled') && !e.target.checked) stopAdFlyer();
         };
 
         $('adForm').onsubmit = async e => {
@@ -2468,6 +2502,8 @@
                     removeImage: $('adRemoveImage').checked && !file
                 });
                 adConfig = saved;
+                adFormDirty = false;
+                if (!saved.enabled) stopAdFlyer();
                 await loadAdConfig();
                 showToast('Werbung gespeichert', saved.enabled ? 'Die Banderole ist für alle Nutzer aktiv.' : 'Die Banderole ist deaktiviert.', 'success');
             } catch (err) {
