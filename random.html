@@ -22,12 +22,14 @@
         .card { background: #fff; border: 1px solid #e3e9f4; border-radius: 1rem; box-shadow: 0 1px 2px rgba(30,58,138,.04), 0 8px 24px -12px rgba(30,58,138,.10); }
         .fade-in { animation: fade .18s ease-out; }
         @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-        #adFlyer { position: fixed; left: 0; z-index: 55; max-width: 96vw; pointer-events: none; }
+        #adFlyer { position: fixed; left: 0; z-index: 55; width: min(90vw, 1100px); aspect-ratio: 2170 / 725; pointer-events: none; }
         #adFlyer.ad-flyer-visible { display: flex; }
-        .ad-flyer-banner { min-width: min(260px, 68vw); max-width: min(680px, 78vw); min-height: 62px; }
-        .ad-flyer-banner img { max-width: 22vw; max-height: 58px; object-fit: contain; }
-        #adFlyer.ad-flyer-left { flex-direction: row-reverse; }
-        #adFlyer.ad-flyer-left #adPlane { transform: scaleX(-1); }
+        .ad-flyer-graphic { width: 100%; height: 100%; object-fit: contain; transform: scaleX(-1); }
+        .ad-flyer-content { position: absolute; left: 10%; top: 25%; width: 39%; height: 39%; display: flex; align-items: center; justify-content: center; gap: .6rem; padding: 0 1rem; }
+        .ad-flyer-content img { max-width: 28%; max-height: 82%; object-fit: contain; }
+        .ad-flyer-content span { overflow-wrap: anywhere; }
+        #adFlyer.ad-flyer-left .ad-flyer-graphic { transform: none; }
+        #adFlyer.ad-flyer-left .ad-flyer-content { left: 51%; }
         @media (prefers-reduced-motion: reduce) { #adFlyer { transition: none; } }
 
         /* ===================== FUT-STYLE PLAYER CARD ===================== */
@@ -546,18 +548,12 @@
         </section>
     </main>
 
-    <div id="adFlyer" class="hidden items-center" aria-hidden="true">
-        <div class="ad-flyer-banner flex items-center justify-center gap-3 rounded-lg border-2 border-amber-700 bg-amber-100 px-4 py-3 shadow-xl">
+    <div id="adFlyer" class="hidden" aria-hidden="true">
+        <img id="adFlyerGraphic" class="ad-flyer-graphic" src="/img/ad-plane-banner.png" alt="">
+        <div class="ad-flyer-content">
             <img id="adFlyerImage" class="hidden" alt="">
-            <span id="adFlyerText" class="font-extrabold text-slate-900 text-base sm:text-lg text-center"></span>
+            <span id="adFlyerText" class="font-extrabold text-slate-900 text-sm sm:text-lg text-center"></span>
         </div>
-        <span class="w-8 sm:w-14 border-t-2 border-dashed border-slate-600 shrink-0" aria-hidden="true"></span>
-        <svg id="adPlane" class="w-20 sm:w-28 h-14 shrink-0 drop-shadow-md" viewBox="0 0 120 70" aria-hidden="true">
-            <path d="M5 37 48 32 67 10 79 8 75 31 108 24 117 29 115 37 77 43 69 60 58 62 55 45 13 50Z" fill="#1d4ed8" stroke="#172554" stroke-width="2" stroke-linejoin="round"/>
-            <path d="m48 32 19-22 12-2-4 23M55 45 69 60 58 62Z" fill="#2563eb" stroke="#172554" stroke-width="1.5" stroke-linejoin="round"/>
-            <path d="m91 27 14-2 9 4-1 8-15 2Z" fill="#facc15" stroke="#172554" stroke-width="1.5" stroke-linejoin="round"/>
-            <path d="M6 37 1 35M6 41 1 43" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/>
-        </svg>
     </div>
 
     <footer class="2xl:hidden max-w-6xl mx-auto px-4 sm:px-6 pb-8 pt-2 flex items-center justify-end gap-4 text-slate-400">

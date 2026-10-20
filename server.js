@@ -24,7 +24,7 @@ try {
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, 'daten');
 const PORT = parseInt(process.env.PORT, 10) || 3000;
-const IMAGES = { 'msys.svg': 'Msys-Wappen.svg', 'lm.svg': 'L&M-Logo.svg', 'ramazzotti.svg': 'Ramazzotti-Logo.svg' };
+const IMAGES = { 'msys.svg': 'Msys-Wappen.svg', 'lm.svg': 'L&M-Logo.svg', 'ramazzotti.svg': 'Ramazzotti-Logo.svg', 'ad-plane-banner.png': 'ad-plane-banner.png' };
 const FILES = { spieler: 'spieler.csv', spiele: 'spiele.csv', presets: 'presets.csv' };
 
 const KINDE_DOMAIN = (process.env.KINDE_DOMAIN || '').replace(/\/+$/, '');
@@ -695,7 +695,7 @@ async function handle(req, res) {
     // --- Logos (öffentlich, auch für die Login-Seite): feste Liste, keine freien Pfade ---
     const imgFile = method === 'GET' && (url === '/favicon.ico' ? IMAGES['msys.svg'] : IMAGES[url.replace(/^\/img\//, '')]);
     if (imgFile) {
-        res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+        res.writeHead(200, { 'Content-Type': imgFile.endsWith('.png') ? 'image/png' : 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
         return res.end(fs.readFileSync(path.join(ROOT, 'src', 'img', imgFile)));
     }
 
