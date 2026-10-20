@@ -22,6 +22,10 @@
         .card { background: #fff; border: 1px solid #e3e9f4; border-radius: 1rem; box-shadow: 0 1px 2px rgba(30,58,138,.04), 0 8px 24px -12px rgba(30,58,138,.10); }
         .fade-in { animation: fade .18s ease-out; }
         @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        #adFlyer { position: fixed; left: 50%; z-index: 55; max-width: min(88vw, 760px); min-width: min(280px, 88vw); pointer-events: none; }
+        #adFlyer.ad-flyer-visible { display: flex; }
+        #adFlyer img { max-width: 22vw; max-height: 72px; object-fit: contain; }
+        @media (prefers-reduced-motion: reduce) { #adFlyer { transition: none; } }
 
         /* ===================== FUT-STYLE PLAYER CARD ===================== */
         .fut-card {
@@ -154,6 +158,7 @@
                 <button class="tab-btn admin-only px-2 sm:px-3 flex items-center gap-2 transition" data-tab="match"><i class="fa-solid fa-futbol"></i><span class="hidden sm:inline">Aktuelles Spiel</span></button>
                 <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="history"><i class="fa-solid fa-chart-line"></i><span class="hidden sm:inline">Historie</span></button>
                 <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="payments"><i class="fa-solid fa-euro-sign"></i><span class="hidden sm:inline">Zahlungen</span></button>
+                <button class="tab-btn admin-only px-2 sm:px-3 flex items-center gap-2 transition" data-tab="advertising"><i class="fa-solid fa-bullhorn"></i><span class="hidden sm:inline">Werbung</span></button>
             </nav>
 
             <div class="flex items-center gap-1.5 shrink-0">
@@ -506,7 +511,42 @@
                 <div id="usersList" class="divide-y divide-slate-100 text-sm"></div>
             </div>
         </section>
+
+        <!-- ===================== TAB: WERBUNG (ADMIN) ===================== -->
+        <section id="tab-advertising" class="tab-panel admin-only hidden space-y-5 fade-in">
+            <div>
+                <h2 class="text-xl font-bold tracking-tight">Werbebanderole</h2>
+                <p class="text-sm text-slate-500">Lege Text und optional ein Bild fest. Die Banderole fliegt für alle angemeldeten Nutzer bei Inaktivität über den Bildschirm.</p>
+            </div>
+            <form id="adForm" class="admin-only card p-5 space-y-4">
+                <label class="flex items-center gap-2 text-sm font-semibold">
+                    <input id="adEnabled" type="checkbox" class="accent-blue-600">
+                    Werbeflieger aktivieren
+                </label>
+                <label class="block text-sm font-medium">Text auf der Banderole
+                    <textarea id="adText" maxlength="200" rows="3" placeholder="Dein Werbetext (max. 200 Zeichen)" class="block mt-1 w-full border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></textarea>
+                </label>
+                <div>
+                    <label class="block text-sm font-medium" for="adImage">Bilddatei (PNG oder JPEG, max. 2 MB)</label>
+                    <input id="adImage" type="file" accept="image/png,image/jpeg" class="block mt-1 w-full text-sm text-slate-600">
+                    <div id="adImagePreviewWrap" class="hidden mt-3 flex items-center gap-3">
+                        <img id="adImagePreview" alt="Vorschau Werbebild" class="max-h-20 max-w-48 object-contain rounded border border-slate-200 p-1">
+                        <label class="text-xs text-rose-700"><input id="adRemoveImage" type="checkbox" class="accent-rose-600 mr-1">Vorhandenes Bild entfernen</label>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-500">Der Flieger startet nach 5 Sekunden Inaktivität, bleibt 8 Sekunden sichtbar und kommt bei anhaltender Inaktivität frühestens nach weiteren 30 Sekunden wieder. Er lässt sich nicht anklicken oder schließen.</p>
+                <div class="flex items-center gap-3">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">Werbung speichern</button>
+                    <span id="adSaveStatus" class="text-xs text-slate-500"></span>
+                </div>
+            </form>
+        </section>
     </main>
+
+    <div id="adFlyer" class="hidden items-center gap-3 rounded-xl border border-amber-300 bg-amber-100/95 px-4 py-3 shadow-xl" aria-hidden="true">
+        <img id="adFlyerImage" class="hidden" alt="">
+        <span id="adFlyerText" class="font-extrabold text-slate-900 text-base sm:text-lg"></span>
+    </div>
 
     <footer class="2xl:hidden max-w-6xl mx-auto px-4 sm:px-6 pb-8 pt-2 flex items-center justify-end gap-4 text-slate-400">
         <span class="text-[10px] uppercase tracking-[.2em] font-semibold">Unterstützt von</span>
@@ -655,7 +695,16 @@
         let kassenbuchEntries = [];
         let kassenbuchSummary = null;
         let kindeUsers = {};
-        const TABS = ['players', 'days', 'match', 'history', 'payments'];
+        const TABS = ['players', 'days', 'match', 'history', 'payments', 'advertising'];
+        const AD_IDLE_MS = 5000;
+        const AD_FLY_MS = 8000;
+        const AD_REPEAT_MS = 30000;
+        let adConfig = { enabled: false, text: '', image: '' };
+        let adTimer = null;
+        let adFlying = false;
+        let adLastActivity = Date.now();
+        let adDirection = Math.random() < 0.5 ? 1 : -1;
+        let adPreviewObjectUrl = '';
 
         const CHART_COLORS = ['#2563eb', '#059669', '#e11d48', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5', '#c026d3', '#64748b'];
         const K_FACTOR = 32;
@@ -1441,7 +1490,7 @@
         // 7. Tabs
         // =====================================================================
         function showTab(name) {
-            if (!TABS.includes(name) || (name === 'match' && me.role !== 'admin')) name = 'players';
+            if (!TABS.includes(name) || (['match', 'advertising'].includes(name) && me.role !== 'admin')) name = 'players';
             activeTab = name;
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('hidden', p.id !== 'tab-' + name));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
@@ -1891,6 +1940,99 @@
             return true;
         }
 
+        function updateAdPreview(src) {
+            const wrap = $('adImagePreviewWrap');
+            if (adPreviewObjectUrl && src !== adPreviewObjectUrl) URL.revokeObjectURL(adPreviewObjectUrl);
+            adPreviewObjectUrl = src && src.startsWith('blob:') ? src : '';
+            if (!src) {
+                wrap.classList.add('hidden');
+                $('adImagePreview').removeAttribute('src');
+                return;
+            }
+            $('adImagePreview').src = src;
+            wrap.classList.remove('hidden');
+        }
+
+        async function loadAdConfig() {
+            if (!serverMode) return;
+            try {
+                adConfig = await api('GET', '/api/werbung');
+                $('adEnabled').checked = adConfig.enabled;
+                $('adText').value = adConfig.text || '';
+                $('adImage').value = '';
+                $('adRemoveImage').checked = false;
+                updateAdPreview(adConfig.image || '');
+                $('adSaveStatus').textContent = adConfig.image ? 'Aktuelles Bild geladen.' : 'Noch kein Bild hinterlegt.';
+                if (adConfig.enabled) {
+                    $('adFlyerText').textContent = adConfig.text || '';
+                    $('adFlyerText').classList.toggle('hidden', !adConfig.text);
+                    $('adFlyerImage').classList.toggle('hidden', !adConfig.image);
+                    if (adConfig.image) $('adFlyerImage').src = adConfig.image;
+                }
+                scheduleAdFlyer();
+            } catch (err) {
+                showToast('Werbung konnte nicht geladen werden', err.message, 'error');
+            }
+        }
+
+        function scheduleAdFlyer() {
+            clearTimeout(adTimer);
+            if (!adConfig.enabled || adFlying || document.visibilityState === 'hidden') return;
+            const idleFor = Date.now() - adLastActivity;
+            const delay = idleFor < AD_IDLE_MS ? AD_IDLE_MS - idleFor : AD_REPEAT_MS;
+            adTimer = setTimeout(showAdFlyer, delay);
+        }
+
+        function showAdFlyer() {
+            if (!adConfig.enabled || adFlying || document.visibilityState === 'hidden') return;
+            const flyer = $('adFlyer');
+            const image = $('adFlyerImage');
+            const text = $('adFlyerText');
+            text.textContent = adConfig.text || '';
+            text.classList.toggle('hidden', !adConfig.text);
+            image.classList.toggle('hidden', !adConfig.image);
+            if (adConfig.image) image.src = adConfig.image;
+            const availableHeight = Math.max(0, window.innerHeight - flyer.offsetHeight);
+            flyer.style.top = `${Math.round(Math.random() * availableHeight)}px`;
+            flyer.classList.remove('hidden');
+            flyer.classList.add('ad-flyer-visible');
+            adFlying = true;
+
+            const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const offset = adDirection * 110;
+            const animation = flyer.animate(
+                reducedMotion
+                    ? [{ transform: 'translateX(-50%)' }, { transform: 'translateX(-50%)' }]
+                    : [{ transform: `translateX(calc(-50% + ${-offset}vw))` }, { transform: `translateX(calc(-50% + ${offset}vw))` }],
+                { duration: AD_FLY_MS, easing: 'linear', fill: 'forwards' }
+            );
+            adDirection *= -1;
+            animation.onfinish = () => {
+                flyer.classList.add('hidden');
+                flyer.classList.remove('ad-flyer-visible');
+                flyer.style.transform = '';
+                adFlying = false;
+                animation.cancel();
+                scheduleAdFlyer();
+            };
+        }
+
+        function initAdFlyer() {
+            if (!serverMode) return;
+            loadAdConfig();
+            const noteActivity = () => {
+                adLastActivity = Date.now();
+                if (!adFlying) scheduleAdFlyer();
+            };
+            ['pointerdown', 'pointermove', 'keydown', 'scroll', 'touchstart', 'wheel'].forEach(type =>
+                document.addEventListener(type, noteActivity, { passive: true })
+            );
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') clearTimeout(adTimer);
+                else { adLastActivity = Date.now(); scheduleAdFlyer(); }
+            });
+        }
+
         const eur = cent => (cent / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
         const fmtDate = iso => new Date(iso + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
         const playerName = id => (players.find(p => p.id === id) || { name: '(gelöscht)' }).name;
@@ -2285,6 +2427,46 @@
             } catch (err) { showToast('Fehler', err.message, 'error'); }
         };
 
+        $('adImage').onchange = () => {
+            const file = $('adImage').files[0];
+            if (!file) return;
+            if (!['image/png', 'image/jpeg'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+                $('adImage').value = '';
+                showToast('Ungültiges Bild', 'Bitte eine PNG- oder JPEG-Datei bis maximal 2 MB auswählen.', 'error');
+                return;
+            }
+            $('adRemoveImage').checked = false;
+            updateAdPreview(URL.createObjectURL(file));
+            $('adSaveStatus').textContent = 'Neues Bild ausgewählt.';
+        };
+
+        $('adForm').onsubmit = async e => {
+            e.preventDefault();
+            const file = $('adImage').files[0];
+            let imageData = '';
+            try {
+                if (file) {
+                    imageData = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = () => reject(new Error('Bilddatei konnte nicht gelesen werden'));
+                        reader.readAsDataURL(file);
+                    });
+                }
+                const saved = await api('PUT', '/api/werbung', {
+                    enabled: $('adEnabled').checked,
+                    text: $('adText').value.trim(),
+                    imageData,
+                    removeImage: $('adRemoveImage').checked && !file
+                });
+                adConfig = saved;
+                await loadAdConfig();
+                showToast('Werbung gespeichert', saved.enabled ? 'Die Banderole ist für alle Nutzer aktiv.' : 'Die Banderole ist deaktiviert.', 'success');
+            } catch (err) {
+                showToast('Werbung konnte nicht gespeichert werden', err.message, 'error');
+            }
+        };
+
         $('cashEntryDate').value = todayIso();
         $('cashEntryForm').onsubmit = async e => {
             e.preventDefault();
@@ -2371,6 +2553,7 @@
         (async function init() {
             if (!(await loadMe())) return;
             await initData();
+            initAdFlyer();
             selectedPlayerIds = new Set(players.map(p => p.id));
             restoreCurrentGame();
             renderAll();

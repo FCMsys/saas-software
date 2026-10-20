@@ -65,6 +65,17 @@ docker compose up -d --build
 ```
 Die Container starten bei einem Server-Neustart von selbst wieder (`restart: unless-stopped`).
 
+### Automatisch nach Push auf `main`
+Der GitHub-Actions-Workflow `.github/workflows/deploy.yml` aktualisiert den VPS nach jedem Push auf `main`. Er verbindet sich per SSH-Schlüssel, holt `main` im bestehenden Checkout `/root/saas-software` und baut die Compose-App neu.
+
+Einmalige Einrichtung:
+1. Einen dedizierten SSH-Schlüssel für den Deployment-Zugriff erzeugen. Den privaten Schlüssel ausschließlich als GitHub-Repository-Secret `VPS_SSH_PRIVATE_KEY` hinterlegen; den zugehörigen öffentlichen Schlüssel auf dem VPS in `~/.ssh/authorized_keys` des SSH-Benutzers eintragen.
+2. Unter **Repository → Settings → Secrets and variables → Actions → Variables** die Variablen `VPS_HOST` (VPS-Adresse) und `VPS_USER` (SSH-Benutzer; für den aktuellen Checkout unter `/root/saas-software` ist das `root`) anlegen.
+3. Den verifizierten SSH-Hostschlüssel als Repository-Secret `VPS_SSH_KNOWN_HOSTS` speichern. Den Hostschlüssel-Fingerprint vorab direkt auf dem VPS prüfen; `ssh-keyscan` allein verifiziert den Schlüssel nicht.
+4. Einen Test-Push auf `main` ausführen und unter **Actions** den Deploy-Workflow sowie anschließend den App-Status prüfen.
+
+Passwörter oder private Schlüssel niemals in Workflow-Dateien, Commits oder Chatnachrichten ablegen. Für automatisches Deployment ist SSH-Schlüssel-Authentifizierung erforderlich; interaktive Passwortabfragen funktionieren in GitHub Actions nicht.
+
 ## Nützliche Befehle
 ```bash
 docker compose ps                  # läuft alles? (app sollte "healthy" sein)

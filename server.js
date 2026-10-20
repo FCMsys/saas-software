@@ -750,6 +750,62 @@ async function handle(req, res) {
         });
     }
 
+    if (url === '/api/werbung' && method === 'GET') {
+        const saved = readJson('werbung.json', {});
+        const text = typeof saved.text === 'string' ? saved.text.slice(0, 200) : '';
+        const image = typeof saved.image === 'string' && /^\/fotos\/werbung_[a-f0-9]{16}\.(?:png|jpg)$/.test(saved.image) ? saved.image : '';
+        return sendJson(res, 200, { enabled: saved.enabled === true && (!!text || !!image), text, image });
+    }
+    if (url === '/api/werbung' && method === 'PUT') {
+        if (!requireAdmin()) return;
+        try {
+            const b = await readJsonBody(req, 3 * 1024 * 1024);
+            const saved = readJson('werbung.json', {});
+            const text = typeof b.text === 'string' ? b.text.trim() : '';
+            if (text.length > 200) return sendJson(res, 400, { ok: false, error: 'Der Werbetext darf höchstens 200 Zeichen enthalten' });
+
+            let image = typeof saved.image === 'string' && /^\/fotos\/werbung_[a-f0-9]{16}\.(?:png|jpg)$/.test(saved.image) ? saved.image : '';
+            let uploadedImage = '';
+            if (b.removeImage === true) image = '';
+            if (typeof b.imageData === 'string' && b.imageData) {
+                const match = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+={0,2})$/.exec(b.imageData);
+                if (!match) return sendJson(res, 400, { ok: false, error: 'Bitte ein PNG- oder JPEG-Bild hochladen' });
+                const buffer = Buffer.from(match[2], 'base64');
+                if (!buffer.length || buffer.length > 2 * 1024 * 1024 || buffer.toString('base64') !== match[2]) {
+                    return sendJson(res, 400, { ok: false, error: 'Das Bild muss kleiner als 2 MB und gültig kodiert sein' });
+                }
+                const isPng = buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+                const isJpeg = buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+                if ((match[1] === 'png' && !isPng) || (match[1] === 'jpeg' && !isJpeg)) {
+                    return sendJson(res, 400, { ok: false, error: 'Der Bildinhalt passt nicht zum Dateiformat' });
+                }
+                const ext = isPng ? 'png' : 'jpg';
+                const id = `werbung_${crypto.randomBytes(8).toString('hex')}`;
+                await fotoPut(id, ext, buffer);
+                image = `/fotos/${id}.${ext}`;
+                uploadedImage = image;
+            }
+
+            if (b.enabled === true && !text && !image) {
+                if (uploadedImage) await fotoDelete(uploadedImage.match(/^\/fotos\/([\w-]+)\./)[1]);
+                return sendJson(res, 400, { ok: false, error: 'Für eine aktive Werbebanderole bitte Text oder Bild angeben' });
+            }
+            try {
+                await writeJson('werbung.json', { enabled: b.enabled === true, text, image });
+            } catch (e) {
+                if (uploadedImage) await fotoDelete(uploadedImage.match(/^\/fotos\/([\w-]+)\./)[1]);
+                throw e;
+            }
+            if (saved.image && saved.image !== image) {
+                const oldId = saved.image.match(/^\/fotos\/([\w-]+)\./);
+                if (oldId) await fotoDelete(oldId[1]);
+            }
+            return sendJson(res, 200, { ok: true, enabled: b.enabled === true, text, image });
+        } catch (e) {
+            return sendJson(res, 400, { ok: false, error: String(e.message) });
+        }
+    }
+
     // PayPal-Empfänger (E-Mail oder paypal.me-Link), den Spieler zum Bezahlen sehen
     if (url === '/api/einstellungen' && method === 'PUT') {
         if (!requireAdmin()) return;
