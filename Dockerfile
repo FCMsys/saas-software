@@ -10,6 +10,7 @@ WORKDIR /app
 COPY package.json ./
 COPY server.js random.html ./
 COPY src/img ./src/img
+COPY src/logic ./src/logic
 
 # Lokaler Speicher (nur genutzt, wenn SUPABASE_* nicht gesetzt ist); gehört dem unprivilegierten Benutzer
 RUN mkdir -p /app/daten/fotos && chown -R node:node /app
