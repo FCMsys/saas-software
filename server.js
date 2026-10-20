@@ -12,6 +12,7 @@ const crypto = require('crypto');
 const net = require('net');
 const tls = require('tls');
 const { exec } = require('child_process');
+const { ATTRIBUTES, OUTCOMES, generateQuestionnaire, validAnswer, updateAttributeRatings, surveyDeadline, isSurveyClosed, countAwardVotes } = require('./src/logic/survey');
 
 // --- .env laden (optional, ohne Abhängigkeit) ---
 try {
@@ -22,7 +23,7 @@ try {
 } catch { /* keine .env */ }
 
 const ROOT = __dirname;
-const DATA_DIR = path.join(ROOT, 'daten');
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'daten');
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const IMAGES = { 'msys.svg': 'Msys-Wappen.svg', 'lm.svg': 'L&M-Logo.svg', 'ramazzotti.svg': 'Ramazzotti-Logo.svg', 'ad-plane-banner.png': 'ad-plane-banner.png' };
 const FILES = { spieler: 'spieler.csv', spiele: 'spiele.csv', presets: 'presets.csv' };
@@ -81,6 +82,8 @@ const USE_SUPABASE = !!(SUPABASE_URL && SUPABASE_KEY);
 const FOTO_BUCKET = 'fotos';
 const cache = new Map();
 let saveChain = Promise.resolve();
+let surveyMutation = Promise.resolve();
+let surveyCloseTimer = null;
 
 function sb(pathAndQuery, opts = {}) {
     // Neue "sb_secret_…"-Keys gehören nur in apikey, alte JWT-Keys zusätzlich in Authorization
@@ -129,6 +132,12 @@ function readJson(name, fallback) {
     try { return JSON.parse(readFile(name)) || fallback; } catch { return fallback; }
 }
 const writeJson = (name, obj) => writeFileAtomic(name, JSON.stringify(obj, null, 2));
+const loadSurveys = () => readJson('umfragen.json', { days: {}, ratings: { priors: {}, current: {} } });
+const mutateSurveys = action => {
+    const job = surveyMutation.then(action);
+    surveyMutation = job.catch(() => { });
+    return job;
+};
 
 // --- Spielerfotos ---
 const FOTO_TYPES = { png: 'image/png', jpg: 'image/jpeg' };
@@ -251,7 +260,9 @@ function roleFromClaims(...claims) {
     return keys.includes('admin') ? 'admin' : 'player';
 }
 
-function startLogin(res) {
+function startLogin(res, returnTo = '/') {
+    const safeReturnTo = typeof returnTo === 'string' && returnTo.startsWith('/') &&
+        !returnTo.startsWith('//') && !returnTo.includes('\\') && !/[\r\n]/.test(returnTo) ? returnTo : '/';
     const state = crypto.randomBytes(16).toString('base64url');
     const verifier = crypto.randomBytes(32).toString('base64url');
     const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
@@ -265,7 +276,7 @@ function startLogin(res) {
     if (KINDE_AUDIENCE) params.set('audience', KINDE_AUDIENCE);
     res.writeHead(302, {
         Location: `${KINDE_DOMAIN}/oauth2/auth?${params}`,
-        'Set-Cookie': cookie('mm_oauth', makeToken({ state, verifier, exp: Date.now() + 10 * 60e3 }), 600),
+        'Set-Cookie': cookie('mm_oauth', makeToken({ state, verifier, returnTo: safeReturnTo, exp: Date.now() + 10 * 60e3 }), 600),
         'Cache-Control': 'no-store'
     });
     res.end();
@@ -302,7 +313,7 @@ async function finishLogin(req, res, query) {
     await writeJson('users.json', users);
 
     res.writeHead(302, {
-        Location: '/',
+        Location: oauth.returnTo || '/',
         'Set-Cookie': [
             cookie('mm_session', makeToken({ sub, email: idc.email || '', name, role, exp: Date.now() + SESSION_TTL_MS }), SESSION_TTL_MS / 1000),
             cookie('mm_oauth', '', 0)
@@ -506,11 +517,12 @@ function cashSummary(z) {
 // ---------------------------------------------------------------------------
 const EMAIL_RE = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 const berlinToday = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
-const fmtDay = s => new Date(s.datum + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) + (s.uhrzeit ? ' · ' + s.uhrzeit + ' Uhr' : '');
+const fmtDay = s => new Date(s.datum + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) + (s.uhrzeit ? ' · ' + s.uhrzeit + ' Uhr' : '') + (s.dauerMinuten ? ' · ' + s.dauerMinuten + ' Min.' : '');
 const escHtml = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function normSpieltag(s) {
     s.antworten = s.antworten || {}; s.uhrzeit = s.uhrzeit || ''; s.ort = s.ort || ''; s.titel = s.titel || '';
+    s.dauerMinuten = Number.isInteger(s.dauerMinuten) ? s.dauerMinuten : null;
     if (s.betragCent === undefined) s.betragCent = null;
     s.teilnehmer = s.teilnehmer || []; s.bezahlt = s.bezahlt || {};
     return s;
@@ -536,6 +548,323 @@ function playerNames() {
     const head = rows[0] || [], iId = head.indexOf('id'), iName = head.indexOf('name'), names = new Map();
     if (iId >= 0 && iName >= 0) rows.slice(1).forEach(r => { if (r[iId]) names.set(r[iId], r[iName] || ''); });
     return names;
+}
+
+function surveyData() {
+    const saved = loadSurveys();
+    if (!saved.days || typeof saved.days !== 'object') saved.days = {};
+    if (!saved.ratings || typeof saved.ratings !== 'object') saved.ratings = {};
+    if (!saved.ratings.priors || typeof saved.ratings.priors !== 'object') saved.ratings.priors = {};
+    if (!saved.ratings.current || typeof saved.ratings.current !== 'object') saved.ratings.current = {};
+    if (!Array.isArray(saved.ratings.history)) saved.ratings.history = [];
+    return saved;
+}
+
+function surveyPlayers() {
+    const rows = csvRows(readFile('spieler.csv'));
+    const header = rows[0] || [];
+    const index = Object.fromEntries(header.map((name, i) => [name, i]));
+    return rows.slice(1).filter(row => row[index.id]).map(row => {
+        const stats = Object.fromEntries(ATTRIBUTES.map(attribute => [
+            attribute, Math.max(1, Math.min(99, parseInt(row[index[attribute.toLowerCase()]]) || 50))
+        ]));
+        const elo = parseInt(row[index.elo]) || 1500;
+        return {
+            id: row[index.id],
+            name: row[index.name] || '',
+            elo,
+            ges: Math.max(1, Math.min(99, Math.floor((elo + 337) / 29 + 0.5))),
+            photo: row[index.foto] ? '/' + row[index.foto].split('?')[0].replace(/^\/+/, '') : '',
+            stats
+        };
+    });
+}
+
+function snapshotSurveyPriors(saved, players) {
+    for (const player of players) {
+        if (!saved.ratings.priors[player.id]) saved.ratings.priors[player.id] = player.stats;
+    }
+}
+
+function playersCsvWithSurveyRatings(csv, ratings) {
+    if (!ratings || !Object.keys(ratings).length) return csv;
+    const rows = csvRows(csv);
+    if (!rows.length) return csv;
+    const header = [...rows[0]];
+    const keys = ATTRIBUTES.map(attribute => attribute.toLowerCase());
+    keys.forEach(key => { if (!header.includes(key)) header.push(key); });
+    const idIndex = header.indexOf('id');
+    const next = [header];
+    for (const source of rows.slice(1)) {
+        const row = [...source];
+        while (row.length < header.length) row.push('');
+        const id = row[idIndex];
+        keys.forEach((key, index) => {
+            const value = ratings[ATTRIBUTES[index]] && ratings[ATTRIBUTES[index]][id];
+            if (Number.isInteger(value)) row[header.indexOf(key)] = String(Math.max(1, Math.min(99, value)));
+        });
+        next.push(row);
+    }
+    const quote = value => {
+        const text = String(value == null ? '' : value);
+        return /[;"\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    };
+    return '\uFEFF' + next.map(row => row.map(quote).join(';')).join('\r\n') + '\r\n';
+}
+
+function surveyComparisons(saved) {
+    return Object.values(saved.days).flatMap(day =>
+        Object.values(day.submissions || {}).flatMap(submission =>
+            (submission.answers.comparisons || [])
+                .filter(answer => answer.value !== 'unsure')
+                .map(answer => ({ ...answer, dayId: day.id, respondentId: submission.playerId }))
+        )
+    );
+}
+
+function aggregateSurveyComparisons(saved, kind) {
+    const totals = {};
+    for (const day of Object.values(saved.days)) {
+        for (const submission of Object.values(day.submissions || {})) {
+            const questions = day.forms[submission.playerId].comparisons || [];
+            for (const answer of submission.answers.comparisons || []) {
+                const question = questions.find(item => item.id === answer.id);
+                if (!question || (kind === 'performance' ? question.kind !== 'performance' : question.kind !== 'attribute')) continue;
+                if (answer.value === 'unsure') continue;
+                const score = OUTCOMES[answer.value];
+                for (const [playerId, value] of [[question.a, score], [question.b, 1 - score]]) {
+                    const key = kind === 'attribute' ? `${playerId}:${question.attribute}` : playerId;
+                    const item = totals[key] || { playerId, attribute: question.attribute || null, votes: 0, score: 0 };
+                    item.votes++;
+                    item.score += value;
+                    totals[key] = item;
+                }
+            }
+        }
+    }
+    return Object.values(totals).map(item => ({
+        ...item,
+        average: Math.round(item.score / item.votes * 100) / 100,
+        player: surveyPlayers().find(player => player.id === item.playerId)?.name || '(gelöscht)'
+    })).sort((a, b) => b.average - a.average || b.votes - a.votes || a.player.localeCompare(b.player));
+}
+
+function calculateSurveyAwards(day) {
+    const players = surveyPlayers();
+    const decorate = item => ({
+        ...item,
+        player: players.find(player => player.id === item.playerId)?.name || '(gelöscht)',
+        photo: players.find(player => player.id === item.playerId)?.photo || ''
+    });
+    return Object.fromEntries(Object.entries(countAwardVotes(day.submissions)).map(([award, result]) => [
+        award,
+        { winners: result.winners.map(decorate), ranking: result.ranking.map(decorate) }
+    ]));
+}
+
+async function closeDueSurveys(now = Date.now()) {
+    return mutateSurveys(async () => {
+        const saved = surveyData();
+        let changed = false;
+        for (const day of Object.values(saved.days)) {
+            if (!day.results && isSurveyClosed(day.closesAt, now)) {
+                day.results = calculateSurveyAwards(day);
+                day.publishedAt = day.closesAt;
+                changed = true;
+            }
+        }
+        if (changed) await writeJson('umfragen.json', saved);
+        return saved;
+    });
+}
+
+function scheduleNextSurveyClose(retryDelay = 0) {
+    clearTimeout(surveyCloseTimer);
+    const nextDeadline = Object.values(surveyData().days)
+        .filter(day => !day.results)
+        .map(day => Date.parse(day.closesAt))
+        .filter(Number.isFinite)
+        .sort((a, b) => a - b)[0];
+    if (nextDeadline === undefined) return;
+    surveyCloseTimer = setTimeout(async () => {
+        let retry = 0;
+        try { await closeDueSurveys(); }
+        catch (error) {
+            console.error('Umfragefrist konnte nicht geschlossen werden:', error.message);
+            retry = 30000;
+        }
+        scheduleNextSurveyClose(retry);
+    }, Math.max(1, retryDelay, nextDeadline - Date.now()));
+    surveyCloseTimer.unref();
+}
+
+async function recalculateSurveyRatings(saved, dayId) {
+    const players = surveyPlayers();
+    snapshotSurveyPriors(saved, players);
+    const previous = saved.ratings.current;
+    const current = updateAttributeRatings(saved.ratings.priors, surveyComparisons(saved));
+    const at = new Date().toISOString();
+    for (const attribute of ATTRIBUTES) {
+        for (const [playerId, after] of Object.entries(current[attribute] || {})) {
+            const before = previous[attribute] && previous[attribute][playerId];
+            if (Number.isInteger(before) && before !== after) {
+                saved.ratings.history.push({ at, dayId, playerId, attribute, before, after });
+            }
+        }
+    }
+    saved.ratings.current = current;
+}
+
+async function sendSurveyInvitation(dayId, playerId, retry = false) {
+    const start = await mutateSurveys(async () => {
+        const saved = surveyData();
+        const day = saved.days[dayId];
+        const invite = day && day.invites[playerId];
+        if (!invite || invite.status === 'sent' || invite.status === 'sending' || (!retry && invite.status !== 'pending') || (retry && invite.status !== 'failed')) return null;
+        invite.status = 'sending';
+        invite.attempts = (invite.attempts || 0) + 1;
+        invite.updatedAt = new Date().toISOString();
+        await writeJson('umfragen.json', saved);
+        return { day, invite };
+    });
+    if (!start) return;
+    const user = Object.values(loadUsers()).find(item => item.spielerId === playerId && EMAIL_RE.test(item.email || ''));
+    if (!user) {
+        await mutateSurveys(async () => {
+            const saved = surveyData();
+            const invite = saved.days[dayId].invites[playerId];
+            invite.status = 'no_email';
+            invite.error = 'Keine gültige E-Mail-Adresse hinterlegt';
+            await writeJson('umfragen.json', saved);
+        });
+        return;
+    }
+    if (!MAIL_ENABLED) {
+        await mutateSurveys(async () => {
+            const saved = surveyData();
+            const invite = saved.days[dayId].invites[playerId];
+            invite.status = 'failed';
+            invite.error = 'Mail-Versand ist nicht eingerichtet (SMTP_USER und SMTP_PASS fehlen)';
+            invite.updatedAt = new Date().toISOString();
+            await writeJson('umfragen.json', saved);
+        });
+        return;
+    }
+    try {
+        const returnTo = `/?umfrage=${encodeURIComponent(dayId)}`;
+        await sendMail({
+            to: user.email,
+            subject: 'FC M – Bewerte deinen Spieltag! ⚽',
+            text: `Der Spieltag ist vorbei – jetzt seid ihr gefragt!\n\nWer war die Überraschung des Spieltags? Wer war der Man of the Match? Und wie stark sind eure Mitspieler wirklich?\n\nHilf uns, die Spielerkarten zu verbessern und zukünftig noch ausgeglichenere Mannschaften zusammenzustellen.\n\nDie Umfrage dauert nur etwa 60–90 Sekunden und ist noch 48 Stunden nach Spielschluss geöffnet.\n\nZur Spieltagsumfrage:\n${PUBLIC_URL}/login?returnTo=${encodeURIComponent(returnTo)}\n\nViel Spaß!\nDein FC M`
+        });
+        await mutateSurveys(async () => {
+            const saved = surveyData();
+            const invite = saved.days[dayId].invites[playerId];
+            invite.status = 'sent';
+            invite.sentAt = new Date().toISOString();
+            delete invite.error;
+            await writeJson('umfragen.json', saved);
+        });
+    } catch (error) {
+        console.error(`Umfrage-Einladung an ${maskMail(user.email)} fehlgeschlagen:`, error.message);
+        await mutateSurveys(async () => {
+            const saved = surveyData();
+            const invite = saved.days[dayId].invites[playerId];
+            invite.status = 'failed';
+            invite.error = error.message.slice(0, 300);
+            invite.updatedAt = new Date().toISOString();
+            await writeJson('umfragen.json', saved);
+        });
+    }
+}
+
+function publicSurveyDay(day, session) {
+    const playerId = spielerIdOf(session);
+    const closed = isSurveyClosed(day.closesAt);
+    if (session.role === 'admin') {
+        const invites = Object.values(day.invites || {}).reduce((counts, invite) => {
+            counts[invite.status] = (counts[invite.status] || 0) + 1;
+            return counts;
+        }, {});
+        return {
+            id: day.id, finishedAt: day.finishedAt, closesAt: day.closesAt,
+            participantCount: day.participants.length,
+            submittedCount: Object.keys(day.submissions || {}).length,
+            invites, status: closed ? 'closed' : 'open',
+            performance: aggregateSurveyComparisons({ days: { [day.id]: day }, ratings: {} }, 'performance'),
+            attributes: aggregateSurveyComparisons({ days: { [day.id]: day }, ratings: {} }, 'attribute'),
+            results: closed ? day.results || calculateSurveyAwards(day) : null
+        };
+    }
+    const eligible = !!playerId && day.participants.includes(playerId);
+    return {
+        id: day.id, eligible, closesAt: day.closesAt,
+        status: closed ? 'closed' : 'open',
+        answered: !!(playerId && day.submissions && day.submissions[playerId]),
+        results: closed ? day.results || null : null
+    };
+}
+
+function matchedSurveyForm(day, playerId) {
+    const players = new Map(surveyPlayers().map(player => [player.id, player]));
+    const form = day.forms[playerId];
+    if (!form) return null;
+    const show = id => {
+        const player = players.get(id);
+        return player ? { id, name: player.name, photo: player.photo } : { id, name: '(gelöscht)', photo: '' };
+    };
+    return {
+        nominations: {
+            surprise: { eligible: form.nominations.surprise.eligible.map(show), options: form.nominations.surprise.options },
+            motm: { eligible: form.nominations.motm.eligible.map(show), options: form.nominations.motm.options }
+        },
+        comparisons: form.comparisons.map(question => ({
+            id: question.id, kind: question.kind, prompt: question.prompt,
+            a: show(question.a), b: show(question.b)
+        }))
+    };
+}
+
+async function startSurveyForDay(dayId) {
+    return mutateSurveys(async () => {
+        const saved = surveyData();
+        if (saved.days[dayId]) return { error: 'Für diesen Spieltag wurde die Umfrage bereits gestartet' };
+        const matches = csvRows(readFile('spiele.csv'));
+        const header = matches[0] || [];
+        const index = Object.fromEntries(header.map((name, i) => [name, i]));
+        const participantIds = [...new Set(matches.slice(1)
+            .filter(row => row[index.typ] === 'match' && row[index.match_day_id] === dayId)
+            .map(row => row[index.spieler_id])
+            .filter(Boolean))];
+        if (!participantIds.length) return { error: 'Für diesen Spieltag wurden keine eindeutig zugeordneten Einzelspiele gefunden. Alte Spiele ohne matchDayId bleiben unverändert.' };
+
+        const players = surveyPlayers();
+        const playerById = new Map(players.map(player => [player.id, player]));
+        const eligible = participantIds.filter(id => playerById.has(id)).map(id => playerById.get(id));
+        if (!eligible.length) return { error: 'Die Spiele enthalten keine Spieler, die aktuell im Kader sind' };
+
+        const finishedAt = new Date().toISOString();
+        const closesAt = surveyDeadline(finishedAt);
+        const comparisonCounts = {};
+        const forms = {};
+        for (const player of eligible) forms[player.id] = generateQuestionnaire(player.id, eligible, comparisonCounts);
+        snapshotSurveyPriors(saved, players);
+        const invites = Object.fromEntries(eligible.map(player => [player.id, {
+            status: 'pending', attempts: 0, updatedAt: finishedAt
+        }]));
+        saved.days[dayId] = {
+            id: dayId, finishedAt, closesAt, participants: eligible.map(player => player.id),
+            forms, submissions: {}, invites, results: null
+        };
+        await writeJson('umfragen.json', saved);
+        setImmediate(async () => {
+            for (const player of eligible) {
+                try { await sendSurveyInvitation(dayId, player.id); }
+                catch (error) { console.error(`Versand der Umfrageeinladung für ${dayId}/${player.id} fehlgeschlagen:`, error.message); }
+            }
+        });
+        return { day: saved.days[dayId] };
+    });
 }
 
 // Antwort-Link in der Mail: signiert, gilt bis 3 Tage nach dem Spieltag, ändert beim Aufruf nichts (nur ein Klick auf der Seite)
@@ -618,7 +947,16 @@ function spielerIdOf(session) {
 
 function zahlungenFor(session) {
     const z = loadZahlungen();
-    const list = [...z.spieltage].sort((a, b) => (b.datum + b.uhrzeit).localeCompare(a.datum + a.uhrzeit));
+    const surveys = surveyData().days;
+    const list = [...z.spieltage].map(day => {
+        const survey = surveys[day.id];
+        return {
+            ...day,
+            finishedAt: survey ? survey.finishedAt : null,
+            closesAt: survey ? survey.closesAt : null,
+            surveyStarted: !!survey
+        };
+    }).sort((a, b) => (b.datum + b.uhrzeit).localeCompare(a.datum + a.uhrzeit));
     if (session.role === 'admin') return list;
     const mine = spielerIdOf(session);
     const cash = mine ? cashSummary(z) : null;
@@ -627,7 +965,8 @@ function zahlungenFor(session) {
         const billed = !!mine && s.betragCent != null && s.teilnehmer.includes(mine);
         const account = billed ? cash.chargeStatus[`${s.id}:${mine}`] : null;
         return {
-            id: s.id, datum: s.datum, uhrzeit: s.uhrzeit, ort: s.ort, titel: s.titel, einladungAt: s.einladungAt || null,
+            id: s.id, datum: s.datum, uhrzeit: s.uhrzeit, dauerMinuten: s.dauerMinuten, ort: s.ort, titel: s.titel,
+            finishedAt: s.finishedAt, closesAt: s.closesAt, surveyStarted: s.surveyStarted, einladungAt: s.einladungAt || null,
             antworten: Object.fromEntries(Object.entries(s.antworten).map(([id, a]) => [id, { status: a.status }])),
             betragCent: billed ? s.betragCent : null,
             teilnehmer: billed ? [mine] : [],
@@ -703,7 +1042,7 @@ async function handle(req, res) {
     if (url === '/rsvp' && (method === 'GET' || method === 'POST')) return handleRsvp(req, res, parsed);
 
     // --- ohne Login erreichbar ---
-    if (AUTH_ENABLED && method === 'GET' && url === '/login') return startLogin(res);
+    if (AUTH_ENABLED && method === 'GET' && url === '/login') return startLogin(res, parsed.searchParams.get('returnTo') || '/');
     if (AUTH_ENABLED && method === 'GET' && url === '/callback') {
         try { return await finishLogin(req, res, parsed.searchParams); }
         catch (e) {
@@ -733,6 +1072,112 @@ async function handle(req, res) {
     }
     const isAdmin = session.role === 'admin';
     const requireAdmin = () => { if (isAdmin) return true; sendJson(res, 403, { ok: false, error: 'Nur für Admins' }); return false; };
+
+    if (url === '/api/umfragen' && method === 'GET') {
+        const saved = await closeDueSurveys();
+        return sendJson(res, 200, {
+            surveys: Object.values(saved.days).map(day => {
+                const view = publicSurveyDay(day, session);
+                if (isAdmin) {
+                    const names = new Map(surveyPlayers().map(player => [player.id, player.name]));
+                    view.inviteDetails = Object.entries(day.invites || {}).map(([playerId, invite]) => ({
+                        playerId, player: names.get(playerId) || '(gelöscht)', status: invite.status,
+                        error: invite.error || ''
+                    }));
+                    view.ratingChanges = saved.ratings.history.filter(change => change.dayId === day.id)
+                        .map(change => ({ ...change, player: names.get(change.playerId) || '(gelöscht)' }));
+                }
+                return view;
+            })
+        });
+    }
+
+    const surveyApi = /^\/api\/umfragen\/([\w-]+)(?:\/(antwort))?$/.exec(url);
+    if (surveyApi && surveyApi[2] && method === 'POST') {
+        const [, dayId] = surveyApi;
+        const playerId = spielerIdOf(session);
+        if (!playerId) return sendJson(res, 403, { ok: false, error: 'Dein Login ist noch keinem Spieler zugeordnet' });
+        const body = await readJsonBody(req, 1e5);
+        const result = await mutateSurveys(async () => {
+            const saved = surveyData();
+            const day = saved.days[dayId];
+            if (!day || !day.participants.includes(playerId)) return { status: 403, error: 'Du bist für diesen Spieltag nicht teilnahmeberechtigt' };
+            if (isSurveyClosed(day.closesAt)) {
+                if (!day.results) {
+                    day.results = calculateSurveyAwards(day);
+                    day.publishedAt = day.closesAt;
+                    await writeJson('umfragen.json', saved);
+                }
+                return { status: 410, error: 'Die Umfrage für diesen Spieltag ist abgeschlossen.' };
+            }
+            if (day.submissions[playerId]) return { status: 409, error: 'Du hast diese Umfrage bereits abgeschickt' };
+            const answers = body && typeof body === 'object' && !Array.isArray(body) ? body.answers : null;
+            if (!validAnswer(day.forms[playerId], answers)) return { status: 400, error: 'Bitte beantworte alle Fragen mit den angebotenen Antworten' };
+            day.submissions[playerId] = {
+                playerId, submittedAt: new Date().toISOString(),
+                answers: {
+                    surprise: answers.surprise,
+                    motm: answers.motm,
+                    comparisons: answers.comparisons.map(answer => {
+                        const question = day.forms[playerId].comparisons.find(item => item.id === answer.id);
+                        return {
+                            id: question.id, kind: question.kind, attribute: question.attribute,
+                            a: question.a, b: question.b, value: answer.value
+                        };
+                    })
+                }
+            };
+            await recalculateSurveyRatings(saved, dayId);
+            await writeJson('umfragen.json', saved);
+            return { submittedAt: day.submissions[playerId].submittedAt, ratings: saved.ratings.current };
+        });
+        if (result.error) return sendJson(res, result.status, { ok: false, error: result.error });
+        return sendJson(res, 200, { ok: true, submittedAt: result.submittedAt });
+    }
+
+    if (surveyApi && !surveyApi[2] && method === 'GET') {
+        const [, dayId] = surveyApi;
+        const saved = await closeDueSurveys();
+        const day = saved.days[dayId];
+        if (!day) return sendJson(res, 404, { ok: false, error: 'Für diesen Spieltag wurde keine Umfrage gestartet' });
+        if (isAdmin) return sendJson(res, 200, publicSurveyDay(day, session));
+        const playerId = spielerIdOf(session);
+        if (!playerId) return sendJson(res, 403, { ok: false, error: 'Dein Login ist noch keinem Spieler zugeordnet' });
+        if (!day.participants.includes(playerId)) return sendJson(res, 403, { ok: false, error: 'Du bist für diesen Spieltag nicht teilnahmeberechtigt' });
+        const closed = isSurveyClosed(day.closesAt);
+        const submission = day.submissions[playerId];
+        return sendJson(res, 200, {
+            id: dayId, closesAt: day.closesAt, status: closed ? 'closed' : 'open',
+            submitted: !!submission, submittedAt: submission ? submission.submittedAt : null,
+            answers: submission ? submission.answers : null,
+            form: !closed && !submission ? matchedSurveyForm(day, playerId) : null,
+            results: closed ? day.results : null
+        });
+    }
+
+    const finishSurveyApi = /^\/api\/spieltage\/([\w-]+)\/umfrage\/abschliessen$/.exec(url);
+    if (finishSurveyApi && method === 'POST') {
+        if (!requireAdmin()) return;
+        const dayId = finishSurveyApi[1];
+        const dayRecord = loadZahlungen().spieltage.find(item => item.id === dayId);
+        if (!dayRecord) return sendJson(res, 404, { ok: false, error: 'Spieltag nicht gefunden' });
+        const result = await startSurveyForDay(dayId);
+        if (result.error) return sendJson(res, 409, { ok: false, error: result.error });
+        scheduleNextSurveyClose();
+        return sendJson(res, 201, { ok: true, finishedAt: result.day.finishedAt, closesAt: result.day.closesAt, participantCount: result.day.participants.length });
+    }
+
+    const retrySurveyInviteApi = /^\/api\/spieltage\/([\w-]+)\/umfrage\/einladungen\/([\w-]+)$/.exec(url);
+    if (retrySurveyInviteApi && method === 'POST') {
+        if (!requireAdmin()) return;
+        const [, dayId, playerId] = retrySurveyInviteApi;
+        const saved = surveyData(), invite = saved.days[dayId] && saved.days[dayId].invites[playerId];
+        if (!invite) return sendJson(res, 404, { ok: false, error: 'Einladung nicht gefunden' });
+        if (invite.status !== 'failed') return sendJson(res, 409, { ok: false, error: 'Nur fehlgeschlagene Einladungen können erneut versendet werden' });
+        await sendSurveyInvitation(dayId, playerId, true);
+        const updated = surveyData().days[dayId].invites[playerId];
+        return sendJson(res, updated.status === 'sent' ? 200 : 502, { ok: updated.status === 'sent', status: updated.status, error: updated.error || null });
+    }
 
     if (method === 'GET' && (url === '/' || url === '/index.html' || url === '/random.html')) {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -916,10 +1361,14 @@ async function handle(req, res) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(b.datum || '')) return sendJson(res, 400, { ok: false, error: 'Datum erforderlich' });
         const uhrzeit = String(b.uhrzeit || '').trim();
         if (uhrzeit && !/^([01]\d|2[0-3]):[0-5]\d$/.test(uhrzeit)) return sendJson(res, 400, { ok: false, error: 'Uhrzeit im Format HH:MM' });
+        const dauerMinuten = b.dauerMinuten == null || b.dauerMinuten === '' ? null : Number(b.dauerMinuten);
+        if (dauerMinuten !== null && (!Number.isInteger(dauerMinuten) || dauerMinuten < 1 || dauerMinuten > 1440)) {
+            return sendJson(res, 400, { ok: false, error: 'Dauer muss eine ganze Zahl zwischen 1 und 1440 Minuten sein' });
+        }
         const z = loadZahlungen();
         const spieltag = normSpieltag({
             id: 'st_' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex'),
-            datum: b.datum, uhrzeit, ort: String(b.ort || '').trim().slice(0, 80)
+            datum: b.datum, uhrzeit, dauerMinuten, ort: String(b.ort || '').trim().slice(0, 80)
         });
         z.spieltage.push(spieltag);
         await writeJson('zahlungen.json', z);
@@ -938,6 +1387,7 @@ async function handle(req, res) {
 
         if (!action && method === 'DELETE') {
             if (!requireAdmin()) return;
+            if (surveyData().days[id]) return sendJson(res, 409, { ok: false, error: 'Ein Spieltag mit gestarteter Umfrage kann nicht gelöscht werden' });
             z.spieltage = z.spieltage.filter(x => x.id !== id);
             return ok();
         }
@@ -1060,6 +1510,7 @@ async function handle(req, res) {
     if (url === '/api/state' && method === 'GET') {
         const state = {};
         for (const [key, file] of Object.entries(FILES)) state[key] = readFile(file);
+        state.spieler = playersCsvWithSurveyRatings(state.spieler, surveyData().ratings.current);
         return sendJson(res, 200, state);
     }
 
@@ -1080,7 +1531,44 @@ async function handle(req, res) {
     res.end();
 }
 
-loadStore().then(() => {
+async function recoverSurveyTasks() {
+    await mutateSurveys(async () => {
+        const saved = surveyData();
+        let changed = false;
+        for (const day of Object.values(saved.days)) {
+            for (const invite of Object.values(day.invites || {})) {
+                if (invite.status === 'sending') {
+                    invite.status = 'uncertain';
+                    invite.error = 'Versandstatus nach Serverneustart unklar; kein automatischer erneuter Versand';
+                    invite.updatedAt = new Date().toISOString();
+                    changed = true;
+                }
+                if (invite.status === 'pending' && isSurveyClosed(day.closesAt)) {
+                    invite.status = 'expired';
+                    invite.error = 'Die Umfragefrist ist vor dem Versand abgelaufen';
+                    invite.updatedAt = new Date().toISOString();
+                    changed = true;
+                }
+            }
+        }
+        if (changed) await writeJson('umfragen.json', saved);
+    });
+    const saved = await closeDueSurveys();
+    for (const day of Object.values(saved.days)) {
+        for (const [playerId, invite] of Object.entries(day.invites || {})) {
+            if (invite.status === 'pending') {
+                sendSurveyInvitation(day.id, playerId).catch(error =>
+                    console.error(`Wiederaufnahme der Umfrageeinladung für ${day.id}/${playerId} fehlgeschlagen:`, error.message)
+                );
+            }
+        }
+    }
+}
+
+loadStore().then(async () => {
+    try { await recoverSurveyTasks(); }
+    catch (error) { console.error('Umfrage-Wiederherstellung fehlgeschlagen:', error.message); }
+    scheduleNextSurveyClose();
     server.listen(PORT, HOST, () => {
         const addr = `http://localhost:${PORT}`;
         console.log(`FC-M:Sys läuft auf ${AUTH_ENABLED ? PUBLIC_URL : addr}`);

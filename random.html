@@ -38,6 +38,7 @@
             color: var(--ink); user-select: none; flex-shrink: 0;
             filter: drop-shadow(0 .5em .9em rgba(15,23,42,.28));
         }
+
         .fut-shape, .fut-inner {
             clip-path: polygon(50% 0, 86% 3.5%, 100% 11%, 100% 85%, 93% 92%, 50% 100%, 7% 92%, 0 85%, 0 11%, 14% 3.5%);
         }
@@ -262,6 +263,8 @@
                         <input type="date" id="dayDatum" required class="block mt-1 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
                     <label class="text-xs text-slate-500">Uhrzeit
                         <input type="time" id="dayUhrzeit" value="19:00" class="block mt-1 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
+                    <label class="text-xs text-slate-500">Dauer (Minuten)
+                        <input type="number" id="dayDauerMinuten" min="1" max="1440" step="1" placeholder="z. B. 90" class="block mt-1 w-32 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
                     <label class="text-xs text-slate-500">Ort
                         <input type="text" id="dayOrt" maxlength="80" placeholder="z. B. Halle Nord" class="block mt-1 w-52 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition"><i class="fa-solid fa-plus mr-1.5"></i>Spieltag anlegen</button>
@@ -607,7 +610,7 @@
                 <p id="tierPreview" class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"></p>
                 <p id="tierError" class="text-xs text-rose-600 hidden"></p>
                 <button type="button" id="mailTestBtn" class="hidden w-full text-xs text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 transition" title="Schickt eine Testmail an deine eigene Adresse und zeigt Fehler des Mail-Dienstes an"><i class="fa-solid fa-paper-plane mr-1.5"></i>Mail-Versand testen (Testmail an mich)</button>
-                <button type="button" id="alignAllBtn" class="w-full text-xs text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 transition" title="Mittel der Einzelwerte wird auf den Gesamtwert gezogen"><i class="fa-solid fa-rotate mr-1.5"></i>Alle Spielerwerte neu aus der Elo berechnen</button>
+                <button type="button" id="alignAllBtn" class="w-full text-xs text-slate-400 border border-slate-200 rounded-lg px-3 py-2 cursor-not-allowed" title="Spielerattribute werden aus den Spieltagsumfragen ermittelt" disabled><i class="fa-solid fa-lock mr-1.5"></i>Attributwerte werden aus Umfragen ermittelt</button>
                 <div class="flex gap-2 pt-1">
                     <button type="button" id="tierDefaultBtn" class="px-3 text-slate-500 hover:bg-slate-100 text-sm font-semibold rounded-lg transition" title="Standardwerte einsetzen">Standard</button>
                     <button type="button" id="tierCancelBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-2.5 rounded-lg transition">Abbrechen</button>
@@ -651,10 +654,10 @@
                     <input type="number" id="editPlayerElo" min="100" max="3000" required class="w-full border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Karten-Werte (1–99)</label>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Attribut-Startwerte (1–99)</label>
                     <div id="editStatsGrid" class="grid grid-cols-3 gap-2"></div>
                 </div>
-                <p class="text-[11px] text-slate-400 -mt-2">Bei Elo-Änderungen verteilt das System die Punkte automatisch auf die Werte (+1 Gesamtwert = 6 Punkte, nach Position gewichtet). Von Hand gesetzte Werte bleiben, wie du sie einträgst.</p>
+                <p class="text-[11px] text-slate-400 -mt-2">Elo und Gesamtwert werden unabhängig von den Attributen geführt. Die hier gesetzten Attributwerte dienen als Startwerte; nach Spieltagsumfragen werden die Werte aus den Antworten berechnet.</p>
                 <div class="flex gap-2 pt-2">
                     <button type="button" id="deletePlayerBtn" title="Spieler löschen" class="px-3.5 text-rose-600 hover:bg-rose-50 border border-rose-200 text-sm font-semibold rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
                     <button type="button" id="cancelEditBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-2.5 rounded-lg transition">Abbrechen</button>
@@ -679,6 +682,28 @@
         </div>
     </div>
 
+    <div id="surveyModal" class="fixed inset-0 z-[70] hidden bg-slate-950/60 backdrop-blur-sm p-0 sm:p-4">
+        <div class="mx-auto flex h-full max-w-2xl flex-col overflow-hidden bg-white shadow-2xl sm:my-4 sm:h-[calc(100%-2rem)] sm:rounded-2xl">
+            <header class="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 sm:px-6">
+                <div class="min-w-0">
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-blue-600">FC M · Spieltagsumfrage</p>
+                    <h2 id="surveyTitle" class="mt-1 text-lg font-bold">Spieltag bewerten</h2>
+                    <p id="surveyTimeLeft" class="mt-1 text-xs text-slate-500"></p>
+                </div>
+                <button id="surveyCloseBtn" type="button" class="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Umfrage schließen"><i class="fa-solid fa-xmark"></i></button>
+            </header>
+            <div class="px-4 pt-4 sm:px-6">
+                <div class="mb-2 flex items-center justify-between text-xs text-slate-500"><span id="surveyProgressText"></span><span>Antworten werden lokal zwischengespeichert</span></div>
+                <div class="h-1.5 overflow-hidden rounded-full bg-slate-100"><div id="surveyProgressBar" class="h-full rounded-full bg-blue-600 transition-all"></div></div>
+            </div>
+            <main id="surveyContent" class="flex-1 overflow-y-auto px-4 py-5 sm:px-6"></main>
+            <footer class="flex items-center justify-between border-t border-slate-200 px-4 py-3 sm:px-6">
+                <button id="surveyBackBtn" type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"><i class="fa-solid fa-arrow-left mr-1.5"></i>Zurück</button>
+                <button id="surveySubmitBtn" type="button" class="hidden rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"><i class="fa-solid fa-paper-plane mr-1.5"></i>Umfrage abschicken</button>
+            </footer>
+        </div>
+    </div>
+
     <script>
         const $ = id => document.getElementById(id);
 
@@ -700,6 +725,9 @@
         let activeTab = 'players';
         let me = { role: 'admin', spielerId: null, paypal: '', authEnabled: false };   // wird in loadMe() vom Server gesetzt
         let spieltage = [];
+        let surveyDays = [];
+        let activeSurvey = null;
+        let surveyCountdownTimer = null;
         let kassenbuchEntries = [];
         let kassenbuchSummary = null;
         let kindeUsers = {};
@@ -920,7 +948,7 @@
         // 2. CSV (de-Excel-Format: Semikolon, UTF-8 mit BOM)
         // =====================================================================
         const SEP = ';';
-        const SPIELE_HEADER = ['seq', 'zeit', 'typ', 'match_id', 'spieler_id', 'spieler', 'team', 'tore_eigene', 'tore_gegner', 'elo_vorher', 'elo_nachher', 'delta'];
+        const SPIELE_HEADER = ['seq', 'zeit', 'typ', 'match_id', 'spieler_id', 'spieler', 'team', 'tore_eigene', 'tore_gegner', 'elo_vorher', 'elo_nachher', 'delta', 'match_day_id'];
 
         function csvEscape(v) {
             v = v === null || v === undefined ? '' : String(v);
@@ -962,13 +990,13 @@
             const ORDER = { start: 0, match: 1, manuell: 2 };
             matchHistory.forEach(m => {
                 [['A', m.teamA, m.goalsA, m.goalsB], ['B', m.teamB, m.goalsB, m.goalsA]].forEach(([team, list, own, opp]) => {
-                    list.forEach(p => rows.push({ k: ORDER.match, r: [m.seq, m.iso, 'match', m.id, p.id, p.name, team, own, opp, p.before, p.after, p.delta] }));
+                    list.forEach(p => rows.push({ k: ORDER.match, r: [m.seq, m.iso, 'match', m.id, p.id, p.name, team, own, opp, p.before, p.after, p.delta, m.matchDayId || ''] }));
                 });
             });
             players.forEach(p => p.history.forEach((h, i) => {
                 if (h.matchId) return;
                 const typ = i === 0 && h.delta === 0 ? 'start' : 'manuell';
-                rows.push({ k: ORDER[typ], r: [h.seq, h.t, typ, '', p.id, p.name, '', '', '', h.elo - h.delta, h.elo, h.delta] });
+                rows.push({ k: ORDER[typ], r: [h.seq, h.t, typ, '', p.id, p.name, '', '', '', h.elo - h.delta, h.elo, h.delta, ''] });
             }));
             // stable sort: seq, then start < match < manuell
             rows.forEach((x, i) => x.i = i);
@@ -992,7 +1020,7 @@
                 const player = byId[r.spieler_id];
                 if (player) player.history.push({ seq, t: r.zeit, elo: after, delta, matchId: r.typ === 'match' ? r.match_id : null });
                 if (r.typ !== 'match') return;
-                if (!matches.has(r.match_id)) matches.set(r.match_id, { id: r.match_id, seq, iso: r.zeit, goalsA: null, goalsB: null, teamA: [], teamB: [] });
+                if (!matches.has(r.match_id)) matches.set(r.match_id, { id: r.match_id, seq, iso: r.zeit, matchDayId: r.match_day_id || '', goalsA: null, goalsB: null, teamA: [], teamB: [] });
                 const m = matches.get(r.match_id);
                 const entry = { id: r.spieler_id, name: r.spieler, before, after, delta };
                 if (r.team === 'A') { m.teamA.push(entry); m.goalsA = parseInt(r.tore_eigene); m.goalsB = parseInt(r.tore_gegner); }
@@ -1127,7 +1155,6 @@
                 const player = players.find(x => x.id === p.id);
                 const before = player.elo;
                 player.elo = Math.max(100, before + change);
-                applyEloToStats(player, before, player.elo);
                 const delta = player.elo - before;
                 player.history.push({ seq, t: nowIso, elo: player.elo, delta, matchId });
                 return { id: player.id, name: player.name, before, after: player.elo, delta };
@@ -1135,7 +1162,7 @@
 
             const logA = apply(currentTeams.teamA, changeA);
             const logB = apply(currentTeams.teamB, changeB);
-            matchHistory.push({ id: matchId, seq, iso: nowIso, result, goalsA: gA, goalsB: gB, teamA: logA, teamB: logB });
+            matchHistory.push({ id: matchId, seq, iso: nowIso, matchDayId: matchDayId || '', result, goalsA: gA, goalsB: gB, teamA: logA, teamB: logB });
             if (matchDayId && serverMode) markAttended(matchDayId, [...logA, ...logB].map(x => x.id));
 
             $('goalsAInput').value = '';
@@ -1635,7 +1662,6 @@
                 }
                 // Von Hand geänderte Werte gelten so; bei reiner Elo-Korrektur verteilt das System die Punkte (6 je GES)
                 if (STAT_KEYS.some(k => entered[k] !== shown[k])) p.stats = entered;
-                else if (newElo !== eloOld) applyEloToStats(p, eloOld, newElo);
                                 if (pendingPhoto !== undefined) await storePhoto(p, pendingPhoto);
                 saveApplicationData(); renderAll();
                 showToast("Gespeichert", "Spielerdaten aktualisiert.", "info");
@@ -1815,14 +1841,6 @@
             } catch (err) { showToast('Mail-Versand fehlgeschlagen', err.message, 'error'); }
             b.disabled = false;
         };
-        $('alignAllBtn').onclick = () => {
-            if (!confirm('Die Einzelwerte ALLER Spieler werden so neu berechnet, dass ihr Mittel dem Gesamtwert aus der Elo entspricht. Von Hand gesetzte Werte gehen dabei verloren. Fortfahren?')) return;
-            statMode = $('statModeSel').value;
-            players.forEach(alignStats);
-            saveApplicationData(); renderAll();
-            showToast('Werte neu berechnet', 'Alle Spieler wurden an ihre Elo angeglichen. (Verteilung wird erst mit „Speichern“ dauerhaft übernommen.)', 'success');
-        };
-
         function deletePlayer(id) {
             const p = players.find(x => x.id === id);
             if (!p || !confirm(`${p.name} wirklich löschen?`)) return;
@@ -2077,7 +2095,7 @@
         let matchDayId = '';  // Spieltag im Tab "Aktuelles Spiel"
         let matchDayInit = false;
         const todayIso = () => new Date().toLocaleDateString('sv-SE');
-        const dayText = s => `${fmtDate(s.datum)}${s.uhrzeit ? ' · ' + s.uhrzeit + ' Uhr' : ''}${s.ort || s.titel ? ' · ' + (s.ort || s.titel) : ''}`;
+        const dayText = s => `${fmtDate(s.datum)}${s.uhrzeit ? ' · ' + s.uhrzeit + ' Uhr' : ''}${s.dauerMinuten ? ' · ' + s.dauerMinuten + ' Min.' : ''}${s.ort || s.titel ? ' · ' + (s.ort || s.titel) : ''}`;
         const statusOf = (s, id) => (s.antworten && s.antworten[id] && s.antworten[id].status) || '';
         const confirmedIds = s => players.filter(p => statusOf(s, p.id) === 'zu').map(p => p.id);
         const sortedDays = () => [...spieltage].sort((a, b) => (b.datum + (b.uhrzeit || '')).localeCompare(a.datum + (a.uhrzeit || '')));
@@ -2115,6 +2133,7 @@
                     kassenbuchEntries = [];
                     kassenbuchSummary = null;
                 }
+                surveyDays = (await api('GET', '/api/umfragen')).surveys;
                 if (me.role === 'admin') kindeUsers = me.authEnabled ? await api('GET', '/api/users') : {};
             } catch (e) { showToast('Spieltage konnten nicht geladen werden', e.message, 'error'); return; }
             if (me.role === 'admin' && !matchDayInit && spieltage.length) {
@@ -2127,6 +2146,70 @@
             if (me.role === 'admin') renderMatchTab();
         }
         const loadPayments = loadSpieltage;
+
+        function surveyAwardsHtml(survey) {
+            if (!survey.results) return '';
+            return [['motm', '🏆 Man of the Match'], ['surprise', '⭐ Überraschung des Spieltags']].map(([key, title]) => {
+                const award = survey.results[key];
+                const winners = award && award.winners || [];
+                return `<div class="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+                    <h4 class="text-sm font-bold text-amber-900">${title}</h4>
+                    ${winners.length ? `<div class="mt-2 flex flex-wrap gap-2">${winners.map(player => `<div class="flex items-center gap-2 rounded-lg bg-white px-2.5 py-2 text-sm">
+                        ${player.photo ? `<img src="${escapeHtml(player.photo)}" class="h-8 w-8 rounded-full object-cover" alt="">` : '<span class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100"><i class="fa-solid fa-user text-amber-700"></i></span>'}
+                        <span class="font-semibold">${escapeHtml(player.player)}</span><span class="text-xs text-slate-500">${player.votes} ${player.votes === 1 ? 'Stimme' : 'Stimmen'}</span>
+                    </div>`).join('')}</div>` : '<p class="mt-1 text-xs text-slate-500">Keine gültigen Nominierungen.</p>'}
+                    ${award && award.ranking.length > winners.length ? `<details class="mt-2 text-xs text-slate-600"><summary class="cursor-pointer font-semibold">Weitere Nominierungen</summary><ol class="mt-1 list-inside list-decimal">${award.ranking.slice(winners.length).map(player => `<li>${escapeHtml(player.player)} · ${player.votes}</li>`).join('')}</ol></details>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        function surveySectionHtml(day, isAdmin) {
+            const survey = surveyDays.find(item => item.id === day.id);
+            if (!survey) {
+                return isAdmin ? `<div class="mt-4 border-t border-slate-100 pt-3">
+                    <button data-act="finishSurvey" data-st="${escapeHtml(day.id)}" class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"><i class="fa-solid fa-flag-checkered mr-1.5"></i>Spieltag abschließen &amp; Umfrage starten</button>
+                    <p class="mt-1 text-[11px] text-slate-500">Nach Abschluss wird die 48-Stunden-Frist gestartet und die Einladung versendet.</p>
+                </div>` : '';
+            }
+            const deadline = new Date(survey.closesAt);
+            if (isAdmin) {
+                const inviteDetails = (survey.inviteDetails || []).map(invite => `
+                    <div class="flex flex-wrap items-center justify-between gap-2 py-1 text-xs">
+                        <span>${escapeHtml(invite.player)} <span class="text-slate-400">· ${escapeHtml(invite.status)}</span>${invite.error ? `<span class="block text-rose-600">${escapeHtml(invite.error)}</span>` : ''}</span>
+                        ${invite.status === 'failed' ? `<button data-act="retrySurveyInvite" data-st="${escapeHtml(day.id)}" data-sp="${escapeHtml(invite.playerId)}" class="rounded border border-slate-300 px-2 py-1 font-semibold hover:bg-slate-50">Erneut senden</button>` : ''}
+                    </div>`).join('');
+                const statusCounts = Object.entries(survey.invites || {}).map(([status, count]) => `${escapeHtml(status)}: ${count}`).join(' · ');
+                const aggregates = [
+                    ['Tagesleistung', survey.performance || []],
+                    ['Attributvergleiche', survey.attributes || []]
+                ].map(([label, items]) => `<details class="mt-2">
+                    <summary class="cursor-pointer text-xs font-semibold text-slate-700">${label} (${items.length})</summary>
+                    <div class="mt-1 space-y-1">${items.length ? items.map(item => `<p class="text-xs text-slate-600">${escapeHtml(item.player)}${item.attribute ? ` · ${escapeHtml(item.attribute)}` : ''}: ${Math.round(item.average * 100)}% aus ${item.votes} ${item.votes === 1 ? 'Vergleich' : 'Vergleichen'}</p>`).join('') : '<p class="text-xs text-slate-400">Noch keine auswertbaren Vergleiche.</p>'}</div>
+                </details>`).join('');
+                const changes = survey.ratingChanges || [];
+                const changeHistory = `<details class="mt-2">
+                    <summary class="cursor-pointer text-xs font-semibold text-slate-700">Attributänderungen (${changes.length})</summary>
+                    <div class="mt-1 space-y-1">${changes.length ? changes.map(change => `<p class="text-xs text-slate-600">${escapeHtml(change.player)} · ${escapeHtml(change.attribute)}: ${change.before} → ${change.after}</p>`).join('') : '<p class="text-xs text-slate-400">Noch keine Attributänderungen.</p>'}</div>
+                </details>`;
+                const responseRate = survey.participantCount ? Math.round(survey.submittedCount / survey.participantCount * 100) : 0;
+                return `<div class="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div><p class="text-sm font-bold text-indigo-950">Spieltagsumfrage · ${survey.status === 'closed' ? 'abgeschlossen' : 'offen'}</p>
+                        <p class="text-xs text-slate-600">${survey.submittedCount} von ${survey.participantCount} beantwortet (${responseRate}%)${survey.status === 'open' ? ` · noch ${Math.max(0, Math.floor((Date.parse(survey.closesAt) - Date.now()) / 3600000))} Std. bis zur Schließung` : ''}</p></div>
+                        <span class="text-[11px] text-slate-500">${statusCounts}</span>
+                    </div>
+                    ${inviteDetails ? `<details class="mt-2"><summary class="cursor-pointer text-xs font-semibold text-slate-700">Einladungsstatus anzeigen</summary><div class="mt-1 divide-y divide-indigo-100">${inviteDetails}</div></details>` : ''}
+                    ${aggregates}${changeHistory}
+                    ${survey.status === 'closed' ? `<div class="mt-3 grid gap-2 sm:grid-cols-2">${surveyAwardsHtml(survey)}</div>` : ''}
+                </div>`;
+            }
+            const surveyControl = !survey.eligible ? '' : survey.status === 'closed'
+                ? '<p class="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-600">Die Umfrage für diesen Spieltag ist abgeschlossen.</p>'
+                : survey.answered
+                    ? '<p class="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800"><i class="fa-solid fa-check mr-1.5"></i>Deine Umfrage wurde abgeschickt.</p>'
+                    : `<button data-act="openSurvey" data-st="${escapeHtml(day.id)}" class="mt-3 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"><i class="fa-solid fa-clipboard-check mr-1.5"></i>Spieltag bewerten · ${Math.max(0, Math.ceil((Date.parse(survey.closesAt) - Date.now()) / 3600000))} Std. verbleibend</button>`;
+            return `${surveyControl}${survey.status === 'closed' ? `<div class="mt-3 grid gap-2 sm:grid-cols-2">${surveyAwardsHtml(survey)}</div>` : ''}`;
+        }
 
         // ---- Tab: Spieltage ----
         function renderDays() {
@@ -2171,21 +2254,23 @@
                     ? 'Einladung gesendet ' + new Date(s.einladungAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
                     : 'Einladung noch nicht gesendet';
                 const btnCls = 'text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition';
+                const existingSurvey = surveyDays.some(item => item.id === s.id);
                 const admin = isAdmin ? `<div class="flex flex-wrap items-center gap-1.5">
                     <button data-act="invite" data-st="${sid}" ${me.mailEnabled ? '' : 'disabled'} title="${me.mailEnabled ? 'Mail mit Zusagen-/Absagen-Link an alle Spieler mit bekannter Mail-Adresse' : 'Mail-Versand ist nicht eingerichtet'}" class="${btnCls} disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-envelope mr-1.5 text-blue-500"></i>${s.einladungAt ? 'Erneut einladen' : 'Einladung per Mail'}</button>
                     <button data-act="match" data-st="${sid}" class="${btnCls}" title="Mit den Zusagen dieses Spieltags Teams bilden"><i class="fa-solid fa-futbol mr-1.5 text-blue-500"></i>Spiel starten</button>
                     <button data-act="bill" data-st="${sid}" class="${btnCls}" title="Zahlung für diesen Spieltag anfordern"><i class="fa-solid fa-euro-sign mr-1.5 text-blue-500"></i>${isBilled(s) ? 'Abgerechnet · ' + eur(s.betragCent) : 'Abrechnen'}</button>
-                    <button data-act="delete" data-st="${sid}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+                    ${existingSurvey ? '' : `<button data-act="delete" data-st="${sid}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>`}
                 </div>` : '';
 
                 return `<div class="card p-5 ${past ? 'opacity-80' : ''}">
                     <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
                         <div>
-                            <h3 class="font-bold">${escapeHtml(fmtDate(s.datum))}${s.uhrzeit ? ' · ' + escapeHtml(s.uhrzeit) + ' Uhr' : ''}${past ? ' <span class="ml-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 align-middle">vergangen</span>' : ''}</h3>
+                            <h3 class="font-bold">${escapeHtml(fmtDate(s.datum))}${s.uhrzeit ? ' · ' + escapeHtml(s.uhrzeit) + ' Uhr' : ''}${s.dauerMinuten ? ' · ' + escapeHtml(s.dauerMinuten) + ' Min.' : ''}${past ? ' <span class="ml-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 align-middle">vergangen</span>' : ''}</h3>
                             <p class="text-xs text-slate-500 mt-0.5">${s.ort || s.titel ? `<i class="fa-solid fa-location-dot mr-1"></i>${escapeHtml(s.ort || s.titel)} · ` : ''}<b class="text-emerald-700">${zu} zugesagt</b> · ${ab} abgesagt · ${players.length - zu - ab} offen${isAdmin ? ' · ' + invited : ''}</p>
                         </div>${admin}
                     </div>
                     ${own}
+                    ${surveySectionHtml(s, isAdmin)}
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">${chips}</div>
                 </div>`;
             }).join('') || '<div class="card p-5 text-sm text-slate-400">Noch keine Spieltage angelegt.</div>';
@@ -2198,6 +2283,17 @@
             try {
                 if (act === 'tn') await api('POST', `/api/spieltage/${st}/teilnahme`, { spielerId: sp, status: s || null });
                 else if (act === 'self') await api('POST', `/api/spieltage/${st}/antwort`, { status: s });
+                else if (act === 'finishSurvey') {
+                    if (!confirm('Spieltag abschließen? Damit startet die 48-Stunden-Umfrage und die Einladungen werden versendet.')) return;
+                    await api('POST', `/api/spieltage/${st}/umfrage/abschliessen`);
+                    showToast('Spieltag abgeschlossen', 'Die 48-Stunden-Umfrage wurde gestartet.', 'success');
+                } else if (act === 'retrySurveyInvite') {
+                    await api('POST', `/api/spieltage/${st}/umfrage/einladungen/${sp}`);
+                    showToast('Einladung erneut versendet', 'Die Umfrageeinladung wurde angenommen.', 'success');
+                } else if (act === 'openSurvey') {
+                    await openSurvey(st);
+                    return;
+                }
                 else if (act === 'invite') {
                     const d = spieltage.find(x => x.id === st);
                     if (!confirm(`Einladung für ${dayText(d)} jetzt per Mail an alle Spieler mit bekannter Mail-Adresse senden?`)) return;
@@ -2223,11 +2319,167 @@
             } catch (err) { showToast('Fehler', err.message, 'error'); renderDays(); }
         };
 
+        const SURVEY_ANSWER_LABELS = {
+            a_much: 'A deutlich stärker', a_slight: 'A etwas stärker', equal: 'Beide etwa gleich stark',
+            b_slight: 'B etwas stärker', b_much: 'B deutlich stärker', unsure: 'Kann ich nicht beurteilen'
+        };
+
+        function surveySteps(form) {
+            const nominations = [
+                { id: 'surprise', kind: 'nomination', prompt: 'Wer war die Überraschung des Spieltags?', subtitle: 'Welcher Spieler hat deutlich besser gespielt, als du es von ihm erwartet hättest?', players: form.nominations.surprise.eligible, options: [{ id: 'none', label: 'Keine besondere Überraschung' }] },
+                { id: 'motm', kind: 'nomination', prompt: 'Wer war der Man of the Match?', subtitle: 'Wer hat über den gesamten Spieltag die beste individuelle Leistung gezeigt – unabhängig vom Mannschaftsergebnis?', players: form.nominations.motm.eligible, options: [{ id: 'unsure', label: 'Kann ich nicht beurteilen' }] }
+            ];
+            return [...nominations, ...form.comparisons.map(question => ({ ...question, kind: 'comparison' }))];
+        }
+
+        function surveyStorageKey(dayId) { return `fcmsys_survey_${dayId}_${me.spielerId}`; }
+
+        function closeSurveyModal() {
+            $('surveyModal').classList.add('hidden');
+            document.body.style.overflow = '';
+            clearInterval(surveyCountdownTimer);
+            surveyCountdownTimer = null;
+            activeSurvey = null;
+        }
+
+        function renderSurveyStep() {
+            if (!activeSurvey) return;
+            const { steps, answers, index, closesAt, day } = activeSurvey;
+            const step = steps[index];
+            const complete = index >= steps.length;
+            $('surveyTitle').textContent = `Spieltag ${fmtDate(day.datum)}`;
+            $('surveyProgressText').textContent = complete ? `${steps.length} von ${steps.length} Fragen beantwortet` : `Frage ${index + 1} von ${steps.length}`;
+            $('surveyProgressBar').style.width = `${complete ? 100 : Math.round(index / steps.length * 100)}%`;
+            $('surveyBackBtn').classList.toggle('invisible', index === 0);
+            $('surveySubmitBtn').classList.toggle('hidden', !complete);
+            $('surveySubmitBtn').disabled = steps.some(question => answers[question.id] === undefined);
+
+            if (complete) {
+                $('surveyContent').innerHTML = `<div class="py-8 text-center">
+                    <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><i class="fa-solid fa-check text-2xl"></i></span>
+                    <h3 class="mt-4 text-xl font-bold">Fast geschafft!</h3>
+                    <p class="mt-2 text-sm text-slate-600">Prüfe deine Antworten und schicke die Umfrage ab. Danach können sie nicht mehr geändert werden.</p>
+                    <div class="mt-5 space-y-2 text-left">${steps.map((question, i) => `<div class="rounded-lg border border-slate-200 px-3 py-2 text-xs"><b>${i + 1}. ${escapeHtml(question.prompt)}</b><p class="mt-1 text-slate-500">Antwort gespeichert</p></div>`).join('')}</div>
+                </div>`;
+                return;
+            }
+            if (step.kind === 'nomination') {
+                const options = step.players.map(player => ({ id: player.id, label: player.name, photo: player.photo }))
+                    .concat(step.options.map(option => ({ id: option.id, label: option.label })));
+                $('surveyContent').innerHTML = `<h3 class="text-xl font-bold leading-snug">${escapeHtml(step.prompt)}</h3>
+                    <p class="mt-2 text-sm text-slate-500">${escapeHtml(step.subtitle)}</p>
+                    <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">${options.map(option => `<button type="button" data-survey-choice="${escapeHtml(option.id)}" class="flex min-h-14 items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left transition ${answers[step.id] === option.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-300'}">
+                        ${option.photo ? `<img src="${escapeHtml(option.photo)}" alt="" class="h-10 w-10 rounded-full object-cover">` : '<span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500"><i class="fa-solid fa-user"></i></span>'}
+                        <span class="text-sm font-semibold">${escapeHtml(option.label)}</span>
+                    </button>`).join('')}</div>`;
+            } else {
+                const playerCard = (player, side) => `<div class="flex min-w-0 flex-1 flex-col items-center rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
+                    ${player.photo ? `<img src="${escapeHtml(player.photo)}" alt="" class="h-20 w-20 rounded-full object-cover shadow-sm">` : '<span class="flex h-20 w-20 items-center justify-center rounded-full bg-slate-200 text-slate-500"><i class="fa-solid fa-user text-2xl"></i></span>'}
+                    <span class="mt-2 text-sm font-bold">${escapeHtml(player.name)}</span><span class="text-xs text-slate-400">Spieler ${side}</span>
+                </div>`;
+                const choices = ['a_much', 'a_slight', 'equal', 'b_slight', 'b_much', 'unsure'];
+                $('surveyContent').innerHTML = `<h3 class="text-xl font-bold leading-snug">${escapeHtml(step.prompt)}</h3>
+                    <div class="mt-4 flex items-stretch gap-2">${playerCard(step.a, 'A')}${playerCard(step.b, 'B')}</div>
+                    <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">${choices.map(value => `<button type="button" data-survey-choice="${value}" class="min-h-12 rounded-xl border-2 px-3 py-2 text-sm font-semibold transition ${answers[step.id] === value ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'}">${SURVEY_ANSWER_LABELS[value]}</button>`).join('')}</div>`;
+            }
+            $('surveyContent').querySelectorAll('[data-survey-choice]').forEach(button => button.onclick = () => {
+                answers[step.id] = button.dataset.surveyChoice;
+                try { localStorage.setItem(surveyStorageKey(activeSurvey.dayId), JSON.stringify(answers)); } catch (error) { showToast('Zwischenspeichern nicht möglich', error.message, 'error'); }
+                activeSurvey.index = Math.min(activeSurvey.index + 1, activeSurvey.steps.length);
+                renderSurveyStep();
+            });
+        }
+
+        function updateSurveyCountdown() {
+            if (!activeSurvey) return;
+            const remaining = Math.max(0, Date.parse(activeSurvey.closesAt) - Date.now());
+            const hours = Math.floor(remaining / 3600000), minutes = Math.floor(remaining % 3600000 / 60000);
+            $('surveyTimeLeft').textContent = remaining ? `Noch ${hours} Std. ${minutes} Min. · geschlossen ${new Date(activeSurvey.closesAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'Die Umfragefrist ist abgelaufen.';
+            if (!remaining) $('surveySubmitBtn').disabled = true;
+        }
+
+        async function openSurvey(dayId) {
+            const detail = await api('GET', `/api/umfragen/${encodeURIComponent(dayId)}`);
+            if (detail.status === 'closed') return showToast('Umfrage abgeschlossen', 'Die Umfrage für diesen Spieltag ist abgeschlossen.', 'info');
+            if (detail.submitted) return showToast('Bereits abgeschickt', 'Du hast diese Umfrage bereits beantwortet.', 'info');
+            const day = spieltage.find(item => item.id === dayId);
+            if (!day || !detail.form) return showToast('Umfrage nicht verfügbar', 'Für diesen Spieltag ist keine Umfrage geöffnet.', 'error');
+            let answers = {};
+            try {
+                const saved = JSON.parse(localStorage.getItem(surveyStorageKey(dayId)) || '{}');
+                if (saved && typeof saved === 'object') answers = saved;
+            } catch (error) { showToast('Gespeicherte Antworten konnten nicht geladen werden', error.message, 'error'); }
+            activeSurvey = { dayId, day, closesAt: detail.closesAt, steps: surveySteps(detail.form), answers, index: 0 };
+            while (activeSurvey.index < activeSurvey.steps.length && answers[activeSurvey.steps[activeSurvey.index].id] !== undefined) activeSurvey.index++;
+            $('surveyModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            renderSurveyStep();
+            updateSurveyCountdown();
+            surveyCountdownTimer = setInterval(updateSurveyCountdown, 30000);
+        }
+
+        async function refreshSurveyState() {
+            if (!serverMode) return;
+            try {
+                const [state, surveyState] = await Promise.all([api('GET', '/api/state'), api('GET', '/api/umfragen')]);
+                surveyDays = surveyState.surveys;
+                if ($('editModal').classList.contains('hidden')) {
+                    const latest = new Map(parseCsv(state.spieler).map(row => [row.id, row]));
+                    let changed = false;
+                    players.forEach(player => {
+                        const row = latest.get(player.id);
+                        if (!row) return;
+                        const stats = Object.fromEntries(STAT_KEYS.map(key => [key, Math.max(1, Math.min(99, parseInt(row[key]) || player.stats[key]))]));
+                        if (STAT_KEYS.some(key => stats[key] !== player.stats[key])) {
+                            player.stats = stats;
+                            changed = true;
+                        }
+                    });
+                    if (changed) renderPlayersTab();
+                }
+                renderDays();
+            } catch (error) {
+                console.error('Umfrage- und Attributstatus konnte nicht aktualisiert werden:', error.message);
+            }
+        }
+
+        $('surveyBackBtn').onclick = () => {
+            if (activeSurvey && activeSurvey.index > 0 && activeSurvey.index <= activeSurvey.steps.length) {
+                activeSurvey.index--;
+                renderSurveyStep();
+            }
+        };
+        $('surveyCloseBtn').onclick = closeSurveyModal;
+        $('surveySubmitBtn').onclick = async () => {
+            if (!activeSurvey || $('surveySubmitBtn').disabled) return;
+            const button = $('surveySubmitBtn');
+            button.disabled = true;
+            try {
+                await api('POST', `/api/umfragen/${encodeURIComponent(activeSurvey.dayId)}/antwort`, { answers: activeSurvey.answers });
+                localStorage.removeItem(surveyStorageKey(activeSurvey.dayId));
+                closeSurveyModal();
+                const state = await api('GET', '/api/state');
+                stateFromCsv(state);
+                renderAll();
+                await loadSpieltage();
+                showToast('Umfrage abgeschickt', 'Vielen Dank! Deine Antworten wurden gewertet und die Spielerattribute aktualisiert.', 'success');
+            } catch (error) {
+                showToast('Umfrage konnte nicht abgeschickt werden', error.message, 'error');
+                button.disabled = false;
+            }
+        };
+
         $('newDayForm').onsubmit = async e => {
             e.preventDefault();
             try {
-                await api('POST', '/api/spieltage', { datum: $('dayDatum').value, uhrzeit: $('dayUhrzeit').value, ort: $('dayOrt').value.trim() });
+                await api('POST', '/api/spieltage', {
+                    datum: $('dayDatum').value,
+                    uhrzeit: $('dayUhrzeit').value,
+                    dauerMinuten: $('dayDauerMinuten').value,
+                    ort: $('dayOrt').value.trim()
+                });
                 $('dayOrt').value = '';
+                $('dayDauerMinuten').value = '';
                 showToast('Spieltag angelegt', 'Jetzt kannst du die Einladung per Mail senden.', 'success');
                 await loadSpieltage();
             } catch (err) { showToast('Fehler', err.message, 'error'); }
@@ -2604,6 +2856,13 @@
             let tab = 'players';
             try { tab = localStorage.getItem('matchmaster_tab') || tab; } catch (e) { }
             showTab(tab);
+            const surveyDayId = new URLSearchParams(location.search).get('umfrage');
+            if (surveyDayId) {
+                await loadSpieltage();
+                try { await openSurvey(surveyDayId); }
+                catch (error) { showToast('Umfrage konnte nicht geöffnet werden', error.message, 'error'); }
+            }
+            if (serverMode) setInterval(refreshSurveyState, 15000);
         })();
     </script>
 </body>
