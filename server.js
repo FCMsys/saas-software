@@ -25,7 +25,7 @@ try {
 const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'daten');
 const PORT = parseInt(process.env.PORT, 10) || 3000;
-const IMAGES = { 'msys.svg': 'Msys-Wappen.svg', 'lm.svg': 'L&M-Logo.svg', 'ramazzotti.svg': 'Ramazzotti-Logo.svg', 'ad-plane-banner.png': 'ad-plane-banner.png', 'landing.gif': 'landing.gif' };
+const IMAGES = { 'msys.svg': 'Msys-Wappen.svg', 'lm.svg': 'L&M-Logo.svg', 'ramazzotti.svg': 'Ramazzotti-Logo.svg', 'ad-plane-banner.png': 'ad-plane-banner.png', 'landing.gif': 'landing.gif', 'landing.mp4': 'landing.mp4' };
 const FILES = { spieler: 'spieler.csv', spiele: 'spiele.csv', presets: 'presets.csv' };
 
 const KINDE_DOMAIN = (process.env.KINDE_DOMAIN || '').replace(/\/+$/, '');
@@ -1100,13 +1100,18 @@ function landingPage(destination, isAuthenticated) {
 <meta name="theme-color" content="#ffffff"><title>FC M:sys</title>
 <style>
   *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#fff;color:#0f172a;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-  main{width:min(100%,960px);text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}main img{display:block;width:auto;height:auto;max-width:none;max-height:none;margin:0 auto;border:0;border-radius:0;background:#fff;filter:contrast(1.08)}
+  main{width:min(100%,960px);text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}main video{display:block;width:auto;height:auto;max-width:none;max-height:none;margin:0 auto;border:0;border-radius:0;background:#fff;filter:contrast(1.08)}
   .continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:16px;padding:0 24px;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;text-decoration:none}.continue:hover{background:#1d4ed8}.continue:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
 </style></head><body>
 <main><h1>Willkommen beim FC M:sys</h1>
-  <img src="/img/landing.gif" alt="">
+  <video id="landingVideo" src="/img/landing.mp4" autoplay muted playsinline preload="auto"></video>
   <a class="continue" id="continueLink" href="${escHtml(destination)}">${label}</a>
-</main></body></html>`;
+</main>
+<script>
+  const video = document.getElementById('landingVideo');
+  const link = document.getElementById('continueLink');
+  video.addEventListener('ended', () => location.replace(link.href), { once: true });
+</script></body></html>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1142,7 +1147,7 @@ async function handle(req, res) {
     // --- Logos (öffentlich, auch für die Login-Seite): feste Liste, keine freien Pfade ---
     const imgFile = method === 'GET' && (url === '/favicon.ico' ? IMAGES['msys.svg'] : IMAGES[url.replace(/^\/img\//, '')]);
     if (imgFile) {
-        const contentType = imgFile.endsWith('.png') ? 'image/png' : imgFile.endsWith('.gif') ? 'image/gif' : 'image/svg+xml';
+        const contentType = imgFile.endsWith('.png') ? 'image/png' : imgFile.endsWith('.gif') ? 'image/gif' : imgFile.endsWith('.mp4') ? 'video/mp4' : 'image/svg+xml';
         res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400' });
         return res.end(fs.readFileSync(path.join(ROOT, 'src', 'img', imgFile)));
     }
