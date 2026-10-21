@@ -41,6 +41,7 @@ test('survey API creates stable private forms, accepts each response once, and p
     fs.copyFileSync(path.join(ROOT, 'random.html'), path.join(appDir, 'random.html'));
     fs.copyFileSync(path.join(ROOT, 'src', 'logic', 'survey.js'), path.join(appDir, 'src', 'logic', 'survey.js'));
     fs.writeFileSync(path.join(appDir, 'src', 'img', 'landing.gif'), Buffer.from('GIF89a-test-image'));
+    fs.writeFileSync(path.join(appDir, 'src', 'img', 'landing.mp4'), Buffer.from('test-landing-video'));
     const playerIds = ['p1', 'p2', 'p3', 'p4', 'p5'];
     fs.writeFileSync(path.join(dataDir, 'users.json'), JSON.stringify({
         ...Object.fromEntries(playerIds.map(id => [`user-${id}`, { spielerId: id, email: '', role: 'player' }])),
@@ -92,11 +93,25 @@ test('survey API creates stable private forms, accepts each response once, and p
         assert.equal(guestLanding.status, 200);
         assert.match(guestLandingHtml, /Willkommen beim FC M:sys/);
         assert.match(guestLandingHtml, /background:#fff/);
-        assert.match(guestLandingHtml, /<img src="\/img\/landing\.gif" alt="">/);
-        assert.doesNotMatch(guestLandingHtml, /<video\b|<script\b|box-shadow|video-wrap/);
+        assert.match(guestLandingHtml, /<video id="landingVideo" src="\/img\/landing\.mp4" autoplay muted playsinline preload="auto"><\/video>/);
+        assert.doesNotMatch(guestLandingHtml, /\bloop\b|setTimeout|box-shadow|video-wrap/);
         assert.match(guestLandingHtml, /\/login\?returnTo=%2F%3Fumfrage%3Dst_test%26intro%3Ddone/);
         const landingScripts = [...guestLandingHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)];
-        assert.equal(landingScripts.length, 0);
+        assert.equal(landingScripts.length, 1);
+        let onEnded;
+        const redirects = [];
+        new Function('document', 'location', landingScripts[0][1])({
+            getElementById: id => id === 'landingVideo'
+                ? { addEventListener: (event, callback) => { assert.equal(event, 'ended'); onEnded = callback; } }
+                : { href: '/login?returnTo=test' }
+        }, { replace: url => redirects.push(url) });
+        assert.deepEqual(redirects, []);
+        onEnded();
+        assert.deepEqual(redirects, ['/login?returnTo=test']);
+        const landingVideo = await fetch(`${baseUrl}/img/landing.mp4`);
+        assert.equal(landingVideo.status, 200);
+        assert.equal(landingVideo.headers.get('content-type'), 'video/mp4');
+        assert.equal(await landingVideo.text(), 'test-landing-video');
         const loggedInLanding = await fetch(`${baseUrl}/`, { headers: { Cookie: sessionCookie('admin', 'admin') } });
         assert.match(await loggedInLanding.text(), /href="\/\?intro=done">Weiter zur App/);
         const landingImage = await fetch(`${baseUrl}/img/landing.gif`);
