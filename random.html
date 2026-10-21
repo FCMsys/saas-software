@@ -25,11 +25,15 @@
         #adFlyer { position: fixed; left: 0; z-index: 55; width: min(90vw, 1100px); aspect-ratio: 2170 / 725; pointer-events: none; }
         #adFlyer.ad-flyer-visible { display: flex; }
         .ad-flyer-graphic { width: 100%; height: 100%; object-fit: contain; transform: scaleX(-1); }
-        .ad-flyer-content { position: absolute; left: 10%; top: 25%; width: 39%; height: 39%; display: flex; align-items: center; justify-content: center; gap: .6rem; padding: 0 1rem; }
-        .ad-flyer-content img { max-width: 28%; max-height: 82%; object-fit: contain; }
-        .ad-flyer-content span { overflow-wrap: anywhere; }
+        .ad-flyer-content { position: absolute; left: 10%; top: 30%; width: 36%; height: 28%; overflow: hidden; container-type: inline-size; }
+        .ad-flyer-content img { position: absolute; object-fit: contain; transform: translate(-50%, -50%); }
+        .ad-flyer-content span { position: absolute; width: max-content; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; transform: translate(-50%, -50%); line-height: 1.15; }
         #adFlyer.ad-flyer-left .ad-flyer-graphic { transform: none; }
-        #adFlyer.ad-flyer-left .ad-flyer-content { left: 51%; }
+        #adFlyer.ad-flyer-left .ad-flyer-content { left: 54%; }
+        #adEditor { position: relative; aspect-ratio: 2170 / 725; background: #e2e8f0; }
+        #adEditor > img { width: 100%; }
+        #adEditor .ad-flyer-content { left: 54%; outline: 1px dashed #64748b; }
+        #adEditorText, #adEditorImage { touch-action: none; cursor: move; }
         @media (prefers-reduced-motion: reduce) { #adFlyer { transition: none; } }
 
         /* ===================== FUT-STYLE PLAYER CARD ===================== */
@@ -542,7 +546,10 @@
                         <label class="text-xs text-rose-700"><input id="adRemoveImage" type="checkbox" class="accent-rose-600 mr-1">Vorhandenes Bild entfernen</label>
                     </div>
                 </div>
-                <p class="text-xs text-slate-500">Nach 5 Sekunden Inaktivität startet der Flieger. Jeder Überflug dauert 8 Sekunden. Danach bleibt er eine Sekunde verschwunden und startet bei anhaltender Inaktivität am gegenüberliegenden Rand auf einer neuen zufälligen Höhe. Ein begonnener Überflug läuft auch bei Aktivität zu Ende. Er lässt sich nicht anklicken oder schließen.</p>
+                <p class="text-xs text-slate-500">Text direkt auf der Flagge bearbeiten. Text und Bild zum Positionieren ziehen oder die Zahlenfelder verwenden.</p>
+                <div id="adEditor"><img src="/img/ad-plane-banner.png" alt="Werbeflieger Vorschau"><div class="ad-flyer-content"><img id="adEditorImage" alt="Werbebild"><span id="adEditorText" contenteditable="plaintext-only" role="textbox" aria-label="Werbetext auf der Flagge"></span></div></div>
+                <div class="grid sm:grid-cols-2 gap-3"><label class="text-sm">Schriftart<select id="ad_fontFamily" class="block w-full border rounded-lg px-3 py-2"><option>Arial</option><option>Verdana</option><option>Georgia</option><option>Trebuchet MS</option><option>Courier New</option></select></label><label class="block text-sm">Schriftgröße (% Flaggenbreite)<input id="ad_fontSize" type="number" min="2" max="40" step="0.1" required value="5" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Text horizontal (%)<input id="ad_textX" type="number" min="0" max="100" step="0.1" required value="55" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Text vertikal (%)<input id="ad_textY" type="number" min="0" max="100" step="0.1" required value="50" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Bildgröße (%)<input id="ad_imageSize" type="number" min="5" max="100" step="0.1" required value="28" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Bild horizontal (%)<input id="ad_imageX" type="number" min="0" max="100" step="0.1" required value="18" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Bild vertikal (%)<input id="ad_imageY" type="number" min="0" max="100" step="0.1" required value="50" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Flugzeit in Sekunden (kleiner = schneller)<input id="ad_flightSeconds" type="number" min="0.1" max="3600" step="0.1" required value="8" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Inaktivität in Sekunden<input id="ad_idleSeconds" type="number" min="0" max="86400" step="0.1" required value="5" class="block w-full border rounded-lg px-3 py-2"></label></div>
+                <p class="text-xs text-slate-500">Bei anhaltender Inaktivität folgt nach einer Sekunde der nächste Flug. Begonnene Flüge laufen bei Aktivit?t zu Ende.</p>
                 <div class="flex items-center gap-3">
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">Werbung speichern</button>
                     <span id="adSaveStatus" class="text-xs text-slate-500"></span>
@@ -751,8 +758,8 @@
         let kassenbuchSummary = null;
         let kindeUsers = {};
         const TABS = ['players', 'days', 'match', 'history', 'payments', 'advertising'];
-        const AD_IDLE_MS = 5000;
-        const AD_FLY_MS = 8000;
+        const AD_DEFAULTS = {"fontSize":5,"textX":55,"textY":50,"imageSize":28,"imageX":18,"imageY":50,"flightSeconds":8,"idleSeconds":5,"fontFamily":"Arial"};
+
         const AD_GAP_MS = 1000;
         let adConfig = { enabled: false, text: '', image: '' };
         let adTimer = null;
@@ -2015,6 +2022,21 @@
             return true;
         }
 
+        function adFormSettings() {
+            return Object.fromEntries(Object.keys(AD_DEFAULTS).map(k => [k, k === 'fontFamily' ? $('ad_' + k).value : Number($('ad_' + k).value)]));
+        }
+        function renderAdContent(text, image, config) {
+            const c = { ...AD_DEFAULTS, ...config };
+            text.textContent = c.text || '';
+            Object.assign(text.style, { left: c.textX + '%', top: c.textY + '%', fontSize: c.fontSize + 'cqw', fontFamily: c.fontFamily });
+            Object.assign(image.style, { left: c.imageX + '%', top: c.imageY + '%', width: c.imageSize + '%', height: '100%', maxWidth: 'none', maxHeight: 'none' });
+            image.classList.toggle('hidden', !c.image);
+            if (c.image) image.src = c.image; else image.removeAttribute('src');
+        }
+        function renderAdEditor() {
+            renderAdContent($('adEditorText'), $('adEditorImage'), { ...adFormSettings(), text: $('adText').value, image: $('adRemoveImage').checked ? '' : (adPreviewObjectUrl || adConfig.image) });
+        }
+
         function updateAdPreview(src) {
             const wrap = $('adImagePreviewWrap');
             if (adPreviewObjectUrl && src !== adPreviewObjectUrl) URL.revokeObjectURL(adPreviewObjectUrl);
@@ -2040,6 +2062,8 @@
                     $('adRemoveImage').checked = false;
                     updateAdPreview(config.image || '');
                     $('adSaveStatus').textContent = config.image ? 'Aktuelles Bild geladen.' : 'Noch kein Bild hinterlegt.';
+                    for (const [k, v] of Object.entries(AD_DEFAULTS)) $('ad_' + k).value = config[k] ?? v;
+                    renderAdEditor();
                     adFormDirty = false;
                 }
                 $('adFlyerText').textContent = config.text || '';
@@ -2058,7 +2082,7 @@
             clearTimeout(adTimer);
             if (!adConfig.enabled || adFlying || document.visibilityState === 'hidden') return;
             const idleFor = Date.now() - adLastActivity;
-            const delay = Math.max(minDelay, AD_IDLE_MS - idleFor);
+            const delay = Math.max(minDelay, (adConfig.idleSeconds ?? 5) * 1000 - idleFor);
             adTimer = setTimeout(showAdFlyer, delay);
         }
 
@@ -2071,7 +2095,8 @@
             text.classList.toggle('hidden', !adConfig.text);
             image.classList.toggle('hidden', !adConfig.image);
             if (adConfig.image) image.src = adConfig.image;
-            const availableHeight = Math.max(0, window.innerHeight - flyer.offsetHeight);
+            renderAdContent(text, image, adConfig);
+            const availableHeight = Math.max(0, window.innerHeight - Math.min(window.innerWidth * .9, 1100) * 725 / 2170);
             flyer.style.top = `${Math.round(Math.random() * availableHeight)}px`;
             flyer.classList.toggle('ad-flyer-left', adDirection < 0);
             flyer.classList.remove('hidden');
@@ -2083,7 +2108,7 @@
                 : [{ transform: 'translateX(100vw)' }, { transform: 'translateX(calc(-100% - 100vw))' }];
             const animation = flyer.animate(
                 frames,
-                { duration: AD_FLY_MS, easing: 'linear', fill: 'forwards' }
+                { duration: (adConfig.flightSeconds ?? 8) * 1000, easing: 'linear', fill: 'forwards' }
             );
             adAnimation = animation;
             adDirection *= -1;
@@ -2884,9 +2909,33 @@
             updateAdPreview(URL.createObjectURL(file));
             $('adSaveStatus').textContent = 'Neues Bild ausgewählt.';
         };
-        $('adForm').oninput = () => { adFormDirty = true; };
+        $('adForm').oninput = e => {
+            adFormDirty = true;
+            if (e.target === $('adEditorText')) {
+                $('adText').value = e.target.textContent.slice(0, 200);
+                if (e.target.textContent.length > 200) e.target.textContent = $('adText').value;
+            } else renderAdEditor();
+        };
+        for (const [id, prefix] of [['adEditorText', 'text'], ['adEditorImage', 'image']]) {
+            $(id).addEventListener('pointerdown', e => {
+                if (e.button !== 0) return;
+                const element = $(id), rect = element.parentElement.getBoundingClientRect();
+                const startX = e.clientX, startY = e.clientY;
+                const x = Number($('ad_' + prefix + 'X').value), y = Number($('ad_' + prefix + 'Y').value);
+                element.setPointerCapture(e.pointerId);
+                const move = event => {
+                    if (Math.hypot(event.clientX - startX, event.clientY - startY) < 4) return;
+                    for (const [axis, value] of [['X', x + (event.clientX - startX) / rect.width * 100], ['Y', y + (event.clientY - startY) / rect.height * 100]])
+                        $('ad_' + prefix + axis).value = Math.max(0, Math.min(100, value)).toFixed(1);
+                    adFormDirty = true; renderAdEditor();
+                };
+                element.addEventListener('pointermove', move);
+                element.addEventListener('lostpointercapture', () => element.removeEventListener('pointermove', move), { once: true });
+            });
+        }
         $('adForm').onchange = e => {
             adFormDirty = true;
+            renderAdEditor();
             if (e.target === $('adEnabled') && !e.target.checked) stopAdFlyer();
         };
 
@@ -2904,6 +2953,7 @@
                     });
                 }
                 const saved = await api('PUT', '/api/werbung', {
+                    ...adFormSettings(),
                     enabled: $('adEnabled').checked,
                     text: $('adText').value.trim(),
                     imageData,

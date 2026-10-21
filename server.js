@@ -1353,17 +1353,34 @@ async function handle(req, res) {
         });
     }
 
+    function adSettings(input, strict = false) {
+        const defaults = {"fontSize":5,"textX":55,"textY":50,"imageSize":28,"imageX":18,"imageY":50,"flightSeconds":8,"idleSeconds":5,"fontFamily":"Arial"};
+        const limits = {"fontSize":[2,40],"textX":[0,100],"textY":[0,100],"imageSize":[5,100],"imageX":[0,100],"imageY":[0,100],"flightSeconds":[0.1,3600],"idleSeconds":[0,86400]};
+        const result = {};
+        for (const [key, [min, max]] of Object.entries(limits)) {
+            const value = input[key];
+            const valid = typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+            if (strict && value !== undefined && !valid) throw new Error('Ungültiger Wert: ' + key + ' (' + min + ' bis ' + max + ')');
+            result[key] = valid ? value : defaults[key];
+        }
+        const fonts = ['Arial', 'Verdana', 'Georgia', 'Trebuchet MS', 'Courier New'];
+        if (strict && input.fontFamily !== undefined && !fonts.includes(input.fontFamily)) throw new Error('Ungültige Schriftart');
+        result.fontFamily = fonts.includes(input.fontFamily) ? input.fontFamily : defaults.fontFamily;
+        return result;
+    }
+
     if (url === '/api/werbung' && method === 'GET') {
         const saved = readJson('werbung.json', {});
         const text = typeof saved.text === 'string' ? saved.text.slice(0, 200) : '';
         const image = typeof saved.image === 'string' && /^\/fotos\/werbung_[a-f0-9]{16}\.(?:png|jpg)$/.test(saved.image) ? saved.image : '';
-        return sendJson(res, 200, { enabled: saved.enabled === true && (!!text || !!image), text, image });
+        return sendJson(res, 200, { ...adSettings(saved), enabled: saved.enabled === true && (!!text || !!image), text, image });
     }
     if (url === '/api/werbung' && method === 'PUT') {
         if (!requireAdmin()) return;
         try {
             const b = await readJsonBody(req, 3 * 1024 * 1024);
             const saved = readJson('werbung.json', {});
+            const settings = adSettings({ ...saved, ...b }, true);
             const text = typeof b.text === 'string' ? b.text.trim() : '';
             if (text.length > 200) return sendJson(res, 400, { ok: false, error: 'Der Werbetext darf höchstens 200 Zeichen enthalten' });
 
@@ -1394,7 +1411,7 @@ async function handle(req, res) {
                 return sendJson(res, 400, { ok: false, error: 'Für eine aktive Werbebanderole bitte Text oder Bild angeben' });
             }
             try {
-                await writeJson('werbung.json', { enabled: b.enabled === true, text, image });
+                await writeJson('werbung.json', { ...settings, enabled: b.enabled === true, text, image });
             } catch (e) {
                 if (uploadedImage) await fotoDelete(uploadedImage.match(/^\/fotos\/([\w-]+)\./)[1]);
                 throw e;
@@ -1403,7 +1420,7 @@ async function handle(req, res) {
                 const oldId = saved.image.match(/^\/fotos\/([\w-]+)\./);
                 if (oldId) await fotoDelete(oldId[1]);
             }
-            return sendJson(res, 200, { ok: true, enabled: b.enabled === true, text, image });
+            return sendJson(res, 200, { ok: true, ...settings, enabled: b.enabled === true, text, image });
         } catch (e) {
             return sendJson(res, 400, { ok: false, error: String(e.message) });
         }
