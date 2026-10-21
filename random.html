@@ -743,6 +743,7 @@
         let players = [];
         let squadPresets = {};
         let matchHistory = [];
+        let surveyEloHistory = [];
         let selectedPlayerIds = new Set();
         let currentTeams = null;
         let hiddenInChart = new Set();
@@ -1043,6 +1044,7 @@
         }
 
         function stateFromCsv(csv) {
+            surveyEloHistory = Array.isArray(csv.surveyHistory) ? csv.surveyHistory : [];
             players = parseCsv(csv.spieler).map(r => ({
                 id: r.id, name: r.name, elo: parseFloat(r.elo) || 1500, history: [],
                 surveyApplied: Object.fromEntries(STAT_KEYS.map(k => [k, r['survey_' + k]])),
@@ -1087,7 +1089,7 @@
         function saveApplicationData() {
             if (me.role !== 'admin') return;   // Spieler dürfen nichts schreiben
             try {
-                localStorage.setItem('matchmaster_v3', JSON.stringify({ players, squadPresets, matchHistory }));
+                localStorage.setItem('matchmaster_v3', JSON.stringify({ players, squadPresets, matchHistory, surveyEloHistory }));
             } catch (e) { /* ignore */ }
             if (!serverMode) return;
             clearTimeout(saveTimer);
@@ -1107,6 +1109,7 @@
                 const raw = localStorage.getItem('matchmaster_v3');
                 if (!raw) return false;
                 const d = JSON.parse(raw);
+                surveyEloHistory = d.surveyEloHistory || [];
                 players = d.players; squadPresets = d.squadPresets || {}; matchHistory = d.matchHistory || [];
                 normalizeData();
                 return true;
@@ -1488,6 +1491,29 @@
         }
 
         // ---- Chart ----
+        function chartPlayerHistories() {
+            const events = new Map();
+            const histories = new Map(players.map(player => [player.id, player.history.map(point => ({ ...point, chartKey: point.seq === 0 ? 'start' : point.matchId || ('manual:' + point.seq + ':' + point.t) }))]));
+            for (const survey of surveyEloHistory) {
+                for (const change of survey.changes) {
+                    if (!histories.has(change.playerId)) continue;
+                    histories.get(change.playerId).push({ t: survey.t, elo: change.after, delta: change.delta, surveyDayNumber: survey.dayNumber, chartKey: survey.id });
+                }
+            }
+            for (const points of histories.values()) {
+                for (const point of points) {
+                    if (!events.has(point.chartKey)) events.set(point.chartKey, point);
+                }
+            }
+            const ordered = [...events.values()].sort((a, b) => {
+                if (a.chartKey === 'start') return -1;
+                if (b.chartKey === 'start') return 1;
+                return Date.parse(a.t) - Date.parse(b.t) || (a.seq || 0) - (b.seq || 0) || a.chartKey.localeCompare(b.chartKey);
+            });
+            const indices = new Map(ordered.map((point, index) => [point.chartKey, index]));
+            return { maxIndex: Math.max(ordered.length - 1, 1), histories: new Map([...histories].map(([id, points]) => [id, points.map(point => ({ ...point, chartIndex: indices.get(point.chartKey) })).sort((a, b) => a.chartIndex - b.chartIndex)])) };
+        }
+
         function renderChart() {
             const legend = $('chartLegend');
             legend.innerHTML = '';
@@ -1506,12 +1532,13 @@
             svgEl.setAttribute('width', W); svgEl.setAttribute('height', H); svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
 
             const visible = players.filter(p => !hiddenInChart.has(p.id));
-            const maxSeq = Math.max(currentSeq(), 1);
+            const chart = chartPlayerHistories();
+            const maxSeq = chart.maxIndex;
             const msg = t => { svgEl.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="#94a3b8" font-size="13">${t}</text>`; };
-            if (matchHistory.length === 0) return msg('Der Verlauf erscheint nach dem ersten gespeicherten Spiel.');
+            if (matchHistory.length === 0 && surveyEloHistory.length === 0) return msg('Der Verlauf erscheint nach dem ersten gespeicherten Spiel.');
             if (!visible.length) return msg('Keine Spieler ausgewählt.');
 
-            const all = visible.flatMap(p => p.history.map(h => h.elo));
+            const all = visible.flatMap(p => chart.histories.get(p.id).map(h => h.elo));
             let yMin = Math.min(...all), yMax = Math.max(...all);
             const pad = Math.max((yMax - yMin) * 0.12, 10);
             yMin = Math.floor((yMin - pad) / 10) * 10; yMax = Math.ceil((yMax + pad) / 10) * 10;
@@ -1528,20 +1555,18 @@
                 svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(1500)}" y2="${y(1500)}" stroke="#94a3b8" stroke-dasharray="4 4"/>`;
                 svg += `<text x="${W - m.r}" y="${y(1500) - 4}" text-anchor="end" fill="#94a3b8" font-size="9">1500</text>`;
             }
-            const xStep = Math.max(1, Math.ceil(maxSeq / 12));
-            for (let s = 0; s <= maxSeq; s += xStep) svg += `<text x="${x(s)}" y="${H - 10}" text-anchor="middle" fill="#94a3b8" font-size="10">${s === 0 ? 'Start' : '#' + s}</text>`;
 
             const dots = [];
             [...visible].sort((a, b) => a.elo - b.elo).forEach(p => {
                 const color = playerColor(p.id);
-                const pts = [...p.history].sort((a, b) => a.seq - b.seq);
-                svg += `<path d="${pts.map((h, i) => `${i ? 'L' : 'M'}${x(h.seq).toFixed(1)},${y(h.elo).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+                const pts = chart.histories.get(p.id);
+                svg += `<path d="${pts.map((h, i) => `${i ? 'L' : 'M'}${x(h.chartIndex).toFixed(1)},${y(h.elo).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
                 pts.forEach(h => {
-                    dots.push({ p, h, cx: x(h.seq), cy: y(h.elo), color });
-                    svg += `<circle cx="${x(h.seq).toFixed(1)}" cy="${y(h.elo).toFixed(1)}" r="3.4" fill="#fff" stroke="${color}" stroke-width="2"/>`;
+                    dots.push({ p, h, cx: x(h.chartIndex), cy: y(h.elo), color });
+                    svg += `<circle cx="${x(h.chartIndex).toFixed(1)}" cy="${y(h.elo).toFixed(1)}" r="3.4" fill="#fff" stroke="${color}" stroke-width="2"/>`;
                 });
                 const last = pts[pts.length - 1];
-                svg += `<text x="${x(last.seq) + 8}" y="${y(last.elo) + 3}" fill="${color}" font-size="10.5" font-weight="700">${escapeHtml(p.name)}</text>`;
+                svg += `<text x="${x(last.chartIndex) + 8}" y="${y(last.elo) + 3}" fill="${color}" font-size="10.5" font-weight="700">${escapeHtml(p.name)}</text>`;
             });
             svg += `<line id="chartCursor" y1="${m.t}" y2="${H - m.b}" stroke="#94a3b8" stroke-dasharray="3 3" style="display:none"/>`;
             svgEl.innerHTML = svg;
@@ -1555,10 +1580,10 @@
                 if (!best || bd > 36) { cursor.style.display = 'none'; tip.classList.add('hidden'); return; }
                 cursor.setAttribute('x1', best.cx); cursor.setAttribute('x2', best.cx); cursor.style.display = '';
                 const { p, h } = best;
-                const when = h.seq === 0 ? 'Startwert' : `Spiel #${h.seq} · ${new Date(h.t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`;
+                const when = h.surveyDayNumber ? `Umfrage ${h.surveyDayNumber}. Spieltag` : h.seq === 0 ? 'Startwert' : `Spiel #${h.seq} · ${new Date(h.t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`;
                 tip.innerHTML = `<div class="font-bold" style="color:${best.color}">${escapeHtml(p.name)}</div>
-                    <div class="text-slate-500">${when}${!h.matchId && h.seq > 0 ? ' · manuell' : ''}</div>
-                    <div><span class="font-mono font-bold text-slate-900 text-sm">${formatElo(h.elo)}</span> ${h.seq > 0 ? `<span class="font-mono font-bold ${deltaClass(h.delta)}">(${h.delta ? formatDelta(h.delta) : '±0'})</span>` : ''}</div>`;
+                    <div class="text-slate-500">${when}${!h.surveyDayNumber && !h.matchId && h.seq > 0 ? ' · manuell' : ''}</div>
+                    <div><span class="font-mono font-bold text-slate-900 text-sm">${formatElo(h.elo)}</span> ${(h.surveyDayNumber || h.seq > 0) ? `<span class="font-mono font-bold ${deltaClass(h.delta)}">(${h.delta ? formatDelta(h.delta) : '±0'})</span>` : ''}</div>`;
                 tip.classList.remove('hidden');
                 const tw = tip.offsetWidth;
                 tip.style.left = Math.max(0, best.cx + 14 + tw > W ? best.cx - 14 - tw : best.cx + 14) + 'px';
@@ -2611,14 +2636,18 @@
             try {
                 const [state, surveyState] = await Promise.all([api('GET', '/api/state'), api('GET', '/api/umfragen')]);
                 surveyDays = surveyState.surveys;
+                surveyEloHistory = Array.isArray(state.surveyHistory) ? state.surveyHistory : [];
                 if ($('editModal').classList.contains('hidden')) {
                     const latest = new Map(parseCsv(state.spieler).map(row => [row.id, row]));
                     let changed = false;
                     players.forEach(player => {
                         const row = latest.get(player.id);
                         if (!row) return;
-                        const stats = Object.fromEntries(STAT_KEYS.map(key => [key, Math.max(1, Math.min(99, parseInt(row[key]) || player.stats[key]))]));
-                        if (STAT_KEYS.some(key => stats[key] !== player.stats[key])) {
+                        const stats = Object.fromEntries(STAT_KEYS.map(key => [key, Math.max(1, Math.min(99, parseFloat(row[key]) || player.stats[key]))]));
+                        const elo = parseFloat(row.elo);
+                        player.surveyApplied = Object.fromEntries(STAT_KEYS.map(key => [key, row['survey_' + key]]));
+                        if (STAT_KEYS.some(key => stats[key] !== player.stats[key]) || (Number.isFinite(elo) && elo !== player.elo)) {
+                            if (Number.isFinite(elo)) player.elo = elo;
                             player.stats = stats;
                             changed = true;
                         }
@@ -2626,6 +2655,7 @@
                     if (changed) renderPlayersTab();
                 }
                 renderDays();
+                if (activeTab === 'history') renderChart();
             } catch (error) {
                 console.error('Umfrage- und Attributstatus konnte nicht aktualisiert werden:', error.message);
             }

@@ -195,6 +195,7 @@ test('survey API creates stable private forms, accepts each response once, and p
         assert.equal(progress.inviteDetails.find(item => item.playerId === 'p2').answered, true);
         assert.equal(progress.inviteDetails.find(item => item.playerId === 'p3').answered, false);
         const updatedState = await call('/api/state');
+        assert.deepEqual(updatedState.data.surveyHistory, []);
         const updatedRows = updatedState.data.spieler.replace(/^\uFEFF/, '').trim().split(/\r?\n/).map(row => row.split(';'));
         assert.ok(updatedRows.slice(1).some(row => row.slice(4, 10).some(value => Number(value) !== 50)));
         for (const row of updatedRows.slice(1)) {
@@ -255,6 +256,17 @@ test('survey API creates stable private forms, accepts each response once, and p
         const closedDay = closed.data.surveys.find(item => item.id === dayId);
         assert.equal(closedDay.status, 'closed');
         assert.ok(closedDay.results);
+        const closedState = (await call('/api/state')).data;
+        assert.equal(closedState.surveyHistory.length, 1);
+        const surveyPoint = closedState.surveyHistory[0];
+        assert.equal(surveyPoint.dayId, dayId);
+        assert.equal(surveyPoint.dayNumber, 1);
+        assert.equal(surveyPoint.changes.length, playerIds.length);
+        assert.ok(surveyPoint.changes.some(change => Math.abs(change.delta) > 0));
+        for (const change of surveyPoint.changes) {
+            assert.ok(Math.abs(change.after - change.before - change.delta) < 1e-9);
+        }
+        assert.deepEqual((await call('/api/state')).data.surveyHistory, closedState.surveyHistory);
         const late = await call(`/api/umfragen/${dayId}/antwort`, {
             role: 'player', playerId: 'p3', method: 'POST',
             body: { answers: makeAnswers((await call(`/api/umfragen/${dayId}`, { role: 'player', playerId: 'p3' })).data.form || { comparisons: [] }) }
@@ -266,7 +278,20 @@ test('survey API creates stable private forms, accepts each response once, and p
         const afterRestart = await call('/api/umfragen');
         const afterRestartDay = afterRestart.data.surveys.find(item => item.id === dayId);
         assert.equal(afterRestartDay.status, 'closed');
+        assert.deepEqual((await call('/api/state')).data.surveyHistory, closedState.surveyHistory);
         assert.equal(afterRestartDay.inviteDetails.find(item => item.playerId === 'p5').status, 'uncertain');
+        // Older surveys recover their Elo deltas once from the stored submissions.
+        const legacyData = JSON.parse(fs.readFileSync(path.join(dataDir, 'umfragen.json'), 'utf8'));
+        delete legacyData.days[dayId].eloHistory;
+        delete legacyData.days[dayId].eloDeltas;
+        fs.writeFileSync(path.join(dataDir, 'umfragen.json'), JSON.stringify(legacyData));
+        const recovered = (await call('/api/state')).data.surveyHistory;
+        assert.equal(recovered.length, 1);
+        for (const change of recovered[0].changes) {
+            const original = surveyPoint.changes.find(item => item.playerId === change.playerId);
+            assert.ok(Math.abs(change.delta - original.delta) < 1e-9);
+        }
+        assert.deepEqual((await call('/api/state')).data.surveyHistory, recovered);
     } finally {
         await stopServer();
         fs.rmSync(temp, { recursive: true, force: true });

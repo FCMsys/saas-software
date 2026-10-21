@@ -669,6 +669,51 @@ function calculateSurveyAwards(day) {
     ]));
 }
 
+function effectiveSurveyElos(ratings) {
+    const rows = csvRows(playersCsvWithSurveyRatings(readFile('spieler.csv'), ratings));
+    const index = Object.fromEntries((rows[0] || []).map((key, i) => [key, i]));
+    return Object.fromEntries(rows.slice(1).map(row => [row[index.id], Number(row[index.elo])]));
+}
+
+// Recover attribution for surveys created before Elo deltas were recorded.
+function replaySurveyEloDeltas(saved) {
+    const deltas = {}, comparisons = [], updates = [];
+    let previous = Object.fromEntries(ATTRIBUTES.map(key => [key, Object.fromEntries(Object.entries(saved.ratings.priors).map(([id, stats]) => [id, stats[key]]))]));
+    const submissions = Object.values(saved.days).flatMap(day => Object.values(day.submissions || {}).map(submission => ({ dayId: day.id, ...submission })))
+        .sort((a, b) => Date.parse(a.submittedAt) - Date.parse(b.submittedAt));
+    for (const submission of submissions) {
+        comparisons.push(...(submission.answers.comparisons || []));
+        const next = updateAttributeRatings(saved.ratings.priors, comparisons);
+        const dayDeltas = deltas[submission.dayId] ||= {};
+        const changes = {};
+        for (const id of Object.keys(saved.ratings.priors)) {
+            const delta = 29 / 6 * ATTRIBUTES.reduce((sum, key) => sum + (next[key][id] - previous[key][id]), 0);
+            dayDeltas[id] = (dayDeltas[id] || 0) + delta;
+            changes[id] = delta;
+        }
+        updates.push({ t: submission.submittedAt, changes });
+        previous = next;
+    }
+    return { deltas, updates };
+}
+
+function historicalSurveyElos(saved, at, replay) {
+    const rows = csvRows(readFile('spiele.csv'));
+    const index = Object.fromEntries((rows[0] || []).map((key, i) => [key, i]));
+    const anchors = Object.fromEntries(Object.entries(saved.ratings.priors).map(([id, stats]) => [id, {
+        t: -Infinity, elo: 29 / 6 * ATTRIBUTES.reduce((sum, key) => sum + stats[key], 0) - 337
+    }]));
+    const deadline = Date.parse(at);
+    for (const row of rows.slice(1)) {
+        const id = row[index.spieler_id], t = Date.parse(row[index.zeit]), elo = Number(row[index.elo_nachher]);
+        if (Number.isFinite(t) && t <= deadline && Number.isFinite(elo) && (!anchors[id] || t >= anchors[id].t)) anchors[id] = { t, elo };
+    }
+    return Object.fromEntries(Object.entries(anchors).map(([id, anchor]) => [id,
+        anchor.elo + replay.updates.filter(update => Date.parse(update.t) > anchor.t && Date.parse(update.t) <= deadline)
+            .reduce((sum, update) => sum + (update.changes[id] || 0), 0)
+    ]));
+}
+
 async function closeDueSurveys(now = Date.now()) {
     return mutateSurveys(async () => {
         const saved = surveyData();
@@ -679,6 +724,21 @@ async function closeDueSurveys(now = Date.now()) {
                 day.publishedAt = day.closesAt;
                 changed = true;
             }
+        }
+        const closedDays = Object.values(saved.days).filter(day => isSurveyClosed(day.closesAt, now))
+            .sort((a, b) => Date.parse(a.closesAt) - Date.parse(b.closesAt) || a.id.localeCompare(b.id));
+        let legacyDeltas;
+        for (const day of closedDays) {
+            if (day.eloHistory) continue;
+            const replay = day.eloDeltas ? null : (legacyDeltas ||= replaySurveyEloDeltas(saved));
+            const after = replay ? historicalSurveyElos(saved, day.closesAt, replay) : effectiveSurveyElos(saved.ratings.current);
+            const deltas = day.eloDeltas || replay.deltas[day.id] || {};
+            day.eloHistory = {
+                id: 'survey:' + day.id, dayId: day.id, t: day.closesAt,
+                changes: Object.keys(after).filter(id => day.participants.includes(id) || Math.abs(deltas[id] || 0) > 1e-9)
+                    .map(playerId => ({ playerId, before: after[playerId] - (deltas[playerId] || 0), after: after[playerId], delta: deltas[playerId] || 0 }))
+            };
+            changed = true;
         }
         if (changed) await writeJson('umfragen.json', saved);
         return saved;
@@ -708,6 +768,7 @@ function scheduleNextSurveyClose(retryDelay = 0) {
 async function recalculateSurveyRatings(saved, dayId) {
     const players = surveyPlayers();
     snapshotSurveyPriors(saved, players);
+    const eloBefore = effectiveSurveyElos(saved.ratings.current);
     const previous = saved.ratings.current;
     const current = updateAttributeRatings(saved.ratings.priors, surveyComparisons(saved));
     const at = new Date().toISOString();
@@ -720,6 +781,16 @@ async function recalculateSurveyRatings(saved, dayId) {
         }
     }
     saved.ratings.current = current;
+    const eloAfter = effectiveSurveyElos(current);
+    const day = saved.days[dayId];
+    if (!day.eloDeltas && Object.keys(day.submissions).length > 1) {
+        day.eloDeltas = replaySurveyEloDeltas(saved).deltas[dayId] || {};
+        return;
+    }
+    const deltas = day.eloDeltas ||= {};
+    for (const [id, after] of Object.entries(eloAfter)) {
+        deltas[id] = (deltas[id] || 0) + after - (eloBefore[id] ?? after);
+    }
 }
 
 async function sendSurveyInvitation(dayId, playerId, retry = false) {
@@ -1685,7 +1756,11 @@ async function handle(req, res) {
     if (url === '/api/state' && method === 'GET') {
         const state = {};
         for (const [key, file] of Object.entries(FILES)) state[key] = readFile(file);
-        state.spieler = playersCsvWithSurveyRatings(state.spieler, surveyData().ratings.current);
+        const saved = await closeDueSurveys();
+        state.spieler = playersCsvWithSurveyRatings(state.spieler, saved.ratings.current);
+        const matchDays = loadZahlungen().spieltage.slice().sort((a, b) => (a.datum + (a.uhrzeit || '')).localeCompare(b.datum + (b.uhrzeit || '')) || a.id.localeCompare(b.id));
+        const days = Object.values(saved.days).sort((a, b) => Date.parse(a.finishedAt) - Date.parse(b.finishedAt) || a.id.localeCompare(b.id));
+        state.surveyHistory = days.flatMap((day, index) => day.eloHistory ? [{ ...day.eloHistory, dayNumber: matchDays.findIndex(item => item.id === day.id) + 1 || index + 1 }] : []);
         return sendJson(res, 200, state);
     }
 
