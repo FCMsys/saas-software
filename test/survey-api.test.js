@@ -90,7 +90,10 @@ test('survey API creates stable private forms, accepts each response once, and p
         const guestLanding = await fetch(`${baseUrl}/?umfrage=st_test`);
         const guestLandingHtml = await guestLanding.text();
         assert.equal(guestLanding.status, 200);
-        assert.match(guestLandingHtml, /autoplay muted playsinline controls/);
+        assert.match(guestLandingHtml, /Willkommen beim FC M:sys/);
+        assert.match(guestLandingHtml, /background:#fff/);
+        assert.match(guestLandingHtml, /autoplay muted playsinline preload="auto"/);
+        assert.doesNotMatch(guestLandingHtml, /\bcontrols\b|videoMessage|Das Video startet stumm/);
         assert.match(guestLandingHtml, /\/login\?returnTo=%2F%3Fumfrage%3Dst_test%26intro%3Ddone/);
         const landingScripts = [...guestLandingHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)];
         assert.equal(landingScripts.length, 1);

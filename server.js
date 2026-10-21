@@ -1091,25 +1091,23 @@ function landingPage(destination, isAuthenticated) {
     const label = isAuthenticated ? 'Weiter zur App' : 'Weiter zur Anmeldung';
     return `<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#071426"><title>FC M:sys</title>
+<meta name="theme-color" content="#ffffff"><title>FC M:sys</title>
 <style>
-  *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(ellipse at top,#17304e,#071426 72%);color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-  main{width:min(100%,960px);text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}.video-wrap{overflow:hidden;border:1px solid rgba(255,255,255,.2);border-radius:16px;background:#000;box-shadow:0 24px 80px rgba(0,0,0,.4)}video{display:block;width:100%;max-height:min(60vh,calc(100vh - 280px));background:#000;object-fit:contain}
-  p{margin:14px 0;color:#cbd5e1;font-size:14px}.continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:6px;padding:0 24px;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;text-decoration:none}.continue:hover{background:#1d4ed8}.continue:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
+  *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#fff;color:#0f172a;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+  main{width:min(100%,960px);text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}.video-wrap{overflow:hidden;border:1px solid #e2e8f0;border-radius:16px;background:#000;box-shadow:0 16px 48px rgba(15,23,42,.14)}video{display:block;width:100%;max-height:min(65vh,calc(100vh - 200px));background:#000;object-fit:contain}
+  .continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:16px;padding:0 24px;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;text-decoration:none}.continue:hover{background:#1d4ed8}.continue:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
 </style></head><body>
-<main><h1>Willkommen bei FC M:sys</h1>
-  <div class="video-wrap"><video id="landingVideo" autoplay muted playsinline controls preload="auto">
+<main><h1>Willkommen beim FC M:sys</h1>
+  <div class="video-wrap"><video id="landingVideo" autoplay muted playsinline preload="auto">
     <source src="/video/landing.mp4" type="video/mp4">
     Dein Browser kann dieses Video nicht wiedergeben.
   </video></div>
-  <p id="videoMessage">Das Video startet stumm. Du kannst den Ton über die Videosteuerung einschalten oder direkt fortfahren.</p>
   <a class="continue" id="continueLink" href="${escHtml(destination)}">${label}</a>
 </main>
 <script>
   const video=document.getElementById('landingVideo');
   const link=document.getElementById('continueLink');
   video.addEventListener('ended',()=>location.replace(link.href));
-  video.addEventListener('error',()=>{document.getElementById('videoMessage').textContent='Das Video konnte nicht geladen werden. Du kannst trotzdem fortfahren.';});
 </script></body></html>`;
 }
 
