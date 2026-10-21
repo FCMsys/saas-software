@@ -2256,13 +2256,13 @@
         }
 
         function surveyAwardsHtml(survey) {
-            if (!survey.results) return '';
+
             return [['motm', '🏆 Man of the Match'], ['surprise', '⭐ Überraschung des Spieltags']].map(([key, title]) => {
-                const award = survey.results[key];
+                const award = survey.results && survey.results[key];
                 const winners = award && award.winners || [];
                 return `<details data-survey-detail="${escapeHtml(survey.id)}:award:${key}" class="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
                     <summary class="cursor-pointer text-sm font-bold text-amber-900">${title}</summary>
-                    ${winners.length ? `<div class="mt-2 flex flex-wrap gap-2">${winners.map(player => `<div class="flex items-center gap-2 rounded-lg bg-white px-2.5 py-2 text-sm">
+                    ${!survey.results ? '<p class="mt-2 text-xs text-slate-500">Die Stimmen werden getrennt ausgewertet. Ergebnisse erscheinen nach Abschluss der Umfrage.</p>' : winners.length ? `<div class="mt-2 flex flex-wrap gap-2">${winners.map(player => `<div class="flex items-center gap-2 rounded-lg bg-white px-2.5 py-2 text-sm">
                         ${player.photo ? `<img src="${escapeHtml(player.photo)}" class="h-8 w-8 rounded-full object-cover" alt="">` : '<span class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100"><i class="fa-solid fa-user text-amber-700"></i></span>'}
                         <span class="font-semibold">${escapeHtml(player.player)}</span><span class="text-xs text-slate-500">${player.votes} ${player.votes === 1 ? 'Stimme' : 'Stimmen'}</span>
                     </div>`).join('')}</div>` : '<p class="mt-1 text-xs text-slate-500">Keine gültigen Nominierungen.</p>'}
@@ -2308,7 +2308,7 @@
                     </div>
                     ${inviteDetails ? `<details data-survey-detail="${escapeHtml(day.id)}:invites" class="mt-2"><summary class="cursor-pointer text-xs font-semibold text-slate-700">Einladungsstatus anzeigen</summary><div class="mt-1 divide-y divide-indigo-100">${inviteDetails}</div></details>` : ''}
                     ${aggregates}${changeHistory}
-                    ${survey.status === 'closed' ? `<div class="mt-3 grid gap-2 sm:grid-cols-2">${surveyAwardsHtml(survey)}</div>` : ''}
+                    <div class="mt-3 grid gap-2 sm:grid-cols-2">${surveyAwardsHtml(survey)}</div>
                 </div>`;
             }
             const surveyControl = !survey.eligible ? '' : survey.status === 'closed'
@@ -2319,10 +2319,25 @@
             return `${surveyControl}${survey.status === 'closed' ? `<div class="mt-3 grid gap-2 sm:grid-cols-2">${surveyAwardsHtml(survey)}</div>` : ''}`;
         }
 
+        const surveyDetailState = new Map();
+        try {
+            for (const [key, open] of JSON.parse(sessionStorage.getItem('surveyDetailState') || '[]')) {
+                surveyDetailState.set(key, open === true);
+            }
+        } catch (error) { /* Storage is optional. */ }
+        function rememberSurveyDetails() {
+            $('daysList').querySelectorAll('details[data-survey-detail]').forEach(detail => {
+                surveyDetailState.set(detail.dataset.surveyDetail, detail.open);
+            });
+            try { sessionStorage.setItem('surveyDetailState', JSON.stringify([...surveyDetailState])); } catch (error) { }
+        }
+        $('daysList').addEventListener('toggle', event => {
+            if (event.target.matches('details[data-survey-detail]') && event.target.isConnected) rememberSurveyDetails();
+        }, true);
+
         // ---- Tab: Spieltage ----
         function renderDays() {
-            const expanded = new Set([...$('daysList').querySelectorAll('details[data-survey-detail][open]')]
-                .map(detail => detail.dataset.surveyDetail));
+            rememberSurveyDetails();
             const isAdmin = me.role === 'admin';
             const today = todayIso();
             if (isAdmin && !$('dayDatum').value) $('dayDatum').value = today;
@@ -2385,7 +2400,7 @@
                 </div>`;
             }).join('') || '<div class="card p-5 text-sm text-slate-400">Noch keine Spieltage angelegt.</div>';
             $('daysList').querySelectorAll('details[data-survey-detail]').forEach(detail => {
-                detail.open = expanded.has(detail.dataset.surveyDetail);
+                detail.open = surveyDetailState.get(detail.dataset.surveyDetail) === true;
             });
         }
 
