@@ -26,6 +26,7 @@ const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'daten');
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const IMAGES = { 'msys.svg': 'Msys-Wappen.svg', 'lm.svg': 'L&M-Logo.svg', 'ramazzotti.svg': 'Ramazzotti-Logo.svg', 'ad-plane-banner.png': 'ad-plane-banner.png' };
+const LANDING_VIDEO = path.join(ROOT, 'src', 'video', 'landing.mp4');
 const FILES = { spieler: 'spieler.csv', spiele: 'spiele.csv', presets: 'presets.csv' };
 
 const KINDE_DOMAIN = (process.env.KINDE_DOMAIN || '').replace(/\/+$/, '');
@@ -1001,6 +1002,32 @@ const LOGIN_PAGE = `<!doctype html>
   <small>Neue Accounts sehen zunächst nur die Statistiken, bis der Admin sie einem Spieler zuordnet.</small>
 </div></body></html>`;
 
+function landingPage(destination, isAuthenticated) {
+    const label = isAuthenticated ? 'Weiter zur App' : 'Weiter zur Anmeldung';
+    return `<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071426"><title>FC M:sys</title>
+<style>
+  *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(ellipse at top,#17304e,#071426 72%);color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+  main{width:min(100%,960px);text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}.video-wrap{overflow:hidden;border:1px solid rgba(255,255,255,.2);border-radius:16px;background:#000;box-shadow:0 24px 80px rgba(0,0,0,.4)}video{display:block;width:100%;max-height:min(60vh,calc(100vh - 280px));background:#000;object-fit:contain}
+  p{margin:14px 0;color:#cbd5e1;font-size:14px}.continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:6px;padding:0 24px;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;text-decoration:none}.continue:hover{background:#1d4ed8}.continue:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
+</style></head><body>
+<main><h1>Willkommen bei FC M:sys</h1>
+  <div class="video-wrap"><video id="landingVideo" autoplay muted playsinline controls preload="auto">
+    <source src="/video/landing.mp4" type="video/mp4">
+    Dein Browser kann dieses Video nicht wiedergeben.
+  </video></div>
+  <p id="videoMessage">Das Video startet stumm. Du kannst den Ton über die Videosteuerung einschalten oder direkt fortfahren.</p>
+  <a class="continue" id="continueLink" href="${escHtml(destination)}">${label}</a>
+</main>
+<script>
+  const video=document.getElementById('landingVideo');
+  const link=document.getElementById('continueLink');
+  video.addEventListener('ended',()=>location.replace(link.href));
+  video.addEventListener('error',()=>{document.getElementById('videoMessage').textContent='Das Video konnte nicht geladen werden. Du kannst trotzdem fortfahren.';});
+</script></body></html>`;
+}
+
 // ---------------------------------------------------------------------------
 // Server
 // ---------------------------------------------------------------------------
@@ -1031,6 +1058,43 @@ async function handle(req, res) {
     const url = parsed.pathname;
     const method = req.method;
 
+    if (method === 'GET' && url === '/video/landing.mp4') {
+        const size = fs.statSync(LANDING_VIDEO).size;
+        const range = req.headers.range;
+        let start = 0, end = size - 1, status = 200;
+        if (range) {
+            const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+            if (!match || (!match[1] && !match[2])) {
+                res.writeHead(416, { 'Content-Range': `bytes */${size}`, 'Accept-Ranges': 'bytes' });
+                return res.end();
+            }
+            if (!match[1]) start = Math.max(0, size - Number(match[2]));
+            else {
+                start = Number(match[1]);
+                end = match[2] ? Math.min(Number(match[2]), size - 1) : size - 1;
+            }
+            if (start >= size || start > end) {
+                res.writeHead(416, { 'Content-Range': `bytes */${size}`, 'Accept-Ranges': 'bytes' });
+                return res.end();
+            }
+            status = 206;
+        }
+        res.writeHead(status, {
+            'Content-Type': 'video/mp4',
+            'Content-Length': end - start + 1,
+            'Accept-Ranges': 'bytes',
+            ...(status === 206 ? { 'Content-Range': `bytes ${start}-${end}/${size}` } : {}),
+            'Cache-Control': 'public, max-age=86400'
+        });
+        const stream = fs.createReadStream(LANDING_VIDEO, { start, end });
+        stream.on('error', error => {
+            console.error('Landingvideo konnte nicht gelesen werden:', error.message);
+            if (!res.headersSent) sendJson(res, 500, { ok: false, error: 'Landingvideo konnte nicht gelesen werden' });
+            else res.destroy(error);
+        });
+        return stream.pipe(res);
+    }
+
     // --- Logos (öffentlich, auch für die Login-Seite): feste Liste, keine freien Pfade ---
     const imgFile = method === 'GET' && (url === '/favicon.ico' ? IMAGES['msys.svg'] : IMAGES[url.replace(/^\/img\//, '')]);
     if (imgFile) {
@@ -1060,6 +1124,15 @@ async function handle(req, res) {
     }
     // --- ab hier nur mit Login ---
     const session = getSession(req);
+    const landingRoutes = ['/', '/index.html', '/random.html'];
+    if (method === 'GET' && landingRoutes.includes(url) && parsed.searchParams.get('intro') !== 'done') {
+        const destination = new URL(parsed);
+        destination.searchParams.set('intro', 'done');
+        const appPath = destination.pathname + destination.search;
+        const next = session ? appPath : `/login?returnTo=${encodeURIComponent(appPath)}`;
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        return res.end(landingPage(next, !!session));
+    }
     const isApi = url.startsWith('/api/') || url.startsWith('/fotos/');
     if (!session) {
         if (isApi) return sendJson(res, 401, { ok: false, error: 'Nicht angemeldet' });

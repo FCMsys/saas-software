@@ -705,6 +705,11 @@
     </div>
 
     <script>
+        const landingUrl = new URL(location.href);
+        if (landingUrl.searchParams.get('intro') === 'done') {
+            landingUrl.searchParams.delete('intro');
+            history.replaceState(null, '', landingUrl.pathname + landingUrl.search + landingUrl.hash);
+        }
         const $ = id => document.getElementById(id);
 
         // =====================================================================

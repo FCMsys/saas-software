@@ -35,9 +35,12 @@ test('survey API creates stable private forms, accepts each response once, and p
     const appDir = path.join(temp, 'app');
     const dataDir = path.join(temp, 'daten');
     fs.mkdirSync(path.join(appDir, 'src', 'logic'), { recursive: true });
+    fs.mkdirSync(path.join(appDir, 'src', 'video'), { recursive: true });
     fs.mkdirSync(dataDir);
     fs.copyFileSync(path.join(ROOT, 'server.js'), path.join(appDir, 'server.js'));
+    fs.copyFileSync(path.join(ROOT, 'random.html'), path.join(appDir, 'random.html'));
     fs.copyFileSync(path.join(ROOT, 'src', 'logic', 'survey.js'), path.join(appDir, 'src', 'logic', 'survey.js'));
+    fs.writeFileSync(path.join(appDir, 'src', 'video', 'landing.mp4'), Buffer.from('test-video-content'));
     const playerIds = ['p1', 'p2', 'p3', 'p4', 'p5'];
     fs.writeFileSync(path.join(dataDir, 'users.json'), JSON.stringify(Object.fromEntries(
         playerIds.map(id => [`user-${id}`, { spielerId: id, email: '', role: 'player' }])
@@ -83,6 +86,23 @@ test('survey API creates stable private forms, accepts each response once, and p
 
     try {
         await startServer();
+        const guestLanding = await fetch(`${baseUrl}/?umfrage=st_test`);
+        const guestLandingHtml = await guestLanding.text();
+        assert.equal(guestLanding.status, 200);
+        assert.match(guestLandingHtml, /autoplay muted playsinline controls/);
+        assert.match(guestLandingHtml, /\/login\?returnTo=%2F%3Fumfrage%3Dst_test%26intro%3Ddone/);
+        const landingScripts = [...guestLandingHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+        assert.equal(landingScripts.length, 1);
+        new Function(landingScripts[0][1]);
+        const loggedInLanding = await fetch(`${baseUrl}/`, { headers: { Cookie: sessionCookie('admin', 'admin') } });
+        assert.match(await loggedInLanding.text(), /href="\/\?intro=done">Weiter zur App/);
+        const landingMedia = await fetch(`${baseUrl}/video/landing.mp4`, { headers: { Range: 'bytes=0-3' } });
+        assert.equal(landingMedia.status, 206);
+        assert.equal(landingMedia.headers.get('content-range'), 'bytes 0-3/18');
+        assert.equal(await landingMedia.text(), 'test');
+        const appPage = await fetch(`${baseUrl}/?intro=done`, { headers: { Cookie: sessionCookie('admin', 'admin') } });
+        assert.match(await appPage.text(), /id="surveyModal"/);
+
         const day = await call('/api/spieltage', { method: 'POST', body: { datum: '2026-10-20', uhrzeit: '19:00', dauerMinuten: '90' } });
         assert.equal(day.response.status, 200);
         const dayId = day.data.id;
