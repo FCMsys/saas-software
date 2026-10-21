@@ -920,7 +920,7 @@
         function cardHtml(p, { fs = 14, reveal = false, delay = 0 } = {}) {
             const rating = ratingFromElo(p.elo), tier = tierFor(p.elo);
             const val = v => reveal ? 0 : v;
-            const stat = k => { const v = statVal(p, k); return `<div><b data-val="${v}">${val(v)}</b><i>${STAT_LABELS[k]}</i></div>`; };
+            const stat = k => { const v = Math.round(statVal(p, k)); return `<div><b data-val="${v}">${val(v)}</b><i>${STAT_LABELS[k]}</i></div>`; };
             return `<div class="fut-card tier-${tier}" style="--fs:${fs}px;--shine-delay:${delay}s">
                 <div class="fut-shape"></div>
                 <div class="fut-inner">
