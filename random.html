@@ -2260,14 +2260,14 @@
             return [['motm', '🏆 Man of the Match'], ['surprise', '⭐ Überraschung des Spieltags']].map(([key, title]) => {
                 const award = survey.results[key];
                 const winners = award && award.winners || [];
-                return `<div class="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
-                    <h4 class="text-sm font-bold text-amber-900">${title}</h4>
+                return `<details data-survey-detail="${escapeHtml(survey.id)}:award:${key}" class="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+                    <summary class="cursor-pointer text-sm font-bold text-amber-900">${title}</summary>
                     ${winners.length ? `<div class="mt-2 flex flex-wrap gap-2">${winners.map(player => `<div class="flex items-center gap-2 rounded-lg bg-white px-2.5 py-2 text-sm">
                         ${player.photo ? `<img src="${escapeHtml(player.photo)}" class="h-8 w-8 rounded-full object-cover" alt="">` : '<span class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100"><i class="fa-solid fa-user text-amber-700"></i></span>'}
                         <span class="font-semibold">${escapeHtml(player.player)}</span><span class="text-xs text-slate-500">${player.votes} ${player.votes === 1 ? 'Stimme' : 'Stimmen'}</span>
                     </div>`).join('')}</div>` : '<p class="mt-1 text-xs text-slate-500">Keine gültigen Nominierungen.</p>'}
-                    ${award && award.ranking.length > winners.length ? `<details class="mt-2 text-xs text-slate-600"><summary class="cursor-pointer font-semibold">Weitere Nominierungen</summary><ol class="mt-1 list-inside list-decimal">${award.ranking.slice(winners.length).map(player => `<li>${escapeHtml(player.player)} · ${player.votes}</li>`).join('')}</ol></details>` : ''}
-                </div>`;
+                    ${award && award.ranking.length > winners.length ? `<details data-survey-detail="${escapeHtml(survey.id)}:nominations:${key}" class="mt-2 text-xs text-slate-600"><summary class="cursor-pointer font-semibold">Weitere Nominierungen</summary><ol class="mt-1 list-inside list-decimal">${award.ranking.slice(winners.length).map(player => `<li>${escapeHtml(player.player)} · ${player.votes}</li>`).join('')}</ol></details>` : ''}
+                </details>`;
             }).join('');
         }
 
@@ -2288,14 +2288,14 @@
                     </div>`).join('');
                 const statusCounts = Object.entries(survey.invites || {}).map(([status, count]) => `${escapeHtml(status)}: ${count}`).join(' · ');
                 const aggregates = [
-                    ['Tagesleistung', survey.performance || []],
+                    ['Individuelle Leistungsvergleiche', survey.performance || []],
                     ['Attributvergleiche', survey.attributes || []]
-                ].map(([label, items]) => `<details class="mt-2">
+                ].map(([label, items]) => `<details data-survey-detail="${escapeHtml(day.id)}:${escapeHtml(label)}" class="mt-2">
                     <summary class="cursor-pointer text-xs font-semibold text-slate-700">${label} (${items.length})</summary>
                     <div class="mt-1 space-y-1">${items.length ? items.map(item => `<p class="text-xs text-slate-600">${escapeHtml(item.player)}${item.attribute ? ` · ${escapeHtml(item.attribute)}` : ''}: ${Math.round(item.average * 100)}% aus ${item.votes} ${item.votes === 1 ? 'Vergleich' : 'Vergleichen'}</p>`).join('') : '<p class="text-xs text-slate-400">Noch keine auswertbaren Vergleiche.</p>'}</div>
                 </details>`).join('');
                 const changes = survey.ratingChanges || [];
-                const changeHistory = `<details class="mt-2">
+                const changeHistory = `<details data-survey-detail="${escapeHtml(day.id)}:changes" class="mt-2">
                     <summary class="cursor-pointer text-xs font-semibold text-slate-700">Attributänderungen (${changes.length})</summary>
                     <div class="mt-1 space-y-1">${changes.length ? changes.map(change => `<p class="text-xs text-slate-600">${escapeHtml(change.player)} · ${escapeHtml(change.attribute)}: ${change.before} → ${change.after}</p>`).join('') : '<p class="text-xs text-slate-400">Noch keine Attributänderungen.</p>'}</div>
                 </details>`;
@@ -2306,7 +2306,7 @@
                         <p class="text-xs text-slate-600">${survey.submittedCount} von ${survey.participantCount} beantwortet (${responseRate}%)${survey.participantSource === 'admin_confirmed_legacy_matches' ? ' · Teilnehmer aus alten Spielen bestätigt' : ''}${survey.status === 'open' ? ` · noch ${Math.max(0, Math.floor((Date.parse(survey.closesAt) - Date.now()) / 3600000))} Std. bis zur Schließung` : ''}</p></div>
                         <span class="text-[11px] text-slate-500">${statusCounts}</span>
                     </div>
-                    ${inviteDetails ? `<details class="mt-2"><summary class="cursor-pointer text-xs font-semibold text-slate-700">Einladungsstatus anzeigen</summary><div class="mt-1 divide-y divide-indigo-100">${inviteDetails}</div></details>` : ''}
+                    ${inviteDetails ? `<details data-survey-detail="${escapeHtml(day.id)}:invites" class="mt-2"><summary class="cursor-pointer text-xs font-semibold text-slate-700">Einladungsstatus anzeigen</summary><div class="mt-1 divide-y divide-indigo-100">${inviteDetails}</div></details>` : ''}
                     ${aggregates}${changeHistory}
                     ${survey.status === 'closed' ? `<div class="mt-3 grid gap-2 sm:grid-cols-2">${surveyAwardsHtml(survey)}</div>` : ''}
                 </div>`;
@@ -2321,6 +2321,8 @@
 
         // ---- Tab: Spieltage ----
         function renderDays() {
+            const expanded = new Set([...$('daysList').querySelectorAll('details[data-survey-detail][open]')]
+                .map(detail => detail.dataset.surveyDetail));
             const isAdmin = me.role === 'admin';
             const today = todayIso();
             if (isAdmin && !$('dayDatum').value) $('dayDatum').value = today;
@@ -2382,6 +2384,9 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">${chips}</div>
                 </div>`;
             }).join('') || '<div class="card p-5 text-sm text-slate-400">Noch keine Spieltage angelegt.</div>';
+            $('daysList').querySelectorAll('details[data-survey-detail]').forEach(detail => {
+                detail.open = expanded.has(detail.dataset.surveyDetail);
+            });
         }
 
         $('daysList').onclick = async e => {
