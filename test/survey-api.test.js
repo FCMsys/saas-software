@@ -171,12 +171,34 @@ test('survey API creates stable private forms, accepts each response once, and p
         const playerLive = await call('/api/umfragen', { role: 'player', playerId: 'p1' });
         assert.equal(playerLive.data.surveys.find(item => item.id === dayId).results, null);
 
-        const unlinkedDay = await call('/api/spieltage', { method: 'POST', body: { datum: '2026-10-21' } });
+        const unlinkedDay = await call('/api/spieltage', { method: 'POST', body: { datum: '2026-10-20' } });
         const oldGames = gameRows.map(row => [...row.slice(0, -1), '']);
         const unlinkedState = { ...state, spiele: csv(['seq', 'zeit', 'typ', 'match_id', 'spieler_id', 'spieler', 'team', 'tore_eigene', 'tore_gegner', 'elo_vorher', 'elo_nachher', 'delta', 'match_day_id'], oldGames) };
         await call('/api/state', { method: 'PUT', body: unlinkedState });
         const unlinkedFinish = await call(`/api/spieltage/${unlinkedDay.data.id}/umfrage/abschliessen`, { method: 'POST' });
         assert.equal(unlinkedFinish.response.status, 409);
+        assert.equal(unlinkedFinish.data.code, 'participants_required');
+        const legacyCandidates = await call(`/api/spieltage/${unlinkedDay.data.id}/umfrage/teilnehmer`);
+        assert.deepEqual(legacyCandidates.data.legacyCandidates.map(item => item.playerId).sort(), playerIds);
+        const invalidLegacySelection = await call(`/api/spieltage/${unlinkedDay.data.id}/umfrage/abschliessen`, {
+            method: 'POST', body: { participantIds: ['not-a-player'] }
+        });
+        assert.equal(invalidLegacySelection.response.status, 400);
+        const confirmedLegacySurvey = await call(`/api/spieltage/${unlinkedDay.data.id}/umfrage/abschliessen`, {
+            method: 'POST', body: { participantIds: ['p1', 'p2'] }
+        });
+        assert.equal(confirmedLegacySurvey.response.status, 201);
+        assert.equal(confirmedLegacySurvey.data.participantSource, 'admin_confirmed_legacy_matches');
+        const legacySurvey = JSON.parse(fs.readFileSync(path.join(dataDir, 'umfragen.json'), 'utf8')).days[unlinkedDay.data.id];
+        assert.deepEqual(legacySurvey.participants.sort(), ['p1', 'p2']);
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const unrelatedDay = await call('/api/spieltage', { method: 'POST', body: { datum: '2026-10-21' } });
+        const unrelatedCandidates = await call(`/api/spieltage/${unrelatedDay.data.id}/umfrage/teilnehmer`);
+        assert.deepEqual(unrelatedCandidates.data.legacyCandidates, []);
+        const unrelatedFinish = await call(`/api/spieltage/${unrelatedDay.data.id}/umfrage/abschliessen`, { method: 'POST' });
+        assert.equal(unrelatedFinish.response.status, 409);
+        assert.equal(unrelatedFinish.data.code, undefined);
 
         const stored = JSON.parse(fs.readFileSync(path.join(dataDir, 'umfragen.json'), 'utf8'));
         stored.days[dayId].closesAt = new Date(Date.now() - 1).toISOString();

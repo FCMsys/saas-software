@@ -789,6 +789,7 @@ function publicSurveyDay(day, session) {
         }, {});
         return {
             id: day.id, finishedAt: day.finishedAt, closesAt: day.closesAt,
+            participantSource: day.participantSource || 'match_day_id',
             participantCount: day.participants.length,
             submittedCount: Object.keys(day.submissions || {}).length,
             invites, status: closed ? 'closed' : 'open',
@@ -826,18 +827,55 @@ function matchedSurveyForm(day, playerId) {
     };
 }
 
-async function startSurveyForDay(dayId) {
+function legacySurveyCandidates(dayRecord) {
+    const matches = csvRows(readFile('spiele.csv'));
+    const header = matches[0] || [];
+    const index = Object.fromEntries(header.map((name, i) => [name, i]));
+    const candidateCounts = new Map();
+    const names = playerNames();
+    for (const row of matches.slice(1)) {
+        if (row[index.typ] !== 'match' || row[index.match_day_id] || !row[index.spieler_id]) continue;
+        const playedAt = new Date(row[index.zeit]);
+        if (!Number.isFinite(playedAt.getTime()) ||
+            playedAt.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' }) !== dayRecord.datum) continue;
+        const playerId = row[index.spieler_id];
+        candidateCounts.set(playerId, (candidateCounts.get(playerId) || 0) + 1);
+    }
+    return [...candidateCounts].map(([playerId, matchCount]) => ({
+        playerId, player: names.get(playerId) || '(gelöscht)', matchCount
+    })).filter(candidate => names.has(candidate.playerId)).sort((a, b) => a.player.localeCompare(b.player));
+}
+
+async function startSurveyForDay(dayId, selectedLegacyIds = null) {
     return mutateSurveys(async () => {
         const saved = surveyData();
         if (saved.days[dayId]) return { error: 'Für diesen Spieltag wurde die Umfrage bereits gestartet' };
+        const dayRecord = loadZahlungen().spieltage.find(day => day.id === dayId);
+        if (!dayRecord) return { error: 'Spieltag nicht gefunden', status: 404 };
         const matches = csvRows(readFile('spiele.csv'));
         const header = matches[0] || [];
         const index = Object.fromEntries(header.map((name, i) => [name, i]));
-        const participantIds = [...new Set(matches.slice(1)
+        const linkedParticipantIds = [...new Set(matches.slice(1)
             .filter(row => row[index.typ] === 'match' && row[index.match_day_id] === dayId)
             .map(row => row[index.spieler_id])
             .filter(Boolean))];
-        if (!participantIds.length) return { error: 'Für diesen Spieltag wurden keine eindeutig zugeordneten Einzelspiele gefunden. Alte Spiele ohne matchDayId bleiben unverändert.' };
+        let participantIds = linkedParticipantIds;
+        let participantSource = 'match_day_id';
+        if (!participantIds.length) {
+            const candidates = legacySurveyCandidates(dayRecord);
+            if (!Array.isArray(selectedLegacyIds)) {
+                return candidates.length
+                    ? { needsParticipants: true }
+                    : { error: 'Für diesen Spieltag wurden keine Spiele gefunden. Bitte prüfe, ob die Spielergebnisse gespeichert sind.', status: 409 };
+            }
+            const selected = [...new Set(selectedLegacyIds.filter(id => typeof id === 'string' && id))];
+            const eligibleIds = new Set(candidates.map(candidate => candidate.playerId));
+            if (!selected.length || selected.some(id => !eligibleIds.has(id))) {
+                return { error: 'Bitte wähle mindestens einen Spieler aus den gespeicherten Spielen dieses Spieltags aus.', status: 400 };
+            }
+            participantIds = selected;
+            participantSource = 'admin_confirmed_legacy_matches';
+        }
 
         const players = surveyPlayers();
         const playerById = new Map(players.map(player => [player.id, player]));
@@ -855,7 +893,7 @@ async function startSurveyForDay(dayId) {
         }]));
         saved.days[dayId] = {
             id: dayId, finishedAt, closesAt, participants: eligible.map(player => player.id),
-            forms, submissions: {}, invites, results: null
+            participantSource, forms, submissions: {}, invites, results: null
         };
         await writeJson('umfragen.json', saved);
         setImmediate(async () => {
@@ -1228,16 +1266,47 @@ async function handle(req, res) {
         });
     }
 
+    const legacySurveyParticipantsApi = /^\/api\/spieltage\/([\w-]+)\/umfrage\/teilnehmer$/.exec(url);
+    if (legacySurveyParticipantsApi && method === 'GET') {
+        if (!requireAdmin()) return;
+        const [, dayId] = legacySurveyParticipantsApi;
+        const dayRecord = loadZahlungen().spieltage.find(item => item.id === dayId);
+        if (!dayRecord) return sendJson(res, 404, { ok: false, error: 'Spieltag nicht gefunden' });
+        if (surveyData().days[dayId]) return sendJson(res, 409, { ok: false, error: 'Für diesen Spieltag wurde die Umfrage bereits gestartet' });
+        const rows = csvRows(readFile('spiele.csv'));
+        const header = rows[0] || [];
+        const index = Object.fromEntries(header.map((name, i) => [name, i]));
+        const linkedParticipantIds = [...new Set(rows.slice(1)
+            .filter(row => row[index.typ] === 'match' && row[index.match_day_id] === dayId)
+            .map(row => row[index.spieler_id]).filter(Boolean))];
+        return sendJson(res, 200, {
+            linkedParticipantIds,
+            legacyCandidates: linkedParticipantIds.length ? [] : legacySurveyCandidates(dayRecord)
+        });
+    }
+
     const finishSurveyApi = /^\/api\/spieltage\/([\w-]+)\/umfrage\/abschliessen$/.exec(url);
     if (finishSurveyApi && method === 'POST') {
         if (!requireAdmin()) return;
         const dayId = finishSurveyApi[1];
         const dayRecord = loadZahlungen().spieltage.find(item => item.id === dayId);
         if (!dayRecord) return sendJson(res, 404, { ok: false, error: 'Spieltag nicht gefunden' });
-        const result = await startSurveyForDay(dayId);
-        if (result.error) return sendJson(res, 409, { ok: false, error: result.error });
+        const body = await readJsonBody(req, 1e4);
+        const selectedLegacyIds = body && typeof body === 'object' && !Array.isArray(body)
+            ? body.participantIds : null;
+        const result = await startSurveyForDay(dayId, selectedLegacyIds);
+        if (result.needsParticipants) {
+            return sendJson(res, 409, {
+                ok: false, code: 'participants_required',
+                error: 'Die gespeicherten Spiele haben noch keine Spieltagszuordnung. Bitte bestätige die Spieler aus den Spielen dieses Datums.'
+            });
+        }
+        if (result.error) return sendJson(res, result.status || 409, { ok: false, error: result.error });
         scheduleNextSurveyClose();
-        return sendJson(res, 201, { ok: true, finishedAt: result.day.finishedAt, closesAt: result.day.closesAt, participantCount: result.day.participants.length });
+        return sendJson(res, 201, {
+            ok: true, finishedAt: result.day.finishedAt, closesAt: result.day.closesAt,
+            participantCount: result.day.participants.length, participantSource: result.day.participantSource
+        });
     }
 
     const retrySurveyInviteApi = /^\/api\/spieltage\/([\w-]+)\/umfrage\/einladungen\/([\w-]+)$/.exec(url);
