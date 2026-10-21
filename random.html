@@ -1493,7 +1493,7 @@
         // ---- Chart ----
         function chartPlayerHistories() {
             const events = new Map();
-            const histories = new Map(players.map(player => [player.id, player.history.map(point => ({ ...point, chartKey: point.seq === 0 ? 'start' : point.matchId || ('manual:' + point.seq + ':' + point.t) }))]));
+            const histories = new Map(players.map(player => [player.id, player.history.filter(point => point.matchId || (point.seq === 0 && point.delta === 0)).map(point => ({ ...point, chartKey: point.matchId || 'start' }))]));
             for (const survey of surveyEloHistory) {
                 for (const change of survey.changes) {
                     if (!histories.has(change.playerId)) continue;

@@ -8,7 +8,9 @@ const source = html.slice(html.indexOf('        function chartPlayerHistories()'
 function fixture() {
     const player = { id: 'p1', name: 'Alice', elo: 1529.833333, history: [
         { seq: 0, t: '2026-10-01T00:00:00Z', elo: 1500, delta: 0 },
+        { seq: 0, t: '2026-10-01T12:00:00Z', elo: 1510, delta: 10, matchId: null },
         { seq: 1, t: '2026-10-02T00:00:00Z', elo: 1525, delta: 25, matchId: 'm1' },
+        { seq: 1, t: '2026-10-04T00:00:00Z', elo: 1535, delta: 5.166667, matchId: null },
         { seq: 2, t: '2026-10-05T00:00:00Z', elo: 1554.833333, delta: 25, matchId: 'm2' }
     ] };
     const elements = Object.fromEntries(['chartLegend','eloChart','chartWrap','chartTooltip','chartCursor'].map(id => [id, {
