@@ -2476,10 +2476,26 @@
                     ${player.photo ? `<img src="${escapeHtml(player.photo)}" alt="" class="h-20 w-20 rounded-full object-cover shadow-sm">` : '<span class="flex h-20 w-20 items-center justify-center rounded-full bg-slate-200 text-slate-500"><i class="fa-solid fa-user text-2xl"></i></span>'}
                     <span class="mt-2 text-sm font-bold">${escapeHtml(player.name)}</span><span class="text-xs text-slate-400">Spieler ${side}</span>
                 </div>`;
-                const choices = ['a_much', 'a_slight', 'equal', 'b_slight', 'b_much', 'unsure'];
+                const choices = ['a_much', 'a_slight', 'equal', 'b_slight', 'b_much'];
+                const selected = choices.includes(answers[step.id]) ? answers[step.id] : 'equal';
                 $('surveyContent').innerHTML = `<h3 class="text-xl font-bold leading-snug">${escapeHtml(step.prompt)}</h3>
                     <div class="mt-4 flex items-stretch gap-2">${playerCard(step.a, 'A')}${playerCard(step.b, 'B')}</div>
-                    <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">${choices.map(value => `<button type="button" data-survey-choice="${value}" class="min-h-12 rounded-xl border-2 px-3 py-2 text-sm font-semibold transition ${answers[step.id] === value ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'}">${SURVEY_ANSWER_LABELS[value]}</button>`).join('')}</div>`;
+                    <div class="mt-5 rounded-xl border border-slate-200 p-4">
+                        <label for="surveyComparisonSlider" id="surveySliderLabel" class="block text-center text-sm font-bold text-blue-800">${SURVEY_ANSWER_LABELS[selected]}</label>
+                        <input id="surveyComparisonSlider" type="range" min="0" max="4" step="1" value="${choices.indexOf(selected)}" aria-valuetext="${SURVEY_ANSWER_LABELS[selected]}" class="mt-4 h-10 w-full cursor-pointer accent-blue-600">
+                        <div class="flex justify-between gap-2 text-xs text-slate-500"><span>A deutlich stärker</span><span>Gleich stark</span><span class="text-right">B deutlich stärker</span></div>
+                        <button type="button" id="surveySliderNext" data-survey-choice="${selected}" class="mt-5 min-h-12 w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Antwort bestätigen &amp; weiter</button>
+                        <button type="button" data-survey-choice="unsure" class="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Kann ich nicht beurteilen</button>
+                    </div>`;
+                $('surveyComparisonSlider').oninput = event => {
+                    const value = choices[Number(event.target.value)];
+                    $('surveySliderLabel').textContent = SURVEY_ANSWER_LABELS[value];
+                    event.target.setAttribute('aria-valuetext', SURVEY_ANSWER_LABELS[value]);
+                    $('surveySliderNext').dataset.surveyChoice = value;
+                    answers[step.id] = value;
+                    try { localStorage.setItem(surveyStorageKey(activeSurvey.dayId), JSON.stringify(answers)); }
+                    catch (error) { showToast('Zwischenspeichern nicht möglich', error.message, 'error'); }
+                };
             }
             $('surveyContent').querySelectorAll('[data-survey-choice]').forEach(button => button.onclick = () => {
                 answers[step.id] = button.dataset.surveyChoice;
