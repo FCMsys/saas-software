@@ -190,6 +190,10 @@ test('survey API creates stable private forms, accepts each response once, and p
         ]);
         assert.equal(p1Submit.response.status, 200);
         assert.equal(p2Submit.response.status, 200);
+        const progress = (await call('/api/umfragen')).data.surveys.find(item => item.id === dayId);
+        assert.equal(progress.inviteDetails.find(item => item.playerId === 'p1').answered, true);
+        assert.equal(progress.inviteDetails.find(item => item.playerId === 'p2').answered, true);
+        assert.equal(progress.inviteDetails.find(item => item.playerId === 'p3').answered, false);
         const updatedState = await call('/api/state');
         const updatedRows = updatedState.data.spieler.replace(/^\uFEFF/, '').trim().split(/\r?\n/).map(row => row.split(';'));
         assert.ok(updatedRows.slice(1).some(row => row.slice(4, 10).some(value => Number(value) !== 50)));

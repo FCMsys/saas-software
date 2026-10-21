@@ -1205,6 +1205,7 @@ async function handle(req, res) {
                     const names = new Map(surveyPlayers().map(player => [player.id, player.name]));
                     view.inviteDetails = Object.entries(day.invites || {}).map(([playerId, invite]) => ({
                         playerId, player: names.get(playerId) || '(gelöscht)', status: invite.status,
+                        answered: !!(day.submissions && day.submissions[playerId]),
                         error: invite.error || ''
                     }));
                     view.ratingChanges = saved.ratings.history.filter(change => change.dayId === day.id)
