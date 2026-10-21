@@ -545,9 +545,9 @@
                         <label class="text-xs text-rose-700"><input id="adRemoveImage" type="checkbox" class="accent-rose-600 mr-1">Vorhandenes Bild entfernen</label>
                     </div>
                 </div>
-                <p class="text-xs text-slate-500">Text direkt auf der Flagge bearbeiten. Text und Bild zum Positionieren ziehen oder die Zahlenfelder verwenden.</p>
-                <div id="adEditor"><img src="/img/ad-plane-banner.png" alt="Werbeflieger Vorschau"><div class="ad-flyer-content"><img id="adEditorImage" alt="Werbebild"><span id="adEditorText" contenteditable="plaintext-only" role="textbox" aria-label="Werbetext auf der Flagge"></span></div></div>
-                <div class="grid sm:grid-cols-2 gap-3"><label class="text-sm">Schriftart<select id="ad_fontFamily" class="block w-full border rounded-lg px-3 py-2"><option>Arial</option><option>Verdana</option><option>Georgia</option><option>Trebuchet MS</option><option>Courier New</option></select></label><label class="block text-sm">Schriftgröße (% Flaggenbreite)<input id="ad_fontSize" type="number" min="2" max="40" step="0.1" required value="5" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Text horizontal (%)<input id="ad_textX" type="number" min="0" max="100" step="0.1" required value="55" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Text vertikal (%)<input id="ad_textY" type="number" min="0" max="100" step="0.1" required value="50" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Bildgröße (%)<input id="ad_imageSize" type="number" min="5" max="100" step="0.1" required value="28" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Bild horizontal (%)<input id="ad_imageX" type="number" min="0" max="100" step="0.1" required value="18" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Bild vertikal (%)<input id="ad_imageY" type="number" min="0" max="100" step="0.1" required value="50" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Flugzeit in Sekunden (kleiner = schneller)<input id="ad_flightSeconds" type="number" min="0.1" max="3600" step="0.1" required value="8" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Inaktivität in Sekunden<input id="ad_idleSeconds" type="number" min="0" max="86400" step="0.1" required value="5" class="block w-full border rounded-lg px-3 py-2"></label></div>
+                <p class="text-xs text-slate-500">Text direkt auf der Flagge bearbeiten. Text und Bild zum Positionieren direkt auf der Flagge ziehen.</p>
+                <div id="adEditor"><img src="/img/ad-plane-banner.png" alt="Werbeflieger Vorschau"><div class="ad-flyer-content"><img id="adEditorImage" alt="Werbebild" draggable="false"><span id="adEditorText" contenteditable="plaintext-only" role="textbox" aria-label="Werbetext auf der Flagge"></span></div></div>
+                <div class="grid sm:grid-cols-2 gap-3"><label class="text-sm">Schriftart<select id="ad_fontFamily" class="block w-full border rounded-lg px-3 py-2"><option>Arial</option><option>Verdana</option><option>Georgia</option><option>Trebuchet MS</option><option>Courier New</option></select></label><label class="block text-sm">Schriftgröße (% Flaggenbreite)<input id="ad_fontSize" type="number" min="2" max="40" step="0.1" required value="5" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Bildgröße (%)<input id="ad_imageSize" type="number" min="5" max="100" step="0.1" required value="28" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Flugzeit in Sekunden (kleiner = schneller)<input id="ad_flightSeconds" type="number" min="0.1" max="3600" step="0.1" required value="8" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Inaktivität in Sekunden<input id="ad_idleSeconds" type="number" min="0" max="86400" step="0.1" required value="5" class="block w-full border rounded-lg px-3 py-2"></label></div>
                 <p class="text-xs text-slate-500">Bei anhaltender Inaktivität folgt nach einer Sekunde der nächste Flug. Begonnene Flüge laufen bei Aktivit?t zu Ende.</p>
                 <div class="flex items-center gap-3">
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">Werbung speichern</button>
@@ -2022,14 +2022,15 @@
             return true;
         }
 
+        let adPositions = Object.fromEntries(['textX', 'textY', 'imageX', 'imageY'].map(key => [key, AD_DEFAULTS[key]]));
         function adFormSettings() {
-            return Object.fromEntries(Object.keys(AD_DEFAULTS).map(k => [k, k === 'fontFamily' ? $('ad_' + k).value : Number($('ad_' + k).value)]));
+            return { ...Object.fromEntries(Object.keys(AD_DEFAULTS).filter(k => !(k in adPositions)).map(k => [k, k === 'fontFamily' ? $('ad_' + k).value : Number($('ad_' + k).value)])), ...adPositions };
         }
         function renderAdContent(text, image, config) {
             const c = { ...AD_DEFAULTS, ...config };
             text.textContent = c.text || '';
             Object.assign(text.style, { left: c.textX + '%', top: c.textY + '%', fontSize: c.fontSize + 'cqw', fontFamily: c.fontFamily });
-            Object.assign(image.style, { left: c.imageX + '%', top: c.imageY + '%', width: c.imageSize + '%', height: '100%', maxWidth: 'none', maxHeight: 'none' });
+            Object.assign(image.style, { left: c.imageX + '%', top: c.imageY + '%', width: c.imageSize + '%', height: 'auto', maxWidth: '100%', maxHeight: '100%' });
             image.classList.toggle('hidden', !c.image);
             if (c.image) image.src = c.image; else image.removeAttribute('src');
         }
@@ -2062,7 +2063,10 @@
                     $('adRemoveImage').checked = false;
                     updateAdPreview(config.image || '');
                     $('adSaveStatus').textContent = config.image ? 'Aktuelles Bild geladen.' : 'Noch kein Bild hinterlegt.';
-                    for (const [k, v] of Object.entries(AD_DEFAULTS)) $('ad_' + k).value = config[k] ?? v;
+                    for (const [k, v] of Object.entries(AD_DEFAULTS)) {
+                        if (k in adPositions) adPositions[k] = config[k] ?? v;
+                        else $('ad_' + k).value = config[k] ?? v;
+                    }
                     renderAdEditor();
                     adFormDirty = false;
                 }
@@ -2910,6 +2914,7 @@
             }
             $('adRemoveImage').checked = false;
             updateAdPreview(URL.createObjectURL(file));
+            renderAdEditor();
             $('adSaveStatus').textContent = 'Neues Bild ausgewählt.';
         };
         $('adForm').oninput = e => {
@@ -2919,23 +2924,47 @@
                 if (e.target.textContent.length > 200) e.target.textContent = $('adText').value;
             } else renderAdEditor();
         };
-        for (const [id, prefix] of [['adEditorText', 'text'], ['adEditorImage', 'image']]) {
-            $(id).addEventListener('pointerdown', e => {
-                if (e.button !== 0) return;
-                const element = $(id), rect = element.parentElement.getBoundingClientRect();
-                const startX = e.clientX, startY = e.clientY;
-                const x = Number($('ad_' + prefix + 'X').value), y = Number($('ad_' + prefix + 'Y').value);
-                element.setPointerCapture(e.pointerId);
-                const move = event => {
-                    if (Math.hypot(event.clientX - startX, event.clientY - startY) < 4) return;
-                    for (const [axis, value] of [['X', x + (event.clientX - startX) / rect.width * 100], ['Y', y + (event.clientY - startY) / rect.height * 100]])
-                        $('ad_' + prefix + axis).value = Math.max(0, Math.min(100, value)).toFixed(1);
-                    adFormDirty = true; renderAdEditor();
-                };
-                element.addEventListener('pointermove', move);
-                element.addEventListener('lostpointercapture', () => element.removeEventListener('pointermove', move), { once: true });
-            });
+        function initAdDragging() {
+            for (const [id, prefix] of [['adEditorText', 'text'], ['adEditorImage', 'image']]) {
+                const element = $(id);
+                element.addEventListener('dragstart', e => e.preventDefault());
+                element.addEventListener('pointerdown', e => {
+                    if (e.button !== 0 || e.isPrimary === false) return;
+                    const rect = element.parentElement.getBoundingClientRect();
+                    if (!rect.width || !rect.height) return;
+                    const startX = e.clientX, startY = e.clientY;
+                    const x = adPositions[prefix + 'X'], y = adPositions[prefix + 'Y'];
+                    let dragging = false;
+                    element.setPointerCapture(e.pointerId);
+                    const move = event => {
+                        if (event.pointerId !== e.pointerId) return;
+                        if (!dragging && Math.hypot(event.clientX - startX, event.clientY - startY) < 4) return;
+                        dragging = true;
+                        event.preventDefault();
+                        // Keep the entire item inside the editable flag area.
+                        const bounds = element.getBoundingClientRect();
+                        const halfWidth = Math.min(50, bounds.width / rect.width * 50);
+                        const halfHeight = Math.min(50, bounds.height / rect.height * 50);
+                        adPositions[prefix + 'X'] = Math.max(halfWidth, Math.min(100 - halfWidth, x + (event.clientX - startX) / rect.width * 100));
+                        adPositions[prefix + 'Y'] = Math.max(halfHeight, Math.min(100 - halfHeight, y + (event.clientY - startY) / rect.height * 100));
+                        element.style.left = adPositions[prefix + 'X'] + '%';
+                        element.style.top = adPositions[prefix + 'Y'] + '%';
+                        adFormDirty = true;
+                    };
+                    const end = event => {
+                        if (event.pointerId !== e.pointerId) return;
+                        element.removeEventListener('pointermove', move);
+                        element.removeEventListener('pointerup', end);
+                        element.removeEventListener('pointercancel', end);
+                        element.removeEventListener('lostpointercapture', end);
+                        if (element.hasPointerCapture(e.pointerId)) element.releasePointerCapture(e.pointerId);
+                    };
+                    element.addEventListener('pointermove', move);
+                    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) element.addEventListener(type, end);
+                });
+            }
         }
+        initAdDragging();
         $('adForm').onchange = e => {
             adFormDirty = true;
             renderAdEditor();
