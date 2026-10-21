@@ -120,6 +120,23 @@ function validAnswer(questionnaire, answers) {
     );
 }
 
+function normalizeSurveyAnswers(questionnaire, answers) {
+    if (!answers || typeof answers !== 'object' || Array.isArray(answers)) return null;
+    if (Array.isArray(answers.comparisons)) return validAnswer(questionnaire, answers) ? answers : null;
+
+    const questionIds = questionnaire.comparisons.map(question => question.id);
+    const expectedKeys = ['surprise', 'motm', ...questionIds].sort();
+    if (Object.keys(answers).sort().join('\0') !== expectedKeys.join('\0')) return null;
+    const normalized = {
+        surprise: answers.surprise,
+        motm: answers.motm,
+        comparisons: questionnaire.comparisons.map(question => ({
+            id: question.id, value: answers[question.id]
+        }))
+    };
+    return validAnswer(questionnaire, normalized) ? normalized : null;
+}
+
 function updateAttributeRatings(priors, comparisons) {
     const ratings = {};
     for (const attribute of ATTRIBUTES) {
@@ -154,4 +171,4 @@ function updateAttributeRatings(priors, comparisons) {
     return ratings;
 }
 
-module.exports = { ATTRIBUTES, ATTRIBUTE_QUESTIONS, COMPARISON_OPTIONS, OUTCOMES, generateQuestionnaire, validAnswer, updateAttributeRatings, surveyDeadline, isSurveyClosed, countAwardVotes };
+module.exports = { ATTRIBUTES, ATTRIBUTE_QUESTIONS, COMPARISON_OPTIONS, OUTCOMES, generateQuestionnaire, validAnswer, normalizeSurveyAnswers, updateAttributeRatings, surveyDeadline, isSurveyClosed, countAwardVotes };

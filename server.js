@@ -12,7 +12,7 @@ const crypto = require('crypto');
 const net = require('net');
 const tls = require('tls');
 const { exec } = require('child_process');
-const { ATTRIBUTES, OUTCOMES, generateQuestionnaire, validAnswer, updateAttributeRatings, surveyDeadline, isSurveyClosed, countAwardVotes } = require('./src/logic/survey');
+const { ATTRIBUTES, OUTCOMES, generateQuestionnaire, normalizeSurveyAnswers, updateAttributeRatings, surveyDeadline, isSurveyClosed, countAwardVotes } = require('./src/logic/survey');
 
 // --- .env laden (optional, ohne Abhängigkeit) ---
 try {
@@ -1269,8 +1269,9 @@ async function handle(req, res) {
                 return { status: 410, error: 'Die Umfrage für diesen Spieltag ist abgeschlossen.' };
             }
             if (day.submissions[playerId]) return { status: 409, error: 'Du hast diese Umfrage bereits abgeschickt' };
-            const answers = body && typeof body === 'object' && !Array.isArray(body) ? body.answers : null;
-            if (!validAnswer(day.forms[playerId], answers)) return { status: 400, error: 'Bitte beantworte alle Fragen mit den angebotenen Antworten' };
+            const receivedAnswers = body && typeof body === 'object' && !Array.isArray(body) ? body.answers : null;
+            const answers = normalizeSurveyAnswers(day.forms[playerId], receivedAnswers);
+            if (!answers) return { status: 400, error: 'Bitte beantworte alle Fragen mit den angebotenen Antworten' };
             day.submissions[playerId] = {
                 playerId, submittedAt: new Date().toISOString(),
                 answers: {

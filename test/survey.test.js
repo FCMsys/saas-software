@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { ATTRIBUTES, generateQuestionnaire, validAnswer, updateAttributeRatings, surveyDeadline, isSurveyClosed, countAwardVotes } = require('../src/logic/survey');
+const { ATTRIBUTES, generateQuestionnaire, validAnswer, normalizeSurveyAnswers, updateAttributeRatings, surveyDeadline, isSurveyClosed, countAwardVotes } = require('../src/logic/survey');
 
 const players = [
     { id: 'p1', ges: 50 }, { id: 'p2', ges: 51 }, { id: 'p3', ges: 52 },
@@ -49,6 +49,18 @@ test('answer validation requires the saved questionnaire choices', () => {
     assert.equal(validAnswer(questionnaire, answers), true);
     assert.equal(validAnswer(questionnaire, { ...answers, surprise: 'p1' }), false);
     assert.equal(validAnswer(questionnaire, { ...answers, comparisons: [] }), false);
+});
+
+test('answer normalization accepts the keyed answers saved by the survey UI', () => {
+    const questionnaire = generateQuestionnaire('p1', players, {}, () => 0.2);
+    const keyed = { surprise: 'none', motm: 'unsure' };
+    for (const question of questionnaire.comparisons) keyed[question.id] = 'equal';
+    assert.deepEqual(normalizeSurveyAnswers(questionnaire, keyed), {
+        surprise: 'none',
+        motm: 'unsure',
+        comparisons: questionnaire.comparisons.map(question => ({ id: question.id, value: 'equal' }))
+    });
+    assert.equal(normalizeSurveyAnswers(questionnaire, { ...keyed, unexpected: 'equal' }), null);
 });
 
 test('deadline is exactly 48 hours after finish and closes at the exact instant', () => {

@@ -156,10 +156,17 @@ test('survey API creates stable private forms, accepts each response once, and p
                 value: strong && question.kind === 'attribute' && index === form.comparisons.findIndex(item => item.kind === 'attribute') ? 'a_much' : 'equal'
             }))
         });
-        const p1Answer = makeAnswers(first.data.form, true);
+        const makeUiAnswers = (form, strong = false) => Object.fromEntries([
+            ['surprise', 'none'], ['motm', 'unsure'],
+            ...form.comparisons.map((question, index) => [
+                question.id,
+                strong && question.kind === 'attribute' && index === form.comparisons.findIndex(item => item.kind === 'attribute') ? 'a_much' : 'equal'
+            ])
+        ]);
+        const p1UiAnswer = makeUiAnswers(first.data.form, true);
         const p2Form = (await call(`/api/umfragen/${dayId}`, { role: 'player', playerId: 'p2' })).data.form;
         const [p1Submit, p2Submit] = await Promise.all([
-            call(`/api/umfragen/${dayId}/antwort`, { role: 'player', playerId: 'p1', method: 'POST', body: { answers: p1Answer } }),
+            call(`/api/umfragen/${dayId}/antwort`, { role: 'player', playerId: 'p1', method: 'POST', body: { answers: p1UiAnswer } }),
             call(`/api/umfragen/${dayId}/antwort`, { role: 'player', playerId: 'p2', method: 'POST', body: { answers: makeAnswers(p2Form) } })
         ]);
         assert.equal(p1Submit.response.status, 200);
@@ -168,7 +175,7 @@ test('survey API creates stable private forms, accepts each response once, and p
         const updatedRows = updatedState.data.spieler.replace(/^\uFEFF/, '').trim().split(/\r?\n/).map(row => row.split(';'));
         assert.ok(updatedRows.slice(1).some(row => row.slice(4, 10).some(value => Number(value) !== 50)));
         assert.ok(updatedRows.slice(1).every(row => row[2] === '1500'));
-        const duplicate = await call(`/api/umfragen/${dayId}/antwort`, { role: 'player', playerId: 'p1', method: 'POST', body: { answers: p1Answer } });
+        const duplicate = await call(`/api/umfragen/${dayId}/antwort`, { role: 'player', playerId: 'p1', method: 'POST', body: { answers: p1UiAnswer } });
         assert.equal(duplicate.response.status, 409);
         const forbiddenFinish = await call(`/api/spieltage/${dayId}/umfrage/abschliessen`, { role: 'player', playerId: 'p1', method: 'POST' });
         assert.equal(forbiddenFinish.response.status, 403);
