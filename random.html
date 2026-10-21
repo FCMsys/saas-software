@@ -1417,7 +1417,6 @@
         function applyMatchDay() {
             const d = spieltage.find(x => x.id === matchDayId);
             selectedPlayerIds = new Set(d ? confirmedIds(d) : players.map(p => p.id));
-            currentTeams = null;
             saveCurrentGame();
             renderMatchTab();
         }
@@ -2471,7 +2470,10 @@
                     await api('DELETE', `/api/spieltage/${st}`);
                 } else if (act === 'match') {
                     const d = spieltage.find(x => x.id === st);
-                    matchDayId = st; selectedPlayerIds = new Set(d ? confirmedIds(d) : []); currentTeams = null; saveCurrentGame();
+                    if (!currentTeams) {
+                        matchDayId = st;
+                        selectedPlayerIds = new Set(d ? confirmedIds(d) : []);
+                    }
                     showTab('match');
                     return;
                 } else if (act === 'bill') {
