@@ -217,7 +217,7 @@
                 <form id="addPlayerForm" class="admin-only flex gap-2">
                     <input type="text" id="playerNameInput" placeholder="Neuer Spieler…" required
                            class="w-44 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none transition">
-                    <input type="number" id="playerEloInput" value="1500" min="100" max="3000" title="Start-Elo"
+                    <input type="number" step="any" id="playerEloInput" value="1500" min="100" max="3000" title="Start-Elo"
                            class="w-20 bg-white border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none transition">
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 rounded-lg text-sm transition flex items-center gap-2">
                         <i class="fa-solid fa-plus"></i> Hinzufügen
@@ -651,7 +651,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1">Elo-Wert (manuelle Korrektur) <span id="editRatingHint" class="text-slate-400 font-normal"></span></label>
-                    <input type="number" id="editPlayerElo" min="100" max="3000" required class="w-full border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none">
+                    <input type="number" step="any" id="editPlayerElo" min="100" max="3000" required class="w-full border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 text-sm outline-none">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1">Attribut-Startwerte (1–99)</label>
@@ -879,13 +879,27 @@
 
         // gesOld = null: Voll-Ausrichtung (Mittel der Werte == neues GES); sonst nur die GES-Änderung verteilen
         function adjustAttrs(attrs, eloNew, pos, gesOld, mode) {
-            const w = weightsFor(pos), gesNew = gesFromElo(eloNew);
-            const delta = gesOld == null ? 6 * gesNew - sumOf(attrs) : 6 * (gesNew - gesOld);
-            const d = (mode === 'deterministisch' ? distributeDeterministic : distributeRandom)(delta, w, attrs);
-            return Object.fromEntries(STAT_KEYS.map(k => [k, Math.min(99, Math.max(1, attrs[k] + d[k]))]));
+            const target = Math.max(6, Math.min(594, 6 * ((eloNew + 337) / 29)));
+            const result = { ...attrs }, w = weightsFor(pos);
+            let remaining = target - sumOf(result);
+            if (mode === 'zufall' || (!mode && statMode === 'zufall')) {
+                const whole = Math.trunc(remaining);
+                const deltas = distributeRandom(whole, w, result);
+                STAT_KEYS.forEach(k => { result[k] = Math.max(1, Math.min(99, result[k] + deltas[k])); });
+                remaining = target - sumOf(result);
+            }
+            for (let pass = 0; pass < 7 && Math.abs(remaining) > 1e-10; pass++) {
+                const free = STAT_KEYS.filter(k => remaining > 0 ? result[k] < 99 : result[k] > 1);
+                const weight = free.reduce((sum, k) => sum + w[k], 0);
+                if (!weight) break;
+                free.forEach(k => { result[k] = Math.max(1, Math.min(99, result[k] + remaining * w[k] / weight)); });
+                remaining = target - sumOf(result);
+            }
+            return result;
         }
-        const applyEloToStats = (p, eloOld, eloNew) => { p.stats = adjustAttrs(p.stats, eloNew, p.pos, gesFromElo(eloOld), statMode); };
-        const alignStats = p => { p.stats = adjustAttrs(p.stats, p.elo, p.pos, null, statMode); };
+        const applyEloToStats = (p, eloOld, eloNew) => { p.stats = adjustAttrs(p.stats, eloNew, p.pos); };
+        const alignStats = p => { p.stats = adjustAttrs(p.stats, p.elo, p.pos); };
+        const eloFromStats = stats => eloFromGes(sumOf(stats) / STAT_KEYS.length);
 
         const POSITIONS = ['ST', 'LF', 'RF', 'ZOM', 'ZM', 'ZDM', 'LV', 'RV', 'IV', 'TW'];
         const TIER_NAMES = { bronze: 'Bronze', silber: 'Silber', gold: 'Gold', ikone: 'Ikone' };
@@ -927,7 +941,7 @@
                 p.stats = {};
                 STAT_KEYS.forEach(k => {
                     const v = old[k] ?? (k === 'drl' ? old.dri : k === 'ver' ? old.def : undefined);
-                    p.stats[k] = Math.max(1, Math.min(99, parseInt(v) || 50));
+                    p.stats[k] = Math.max(1, Math.min(99, parseFloat(v) || 50));
                 });
             });
             players.forEach(p => {
@@ -1001,8 +1015,8 @@
         }
 
         function stateToCsv() {
-            const spieler = toCsv(['id', 'name', 'elo', 'position', ...STAT_KEYS, 'foto'],
-                players.map(p => [p.id, p.name, p.elo, p.pos, ...STAT_KEYS.map(k => p.stats[k]), p.photo.startsWith('data:') ? '' : p.photo.split('?')[0]]));
+            const spieler = toCsv(['id', 'name', 'elo', 'position', ...STAT_KEYS, 'foto', ...STAT_KEYS.map(k => 'survey_' + k)],
+                players.map(p => [p.id, p.name, p.elo, p.pos, ...STAT_KEYS.map(k => p.stats[k]), p.photo.startsWith('data:') ? '' : p.photo.split('?')[0], ...STAT_KEYS.map(k => p.surveyApplied?.[k] ?? '')]));
             const presets = toCsv(['name', 'spieler_ids'], Object.entries(squadPresets).map(([n, ids]) => [n, ids.join('|')]));
 
             const rows = [];
@@ -1025,7 +1039,8 @@
 
         function stateFromCsv(csv) {
             players = parseCsv(csv.spieler).map(r => ({
-                id: r.id, name: r.name, elo: parseInt(r.elo) || 1500, history: [],
+                id: r.id, name: r.name, elo: parseFloat(r.elo) || 1500, history: [],
+                surveyApplied: Object.fromEntries(STAT_KEYS.map(k => [k, r['survey_' + k]])),
                 pos: r.position, photo: r.foto ? r.foto + '?v=' + Date.now() : '',
                 // alte CSVs: dri/def werden zu drl/ver (normalizeData)
                 stats: Object.fromEntries([...STAT_KEYS, 'dri', 'def'].map(k => [k, r[k]]))
@@ -1035,7 +1050,7 @@
 
             parseCsv(csv.spiele).forEach(r => {
                 const seq = parseInt(r.seq) || 0;
-                const after = parseInt(r.elo_nachher), before = parseInt(r.elo_vorher), delta = parseInt(r.delta) || 0;
+                const after = parseFloat(r.elo_nachher), before = parseFloat(r.elo_vorher), delta = parseFloat(r.delta) || 0;
                 const player = byId[r.spieler_id];
                 if (player) player.history.push({ seq, t: r.zeit, elo: after, delta, matchId: r.typ === 'match' ? r.match_id : null });
                 if (r.typ !== 'match') return;
@@ -1174,6 +1189,7 @@
                 const player = players.find(x => x.id === p.id);
                 const before = player.elo;
                 player.elo = Math.max(100, before + change);
+                applyEloToStats(player, before, player.elo);
                 const delta = player.elo - before;
                 player.history.push({ seq, t: nowIso, elo: player.elo, delta, matchId });
                 return { id: player.id, name: player.name, before, after: player.elo, delta };
@@ -1568,7 +1584,7 @@
         $('addPlayerForm').onsubmit = e => {
             e.preventDefault();
             const name = $('playerNameInput').value.trim();
-            const elo = parseInt($('playerEloInput').value) || 1500;
+            const elo = parseFloat($('playerEloInput').value) || 1500;
             if (!name) return;
             const p = { id: "p_" + Date.now(), name, elo, history: [{ seq: currentSeq(), t: new Date().toISOString(), elo, delta: 0, matchId: null }] };
             players.push(p);
@@ -1588,7 +1604,7 @@
             $('editPlayerPos').innerHTML = POSITIONS.map(pos => `<option ${pos === p.pos ? 'selected' : ''}>${pos}</option>`).join('');
             $('editStatsGrid').innerHTML = STAT_KEYS.map(k => `<label class="flex items-center gap-2 border border-slate-300 rounded-lg px-2.5 py-1.5 focus-within:border-blue-500">
                 <span class="text-[11px] font-bold text-slate-500 w-8">${STAT_LABELS[k]}</span>
-                <input type="number" min="1" max="99" data-stat="${k}" value="${statVal(p, k)}" class="w-full text-sm font-semibold outline-none"></label>`).join('');
+                <input type="number" min="1" max="99" step="any" data-stat="${k}" value="${statVal(p, k)}" class="w-full text-sm font-semibold outline-none"></label>`).join('');
             pendingPhoto = undefined;
             renderEditPhoto(p.photo);
             updateRatingHint();
@@ -1598,7 +1614,7 @@
         $('cancelEditBtn').onclick = closeEdit;
         $('editPlayerElo').oninput = () => updateRatingHint();
         function updateRatingHint() {
-            const elo = parseInt($('editPlayerElo').value) || 1500, r = ratingFromElo(elo);
+            const elo = parseFloat($('editPlayerElo').value) || 1500, r = ratingFromElo(elo);
             $('editRatingHint').textContent = `→ Rating ${r} · ${TIER_NAMES[tierFor(elo)]}`;
         }
 
@@ -1672,18 +1688,21 @@
                 const shown = Object.fromEntries(STAT_KEYS.map(k => [k, statVal(p, k)]));
                 const entered = {};
                 document.querySelectorAll('#editStatsGrid [data-stat]').forEach(inp => {
-                    entered[inp.dataset.stat] = Math.max(1, Math.min(99, parseInt(inp.value) || 50));
+                    entered[inp.dataset.stat] = Math.max(1, Math.min(99, parseFloat(inp.value) || 50));
                 });
                 p.name = $('editPlayerName').value.trim();
                 p.pos = $('editPlayerPos').value;
-                const newElo = parseInt($('editPlayerElo').value) || 1500;
+                let newElo = parseFloat($('editPlayerElo').value) || 1500;
+                const attributesChanged = STAT_KEYS.some(k => entered[k] !== shown[k]);
+                if (attributesChanged) newElo = eloFromStats(entered);
+                else applyEloToStats(p, p.elo, newElo);
                 const eloOld = p.elo;
                 if (newElo !== p.elo) {
                     p.history.push({ seq: currentSeq(), t: new Date().toISOString(), elo: newElo, delta: newElo - p.elo, matchId: null });
                     p.elo = newElo;
                 }
                 // Von Hand geänderte Werte gelten so; bei reiner Elo-Korrektur verteilt das System die Punkte (6 je GES)
-                if (STAT_KEYS.some(k => entered[k] !== shown[k])) p.stats = entered;
+                if (attributesChanged) p.stats = entered;
                                 if (pendingPhoto !== undefined) await storePhoto(p, pendingPhoto);
                 saveApplicationData(); renderAll();
                 showToast("Gespeichert", "Spielerdaten aktualisiert.", "info");

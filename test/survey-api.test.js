@@ -178,7 +178,14 @@ test('survey API creates stable private forms, accepts each response once, and p
         const updatedState = await call('/api/state');
         const updatedRows = updatedState.data.spieler.replace(/^\uFEFF/, '').trim().split(/\r?\n/).map(row => row.split(';'));
         assert.ok(updatedRows.slice(1).some(row => row.slice(4, 10).some(value => Number(value) !== 50)));
-        assert.ok(updatedRows.slice(1).every(row => row[2] === '1500'));
+        for (const row of updatedRows.slice(1)) {
+            const mean = row.slice(4, 10).reduce((sum, value) => sum + Number(value), 0) / 6;
+            assert.ok(Math.abs(Number(row[2]) - (29 * mean - 337)) < 1e-9);
+        }
+        const repeatedState = await call('/api/state');
+        assert.equal(repeatedState.data.spieler, updatedState.data.spieler);
+        await call('/api/state', { method: 'PUT', body: updatedState.data });
+        assert.equal((await call('/api/state')).data.spieler, updatedState.data.spieler);
         const duplicate = await call(`/api/umfragen/${dayId}/antwort`, { role: 'player', playerId: 'p1', method: 'POST', body: { answers: p1UiAnswer } });
         assert.equal(duplicate.response.status, 409);
         const forbiddenFinish = await call(`/api/spieltage/${dayId}/umfrage/abschliessen`, { role: 'player', playerId: 'p1', method: 'POST' });

@@ -566,9 +566,9 @@ function surveyPlayers() {
     const index = Object.fromEntries(header.map((name, i) => [name, i]));
     return rows.slice(1).filter(row => row[index.id]).map(row => {
         const stats = Object.fromEntries(ATTRIBUTES.map(attribute => [
-            attribute, Math.max(1, Math.min(99, parseInt(row[index[attribute.toLowerCase()]]) || 50))
+            attribute, Math.max(1, Math.min(99, parseFloat(row[index[attribute.toLowerCase()]]) || 50))
         ]));
-        const elo = parseInt(row[index.elo]) || 1500;
+        const elo = parseFloat(row[index.elo]) || 1500;
         return {
             id: row[index.id],
             name: row[index.name] || '',
@@ -587,12 +587,12 @@ function snapshotSurveyPriors(saved, players) {
 }
 
 function playersCsvWithSurveyRatings(csv, ratings) {
-    if (!ratings || !Object.keys(ratings).length) return csv;
+    ratings = ratings || {};
     const rows = csvRows(csv);
     if (!rows.length) return csv;
     const header = [...rows[0]];
     const keys = ATTRIBUTES.map(attribute => attribute.toLowerCase());
-    keys.forEach(key => { if (!header.includes(key)) header.push(key); });
+    keys.forEach(key => { if (!header.includes(key)) header.push(key); if (!header.includes('survey_' + key)) header.push('survey_' + key); });
     const idIndex = header.indexOf('id');
     const next = [header];
     for (const source of rows.slice(1)) {
@@ -601,8 +601,15 @@ function playersCsvWithSurveyRatings(csv, ratings) {
         const id = row[idIndex];
         keys.forEach((key, index) => {
             const value = ratings[ATTRIBUTES[index]] && ratings[ATTRIBUTES[index]][id];
-            if (Number.isInteger(value)) row[header.indexOf(key)] = String(Math.max(1, Math.min(99, value)));
+            if (Number.isInteger(value)) {
+                const appliedIndex = header.indexOf('survey_' + key);
+                const attributeIndex = header.indexOf(key);
+                const nextValue = row[appliedIndex] === '' ? value : Number(row[attributeIndex]) + value - Number(row[appliedIndex]);
+                row[attributeIndex] = String(Math.max(1, Math.min(99, nextValue)));
+                row[appliedIndex] = String(value);
+            }
         });
+        row[header.indexOf('elo')] = String(29 * keys.reduce((sum, key) => sum + (parseFloat(row[header.indexOf(key)]) || 50), 0) / 6 - 337);
         next.push(row);
     }
     const quote = value => {
