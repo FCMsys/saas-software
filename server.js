@@ -1100,7 +1100,7 @@ function landingPage(destination, isAuthenticated) {
 <meta name="theme-color" content="#ffffff"><title>FC M:sys</title>
 <style>
   *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#fff;color:#0f172a;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-  main{width:min(100%,960px);text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}main video{display:block;width:auto;height:auto;max-width:none;max-height:none;margin:0 auto;border:0;border-radius:0;background:#fff;filter:contrast(1.08)}
+  main{width:100%;max-width:960px;min-width:0;text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}main video{display:block;width:auto;height:auto;max-width:100%;max-height:none;margin:0 auto;border:0;border-radius:0;background:#fff;filter:contrast(1.08)}
   .continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:16px;padding:0 24px;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;text-decoration:none}.continue:hover{background:#1d4ed8}.continue:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
 </style></head><body>
 <main><h1>Willkommen beim FC M:sys</h1>
