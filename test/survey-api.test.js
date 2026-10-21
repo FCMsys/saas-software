@@ -93,10 +93,25 @@ test('survey API creates stable private forms, accepts each response once, and p
         assert.match(guestLandingHtml, /Willkommen beim FC M:sys/);
         assert.match(guestLandingHtml, /background:#fff/);
         assert.match(guestLandingHtml, /<img src="\/img\/landing\.gif" alt="">/);
-        assert.doesNotMatch(guestLandingHtml, /<video\b|<script\b|box-shadow|video-wrap/);
+        assert.doesNotMatch(guestLandingHtml, /<video\b|box-shadow|video-wrap/);
         assert.match(guestLandingHtml, /\/login\?returnTo=%2F%3Fumfrage%3Dst_test%26intro%3Ddone/);
         const landingScripts = [...guestLandingHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)];
-        assert.equal(landingScripts.length, 0);
+        assert.equal(landingScripts.length, 1);
+        const image = { complete: false, naturalWidth: 400, addEventListener: (event, callback) => { image.onLoad = callback; } };
+        const timers = [];
+        const redirects = [];
+        new Function('document', 'setTimeout', 'location', landingScripts[0][1])({
+            querySelector: () => image,
+            getElementById: () => ({ href: '/login?returnTo=test' })
+        }, (callback, delay) => timers.push({ callback, delay }), { replace: url => redirects.push(url) });
+        assert.equal(timers.length, 0);
+        image.onLoad();
+        image.onLoad();
+        assert.equal(timers.length, 1);
+        assert.equal(timers[0].delay, 4070);
+        assert.deepEqual(redirects, []);
+        timers[0].callback();
+        assert.deepEqual(redirects, ['/login?returnTo=test']);
         const loggedInLanding = await fetch(`${baseUrl}/`, { headers: { Cookie: sessionCookie('admin', 'admin') } });
         assert.match(await loggedInLanding.text(), /href="\/\?intro=done">Weiter zur App/);
         const landingImage = await fetch(`${baseUrl}/img/landing.gif`);
