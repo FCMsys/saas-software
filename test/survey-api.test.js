@@ -35,12 +35,12 @@ test('survey API creates stable private forms, accepts each response once, and p
     const appDir = path.join(temp, 'app');
     const dataDir = path.join(temp, 'daten');
     fs.mkdirSync(path.join(appDir, 'src', 'logic'), { recursive: true });
-    fs.mkdirSync(path.join(appDir, 'src', 'video'), { recursive: true });
+    fs.mkdirSync(path.join(appDir, 'src', 'img'), { recursive: true });
     fs.mkdirSync(dataDir);
     fs.copyFileSync(path.join(ROOT, 'server.js'), path.join(appDir, 'server.js'));
     fs.copyFileSync(path.join(ROOT, 'random.html'), path.join(appDir, 'random.html'));
     fs.copyFileSync(path.join(ROOT, 'src', 'logic', 'survey.js'), path.join(appDir, 'src', 'logic', 'survey.js'));
-    fs.writeFileSync(path.join(appDir, 'src', 'video', 'landing.mp4'), Buffer.from('test-video-content'));
+    fs.writeFileSync(path.join(appDir, 'src', 'img', 'landing.gif'), Buffer.from('GIF89a-test-image'));
     const playerIds = ['p1', 'p2', 'p3', 'p4', 'p5'];
     fs.writeFileSync(path.join(dataDir, 'users.json'), JSON.stringify({
         ...Object.fromEntries(playerIds.map(id => [`user-${id}`, { spielerId: id, email: '', role: 'player' }])),
@@ -92,18 +92,19 @@ test('survey API creates stable private forms, accepts each response once, and p
         assert.equal(guestLanding.status, 200);
         assert.match(guestLandingHtml, /Willkommen beim FC M:sys/);
         assert.match(guestLandingHtml, /background:#fff/);
-        assert.match(guestLandingHtml, /autoplay muted playsinline preload="auto"/);
-        assert.doesNotMatch(guestLandingHtml, /\bcontrols\b|videoMessage|Das Video startet stumm/);
+        assert.match(guestLandingHtml, /<img src="\/img\/landing\.gif" alt="">/);
+        assert.doesNotMatch(guestLandingHtml, /<video\b|<script\b|box-shadow|video-wrap/);
         assert.match(guestLandingHtml, /\/login\?returnTo=%2F%3Fumfrage%3Dst_test%26intro%3Ddone/);
         const landingScripts = [...guestLandingHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)];
-        assert.equal(landingScripts.length, 1);
-        new Function(landingScripts[0][1]);
+        assert.equal(landingScripts.length, 0);
         const loggedInLanding = await fetch(`${baseUrl}/`, { headers: { Cookie: sessionCookie('admin', 'admin') } });
         assert.match(await loggedInLanding.text(), /href="\/\?intro=done">Weiter zur App/);
-        const landingMedia = await fetch(`${baseUrl}/video/landing.mp4`, { headers: { Range: 'bytes=0-3' } });
-        assert.equal(landingMedia.status, 206);
-        assert.equal(landingMedia.headers.get('content-range'), 'bytes 0-3/18');
-        assert.equal(await landingMedia.text(), 'test');
+        const landingImage = await fetch(`${baseUrl}/img/landing.gif`);
+        assert.equal(landingImage.status, 200);
+        assert.equal(landingImage.headers.get('content-type'), 'image/gif');
+        assert.equal(await landingImage.text(), 'GIF89a-test-image');
+        const removedLandingVideo = await fetch(`${baseUrl}/video/landing.mp4`);
+        assert.notEqual(removedLandingVideo.headers.get('content-type'), 'video/mp4');
         const appPage = await fetch(`${baseUrl}/?intro=done`, { headers: { Cookie: sessionCookie('admin', 'admin') } });
         assert.match(await appPage.text(), /id="surveyModal"/);
 

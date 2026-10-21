@@ -11,7 +11,6 @@ COPY package.json ./
 COPY server.js random.html ./
 COPY src/img ./src/img
 COPY src/logic ./src/logic
-COPY src/video ./src/video
 
 # Lokaler Speicher (nur genutzt, wenn Supabase_* nicht gesetzt ist); gehört dem unprivilegierten Benutzer
 RUN mkdir -p /app/daten/fotos && chown -R node:node /app

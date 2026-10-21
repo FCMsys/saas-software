@@ -25,8 +25,7 @@ try {
 const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'daten');
 const PORT = parseInt(process.env.PORT, 10) || 3000;
-const IMAGES = { 'msys.svg': 'Msys-Wappen.svg', 'lm.svg': 'L&M-Logo.svg', 'ramazzotti.svg': 'Ramazzotti-Logo.svg', 'ad-plane-banner.png': 'ad-plane-banner.png' };
-const LANDING_VIDEO = path.join(ROOT, 'src', 'video', 'landing.mp4');
+const IMAGES = { 'msys.svg': 'Msys-Wappen.svg', 'lm.svg': 'L&M-Logo.svg', 'ramazzotti.svg': 'Ramazzotti-Logo.svg', 'ad-plane-banner.png': 'ad-plane-banner.png', 'landing.gif': 'landing.gif' };
 const FILES = { spieler: 'spieler.csv', spiele: 'spiele.csv', presets: 'presets.csv' };
 
 const KINDE_DOMAIN = (process.env.KINDE_DOMAIN || '').replace(/\/+$/, '');
@@ -1094,21 +1093,13 @@ function landingPage(destination, isAuthenticated) {
 <meta name="theme-color" content="#ffffff"><title>FC M:sys</title>
 <style>
   *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#fff;color:#0f172a;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-  main{width:min(100%,960px);text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}.video-wrap{overflow:hidden;border:1px solid #e2e8f0;border-radius:16px;background:#000;box-shadow:0 16px 48px rgba(15,23,42,.14)}video{display:block;width:100%;max-height:min(65vh,calc(100vh - 200px));background:#000;object-fit:contain}
+  main{width:min(100%,960px);text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}main img{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:0 auto;border:0;border-radius:0;background:#fff;filter:contrast(1.08)}
   .continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:16px;padding:0 24px;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;text-decoration:none}.continue:hover{background:#1d4ed8}.continue:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
 </style></head><body>
 <main><h1>Willkommen beim FC M:sys</h1>
-  <div class="video-wrap"><video id="landingVideo" autoplay muted playsinline preload="auto">
-    <source src="/video/landing.mp4" type="video/mp4">
-    Dein Browser kann dieses Video nicht wiedergeben.
-  </video></div>
+  <img src="/img/landing.gif" alt="">
   <a class="continue" id="continueLink" href="${escHtml(destination)}">${label}</a>
-</main>
-<script>
-  const video=document.getElementById('landingVideo');
-  const link=document.getElementById('continueLink');
-  video.addEventListener('ended',()=>location.replace(link.href));
-</script></body></html>`;
+</main></body></html>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1141,47 +1132,11 @@ async function handle(req, res) {
     const url = parsed.pathname;
     const method = req.method;
 
-    if (method === 'GET' && url === '/video/landing.mp4') {
-        const size = fs.statSync(LANDING_VIDEO).size;
-        const range = req.headers.range;
-        let start = 0, end = size - 1, status = 200;
-        if (range) {
-            const match = /^bytes=(\d*)-(\d*)$/.exec(range);
-            if (!match || (!match[1] && !match[2])) {
-                res.writeHead(416, { 'Content-Range': `bytes */${size}`, 'Accept-Ranges': 'bytes' });
-                return res.end();
-            }
-            if (!match[1]) start = Math.max(0, size - Number(match[2]));
-            else {
-                start = Number(match[1]);
-                end = match[2] ? Math.min(Number(match[2]), size - 1) : size - 1;
-            }
-            if (start >= size || start > end) {
-                res.writeHead(416, { 'Content-Range': `bytes */${size}`, 'Accept-Ranges': 'bytes' });
-                return res.end();
-            }
-            status = 206;
-        }
-        res.writeHead(status, {
-            'Content-Type': 'video/mp4',
-            'Content-Length': end - start + 1,
-            'Accept-Ranges': 'bytes',
-            ...(status === 206 ? { 'Content-Range': `bytes ${start}-${end}/${size}` } : {}),
-            'Cache-Control': 'public, max-age=86400'
-        });
-        const stream = fs.createReadStream(LANDING_VIDEO, { start, end });
-        stream.on('error', error => {
-            console.error('Landingvideo konnte nicht gelesen werden:', error.message);
-            if (!res.headersSent) sendJson(res, 500, { ok: false, error: 'Landingvideo konnte nicht gelesen werden' });
-            else res.destroy(error);
-        });
-        return stream.pipe(res);
-    }
-
     // --- Logos (öffentlich, auch für die Login-Seite): feste Liste, keine freien Pfade ---
     const imgFile = method === 'GET' && (url === '/favicon.ico' ? IMAGES['msys.svg'] : IMAGES[url.replace(/^\/img\//, '')]);
     if (imgFile) {
-        res.writeHead(200, { 'Content-Type': imgFile.endsWith('.png') ? 'image/png' : 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+        const contentType = imgFile.endsWith('.png') ? 'image/png' : imgFile.endsWith('.gif') ? 'image/gif' : 'image/svg+xml';
+        res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400' });
         return res.end(fs.readFileSync(path.join(ROOT, 'src', 'img', imgFile)));
     }
 
