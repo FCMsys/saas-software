@@ -77,7 +77,6 @@
         .fut-stats div { display: flex; align-items: baseline; justify-content: center; gap: .45em; line-height: 1.25; }
         .fut-stats b { font-size: 1.45em; font-weight: 800; min-width: 1.3em; text-align: right; }
         .fut-stats i { font-style: normal; font-size: 1.05em; font-weight: 600; opacity: .8; letter-spacing: .04em; }
-        .fut-elo { position: absolute; left: 0; right: 0; top: 30.9em; text-align: center; font-size: .85em; font-weight: 700; letter-spacing: .12em; opacity: .6; }
 
         /* Dauerhaftes Schimmern + Maus-Glanz + Hologramm */
         .fut-shine, .fut-glare, .fut-holo { position: absolute; inset: 0; pointer-events: none; }
@@ -931,7 +930,6 @@
                     <div class="fut-name">${escapeHtml(p.name)}</div>
                     <div class="fut-line"></div>
                     <div class="fut-stats">${STAT_KEYS.map(stat).join('')}</div>
-                    <div class="fut-elo">ELO ${p.elo}</div>
                     <div class="fut-holo"></div>
                     <div class="fut-shine"></div>
                     <div class="fut-glare"></div>
@@ -1255,7 +1253,8 @@
         // =====================================================================
         // 6. Rendering
         // =====================================================================
-        function formatDelta(d) { return (d > 0 ? '+' : (d < 0 ? '−' : '')) + Math.abs(d); }
+        const formatElo = value => String(Math.round(value));
+        function formatDelta(d) { d = Math.round(d); return (d > 0 ? '+' : (d < 0 ? '−' : '')) + Math.abs(d); }
         function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
         function deltaClass(d) { return d > 0 ? 'text-emerald-600' : (d < 0 ? 'text-rose-600' : 'text-slate-400'); }
 
@@ -1297,9 +1296,9 @@
                         <span class="w-9 h-9 rounded-full overflow-hidden bg-slate-100 border-2 flex items-center justify-center text-slate-300 shrink-0" style="border-color:${playerColor(p.id)}">${p.photo ? `<img src="${escapeHtml(p.photo)}" class="w-full h-full object-cover object-top">` : '<i class="fa-solid fa-user text-sm"></i>'}</span>
                         <span class="font-semibold">${escapeHtml(p.name)}</span>
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">${escapeHtml(p.pos)}</span></div></td>
-                    <td class="px-4 py-3 text-right whitespace-nowrap"><span class="font-mono font-bold text-base">${p.elo}</span>
+                    <td class="px-4 py-3 text-right whitespace-nowrap"><span class="font-mono font-bold text-base">${formatElo(p.elo)}</span>
                         <span class="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${{ bronze: 'bg-orange-100 text-orange-800', silber: 'bg-slate-200 text-slate-700', gold: 'bg-amber-100 text-amber-800', ikone: 'bg-indigo-100 text-indigo-700' }[tierFor(p.elo)]}" title="${TIER_NAMES[tierFor(p.elo)]}">${rating}</span></td>
-                    <td class="px-4 py-3 text-right font-mono text-xs font-bold ${deltaClass(d)}">${d ? (d > 0 ? '▲ ' : '▼ ') + Math.abs(d) : '–'}</td>
+                    <td class="px-4 py-3 text-right font-mono text-xs font-bold ${deltaClass(d)}">${d ? (d > 0 ? '▲ ' : '▼ ') + formatElo(Math.abs(d)) : '–'}</td>
                     <td class="px-4 py-3 text-right text-slate-600 hidden sm:table-cell">${s.games}</td>
                     <td class="px-4 py-3 text-right text-slate-600 hidden sm:table-cell font-mono text-xs">${s.w} / ${s.d} / ${s.l}</td>
                     <td class="px-4 py-3 hidden md:table-cell">${sparklineSvg(p.history, playerColor(p.id))}</td>
@@ -1359,7 +1358,7 @@
                 const on = selectedPlayerIds.has(p.id);
                 const btn = document.createElement('button');
                 btn.className = `flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-left text-sm transition ${on ? 'bg-blue-50 border-blue-500 text-blue-900' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`;
-                btn.innerHTML = `<span class="font-semibold truncate">${mark(p.id)}${escapeHtml(p.name)}</span><span class="font-mono text-[11px] ${on ? 'text-blue-700' : 'text-slate-400'}">${p.elo}</span>`;
+                btn.innerHTML = `<span class="font-semibold truncate">${mark(p.id)}${escapeHtml(p.name)}</span><span class="font-mono text-[11px] ${on ? 'text-blue-700' : 'text-slate-400'}">${formatElo(p.elo)}</span>`;
                 btn.onclick = () => { on ? selectedPlayerIds.delete(p.id) : selectedPlayerIds.add(p.id); renderMatchTab(); };
                 $('attendanceList').appendChild(btn);
             });
@@ -1398,7 +1397,7 @@
                     [...list].sort((a, b) => b.elo - a.elo).forEach(p => {
                         const li = document.createElement('li');
                         li.className = 'flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-200 text-sm cursor-pointer hover:border-slate-400 transition';
-                        li.innerHTML = `<span class="font-semibold">${escapeHtml(p.name)}</span><span class="font-mono text-xs text-slate-500">${p.elo}</span>`;
+                        li.innerHTML = `<span class="font-semibold">${escapeHtml(p.name)}</span><span class="font-mono text-xs text-slate-500">${formatElo(p.elo)}</span>`;
                         li.onclick = () => movePlayer(p.id);
                         $(id).appendChild(li);
                     });
@@ -1447,7 +1446,7 @@
                 return `<tr>
                     <td class="px-4 py-2.5 text-slate-500 font-medium">${medal}</td>
                     <td class="px-4 py-2.5 font-semibold"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle" style="background:${playerColor(p.id)}"></span>${escapeHtml(p.name)}</td>
-                    <td class="px-4 py-2.5 text-right font-mono font-bold">${p.elo}</td>
+                    <td class="px-4 py-2.5 text-right font-mono font-bold">${formatElo(p.elo)}</td>
                     <td class="px-4 py-2.5 text-right font-mono text-xs font-bold ${deltaClass(total)}">${total ? formatDelta(total) : '–'}</td>
                     <td class="px-4 py-2.5 text-right text-slate-600 hidden sm:table-cell">${s.games}</td>
                     <td class="px-4 py-2.5 text-right text-slate-600 hidden sm:table-cell font-mono text-xs">${s.w} / ${s.d} / ${s.l}</td>
@@ -1464,7 +1463,7 @@
             }
             const chips = team => team.map(p => `<span class="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-md px-2 py-1">
                 <span class="font-medium text-slate-800">${escapeHtml(p.name)}</span>
-                <span class="font-mono text-slate-400">${p.before}→${p.after}</span>
+                <span class="font-mono text-slate-400">${formatElo(p.before)}→${formatElo(p.after)}</span>
                 <span class="font-mono font-bold ${deltaClass(p.delta)}">${p.delta ? formatDelta(p.delta) : '±0'}</span></span>`).join(' ');
 
             list.innerHTML = [...matchHistory].reverse().map((m, i) => {
@@ -1497,7 +1496,7 @@
                 const hidden = hiddenInChart.has(p.id);
                 const chip = document.createElement('button');
                 chip.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs transition ${hidden ? 'border-slate-200 text-slate-400 bg-white' : 'border-slate-300 text-slate-800 bg-slate-50'}`;
-                chip.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${hidden ? '#cbd5e1' : playerColor(p.id)}"></span>${escapeHtml(p.name)}<span class="font-mono ${hidden ? '' : 'text-slate-500'}">${p.elo}</span>`;
+                chip.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${hidden ? '#cbd5e1' : playerColor(p.id)}"></span>${escapeHtml(p.name)}<span class="font-mono ${hidden ? '' : 'text-slate-500'}">${formatElo(p.elo)}</span>`;
                 chip.onclick = () => { hidden ? hiddenInChart.delete(p.id) : hiddenInChart.add(p.id); renderChart(); };
                 legend.appendChild(chip);
             });
@@ -1560,7 +1559,7 @@
                 const when = h.seq === 0 ? 'Startwert' : `Spiel #${h.seq} · ${new Date(h.t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`;
                 tip.innerHTML = `<div class="font-bold" style="color:${best.color}">${escapeHtml(p.name)}</div>
                     <div class="text-slate-500">${when}${!h.matchId && h.seq > 0 ? ' · manuell' : ''}</div>
-                    <div><span class="font-mono font-bold text-slate-900 text-sm">${h.elo}</span> ${h.seq > 0 ? `<span class="font-mono font-bold ${deltaClass(h.delta)}">(${h.delta ? formatDelta(h.delta) : '±0'})</span>` : ''}</div>`;
+                    <div><span class="font-mono font-bold text-slate-900 text-sm">${formatElo(h.elo)}</span> ${h.seq > 0 ? `<span class="font-mono font-bold ${deltaClass(h.delta)}">(${h.delta ? formatDelta(h.delta) : '±0'})</span>` : ''}</div>`;
                 tip.classList.remove('hidden');
                 const tw = tip.offsetWidth;
                 tip.style.left = Math.max(0, best.cx + 14 + tw > W ? best.cx - 14 - tw : best.cx + 14) + 'px';
@@ -1601,13 +1600,13 @@
             saveApplicationData();
             renderAll();
             $('playerNameInput').value = ''; $('playerEloInput').value = '1500';
-            showToast("Spieler hinzugefügt", `${name} startet mit ${elo} Elo.`, "success");
+            showToast("Spieler hinzugefügt", `${name} startet mit ${formatElo(elo)} Elo.`, "success");
         };
 
         function openEditModal(id) {
             const p = players.find(x => x.id === id);
             if (!p) return;
-            $('editPlayerId').value = p.id; $('editPlayerName').value = p.name; $('editPlayerElo').value = p.elo;
+            $('editPlayerId').value = p.id; $('editPlayerName').value = p.name; $('editPlayerElo').value = formatElo(p.elo);
             $('editPlayerPos').innerHTML = POSITIONS.map(pos => `<option ${pos === p.pos ? 'selected' : ''}>${pos}</option>`).join('');
             $('editStatsGrid').innerHTML = STAT_KEYS.map(k => `<label class="flex items-center gap-2 border border-slate-300 rounded-lg px-2.5 py-1.5 focus-within:border-blue-500">
                 <span class="text-[11px] font-bold text-slate-500 w-8">${STAT_LABELS[k]}</span>
@@ -1699,7 +1698,9 @@
                 });
                 p.name = $('editPlayerName').value.trim();
                 p.pos = $('editPlayerPos').value;
+                const displayedElo = $('editPlayerElo').value;
                 let newElo = parseFloat($('editPlayerElo').value) || 1500;
+                if (displayedElo === formatElo(p.elo)) newElo = p.elo;
                 const attributesChanged = STAT_KEYS.some(k => entered[k] !== shown[k]);
                 if (attributesChanged) newElo = eloFromStats(entered);
                 else applyEloToStats(p, p.elo, newElo);
@@ -1753,7 +1754,7 @@
             flipper.querySelector('.fut-inner').insertAdjacentHTML('beforeend', '<div class="reveal-shine-once"></div>');
 
             $('cardInfo').innerHTML = `<div class="font-bold text-base">${escapeHtml(p.name)}</div>
-                <div class="text-white/60">Elo <b class="text-white">${p.elo}</b> → Rating <b class="text-white">${rating}</b> · <span class="font-semibold" style="color:rgb(${{ bronze: '230,160,100', silber: '203,213,225', gold: '252,211,77', ikone: '165,170,255' }[tier]})">${TIER_NAMES[tier]}</span></div>`;
+                <div class="text-white/60">Rating <b class="text-white">${rating}</b> · <span class="font-semibold" style="color:rgb(${{ bronze: '230,160,100', silber: '203,213,225', gold: '252,211,77', ikone: '165,170,255' }[tier]})">${TIER_NAMES[tier]}</span></div>`;
 
             $('revealBob').className = 'reveal-bob';
             $('revealTilt').style.transform = '';
