@@ -1099,21 +1099,7 @@ function landingPage(destination, isAuthenticated) {
 <main><h1>Willkommen beim FC M:sys</h1>
   <img src="/img/landing.gif" alt="">
   <a class="continue" id="continueLink" href="${escHtml(destination)}">${label}</a>
-</main>
-<script>
-  const image = document.querySelector('main img');
-  const link = document.getElementById('continueLink');
-  // Dauer eines Durchlaufs der aktuellen landing.gif (61 Frames).
-  const durationMs = 4070;
-  let scheduled = false;
-  function redirectAfterPlayback() {
-    if (scheduled || !image.naturalWidth) return;
-    scheduled = true;
-    setTimeout(() => location.replace(link.href), durationMs);
-  }
-  image.addEventListener('load', redirectAfterPlayback, { once: true });
-  if (image.complete) redirectAfterPlayback();
-</script></body></html>`;
+</main></body></html>`;
 }
 
 // ---------------------------------------------------------------------------
