@@ -1448,12 +1448,15 @@
                 const nr = matchHistory.length - i;
                 const date = new Date(m.iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
                 const aWin = m.result === 'A', bWin = m.result === 'B';
+                const matchDay = spieltage.find(day => day.id === m.matchDayId);
+                const matchDayLabel = m.matchDayId ? `Spieltag: ${matchDay ? fmtDate(matchDay.datum) : m.matchDayId}` : 'Kein Spieltag zugeordnet';
                 return `<div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
-                    <div class="flex items-center gap-3 mb-2.5">
+                    <div class="flex flex-wrap items-center gap-2 mb-2.5">
                         <span class="text-xs font-bold text-slate-400">#${nr}</span>
                         <span class="text-lg font-extrabold font-mono tracking-tight"><span class="${aWin ? 'text-blue-700' : 'text-slate-500'}">${m.goalsA}</span><span class="text-slate-300 mx-1">:</span><span class="${bWin ? 'text-rose-700' : 'text-slate-500'}">${m.goalsB}</span></span>
                         <span class="text-[11px] font-semibold ${m.result === 'DRAW' ? 'text-slate-500' : (aWin ? 'text-blue-700' : 'text-rose-700')}">${m.result === 'DRAW' ? 'Unentschieden' : 'Sieg Team ' + m.result}</span>
-                        <span class="text-[11px] text-slate-400 ml-auto">${date}</span>
+                        <span class="text-[11px] text-slate-400 sm:ml-auto">${date}</span>
+                        <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold ${m.matchDayId ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}">${escapeHtml(matchDayLabel)}</span>
                     </div>
                     <div class="space-y-1.5 text-[11px]">
                         <div class="flex flex-wrap items-center gap-1.5"><span class="font-bold text-blue-700 w-3">A</span>${chips(m.teamA)}</div>
@@ -1553,7 +1556,7 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
             try { localStorage.setItem('matchmaster_tab', name); } catch (e) { }
             if (name === 'history') renderChart();
-            if (['days', 'match', 'payments'].includes(name)) loadSpieltage();
+            if (['days', 'match', 'payments', 'history'].includes(name)) loadSpieltage();
             window.scrollTo(0, 0);
         }
         document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => showTab(b.dataset.tab));
@@ -2167,6 +2170,7 @@
             }
             renderDays();
             renderPayments();
+            if (activeTab === 'history') renderMatchHistory();
             if (me.role === 'admin') renderMatchTab();
         }
         const loadPayments = loadSpieltage;
@@ -2174,17 +2178,23 @@
         let legacySurveyDayId = '';
         async function openLegacyParticipants(dayId) {
             const data = await api('GET', `/api/spieltage/${encodeURIComponent(dayId)}/umfrage/teilnehmer`);
-            if (data.linkedParticipantIds.length || !data.legacyCandidates.length) {
-                showToast('Keine passenden Spiele gefunden', 'Für diesen Spieltag gibt es keine nicht zugeordneten Einzelspiele mit gespeicherten Teilnehmern am selben Datum.', 'error');
+            if (data.linkedParticipantIds.length || !data.legacyMatches.length) {
+                showToast('Keine gespeicherten Spiele gefunden', 'Der Server findet keine nicht zugeordneten Spielergebnisse. Prüfe, ob die Historie mit dem Online-Server synchronisiert ist und lade die Seite neu.', 'error');
                 return;
             }
             legacySurveyDayId = dayId;
-            $('legacyParticipantsInfo').textContent = 'Diese gespeicherten Einzelspiele haben noch keine Spieltagszuordnung. Vorausgewählt sind Spieler mit Spielen am selben Datum. Bitte prüfe die Liste und entferne alle, die nicht tatsächlich mitgespielt haben.';
-            $('legacyParticipantsList').innerHTML = data.legacyCandidates.map(candidate => `
-                <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 hover:bg-slate-50">
-                    <input type="checkbox" class="legacy-player-checkbox h-4 w-4 accent-indigo-600" value="${escapeHtml(candidate.playerId)}" checked>
-                    <span class="flex-1 text-sm font-semibold text-slate-800">${escapeHtml(candidate.player)}</span>
-                    <span class="text-xs text-slate-500">${candidate.matchCount} ${candidate.matchCount === 1 ? 'Einzelspiel' : 'Einzelspiele'}</span>
+            const day = spieltage.find(item => item.id === dayId);
+            const sameDayCount = data.legacyMatches.filter(match => match.sameDay).length;
+            $('legacyParticipantsInfo').textContent = sameDayCount
+                ? `Wähle die Einzelspiele aus, die zu diesem Spieltag (${day ? fmtDate(day.datum) : ''}) gehören. Passende Spiele desselben Datums sind vorausgewählt. Beim Bestätigen werden die ausgewählten Spiele dauerhaft diesem Spieltag zugeordnet.`
+                : `Für diesen Spieltag (${day ? fmtDate(day.datum) : ''}) wurde kein Spiel am selben Datum gefunden. Wähle die richtigen Spiele anhand Datum, Uhrzeit, Ergebnis und Spielern aus der Historie aus. Die Zuordnung wird dauerhaft gespeichert.`;
+            $('legacyParticipantsList').innerHTML = data.legacyMatches.map(match => `
+                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-3 py-2.5 hover:bg-slate-50">
+                    <input type="checkbox" class="legacy-match-checkbox mt-1 h-4 w-4 accent-indigo-600" value="${escapeHtml(match.id)}" ${match.sameDay ? 'checked' : ''}>
+                    <span class="flex-1">
+                        <span class="block text-sm font-semibold text-slate-800">${escapeHtml(match.date ? fmtDate(match.date) : 'Datum unbekannt')} · ${escapeHtml(match.time || 'Uhrzeit unbekannt')} · ${Number.isInteger(match.goalsA) && Number.isInteger(match.goalsB) ? `${match.goalsA}:${match.goalsB}` : 'Ergebnis unbekannt'}</span>
+                        <span class="mt-0.5 block text-xs text-slate-500">${match.players.map(player => escapeHtml(player.name)).join(', ')}</span>
+                    </span>
                 </label>`).join('');
             $('legacyParticipantsConfirm').disabled = false;
             $('legacyParticipantsModal').classList.remove('hidden');
@@ -2199,17 +2209,25 @@
 
         async function confirmLegacyParticipants() {
             if (!legacySurveyDayId) return;
-            const participantIds = [...$('legacyParticipantsList').querySelectorAll('.legacy-player-checkbox:checked')].map(input => input.value);
-            if (!participantIds.length) {
-                showToast('Teilnehmer auswählen', 'Wähle mindestens einen Spieler aus, der tatsächlich mitgespielt hat.', 'error');
+            const matchIds = [...$('legacyParticipantsList').querySelectorAll('.legacy-match-checkbox:checked')].map(input => input.value);
+            if (!matchIds.length) {
+                showToast('Spiele auswählen', 'Wähle mindestens ein gespeichertes Einzelspiel aus der Historie aus.', 'error');
                 return;
             }
             const dayId = legacySurveyDayId;
             $('legacyParticipantsConfirm').disabled = true;
             try {
-                await api('POST', `/api/spieltage/${encodeURIComponent(dayId)}/umfrage/abschliessen`, { participantIds });
+                await api('POST', `/api/spieltage/${encodeURIComponent(dayId)}/umfrage/abschliessen`, { matchIds });
+                const selectedMatches = new Set(matchIds);
+                const selectedPlayers = new Set();
+                for (const match of matchHistory) {
+                    if (!selectedMatches.has(match.id)) continue;
+                    match.matchDayId = dayId;
+                    [...match.teamA, ...match.teamB].forEach(player => selectedPlayers.add(player.id));
+                }
+                if (activeTab === 'history') renderMatchHistory();
                 closeLegacyParticipants();
-                showToast('Spieltag abgeschlossen', `Die Umfrage wurde für ${participantIds.length} bestätigte Spieler gestartet.`, 'success');
+                showToast('Spieltag abgeschlossen', `Die ausgewählten Spiele wurden zugeordnet; die Umfrage wurde für ${selectedPlayers.size} Spieler gestartet.`, 'success');
                 await loadSpieltage();
             } catch (error) {
                 showToast('Umfrage konnte nicht gestartet werden', error.message, 'error');

@@ -2,7 +2,7 @@
 
 ## Ablauf
 
-Ein Admin schließt einen Spieltag in der Spieltagskarte ab, nachdem alle Einzelspiele gespeichert sind. Die App ermittelt die tatsächlichen Teilnehmer aus `spiele.csv` über die Spalte `match_day_id`. Bei älteren Spielen ohne diese Zuordnung zeigt die App die gespeicherten Spieler mit Einzelspielen am Datum des Spieltags zur Bestätigung an. Der Admin kann die Liste prüfen und Spieler abwählen; der Server akzeptiert dabei nur Spieler, die in den unzugeordneten Spielen dieses Datums vorkommen. Die alten CSV-Zeilen werden nicht verändert.
+Ein Admin schließt einen Spieltag in der Spieltagskarte ab, nachdem alle Einzelspiele gespeichert sind. Die App ermittelt die tatsächlichen Teilnehmer aus `spiele.csv` über die Spalte `match_day_id`. Bei älteren Spielen ohne diese Zuordnung zeigt die App die unzugeordneten historischen Spiele mit Datum, Uhrzeit, Ergebnis und Spielern zur Auswahl an. Spiele am Datum des Spieltags sind vorausgewählt; falls es keine gibt, kann der Admin die passenden Spiele anhand der Historie auswählen. Nach Bestätigung werden die ausgewählten CSV-Spielzeilen dauerhaft dem Spieltag zugeordnet. Der Server akzeptiert nur vorhandene, noch nicht zugeordnete Spiel-IDs. In der Spielhistorie ist für jedes Ergebnis sichtbar, ob und welchem Spieltag es zugeordnet ist. Wenn der Server keine unzugeordneten Ergebnisse findet, können die im Browser sichtbaren Spiele noch nicht mit dem Server synchronisiert oder bereits einem anderen Spieltag zugeordnet sein.
 
 Der Abschlusszeitpunkt wird als ISO-Zeitstempel in `umfragen.json` gespeichert. Die Umfrage endet genau 48 Stunden danach. Der Server prüft die Frist bei jedem Abruf und jeder Einreichung; ein gezielter Timer veröffentlicht die Ergebnisse. Nach einem Neustart werden fällige Umfragen beim Start nachgezogen. Antworten können pro zugeordnetem Spieler und Spieltag nur einmal eingereicht werden.
 
@@ -20,7 +20,7 @@ Die Tagesleistungsvergleiche werden während der Umfrage aggregiert angezeigt. N
 
 ## Speicherung und Betrieb
 
-- `spiele.csv`: neue Spiele speichern `match_day_id`; ältere Zeilen bleiben ohne Zuordnung und können nach Admin-Bestätigung für eine Umfrage verwendet werden.
+- `spiele.csv`: neue Spiele speichern `match_day_id`; ältere Zeilen erhalten die Zuordnung erst nach expliziter Admin-Auswahl in der Historie/Umfrage.
 - `umfragen.json`: Abschlusszeit, Frist, Teilnehmer, gespeicherte Fragebögen, Einreichungen, Versandstatus, Rating-Ausgangswerte, aktuelle Werte, Änderungsverlauf und veröffentlichte Auszeichnungen.
 - `spieler.csv`: bestehende Attribute bleiben erhalten; die über Umfragen ermittelten Werte werden beim Laden der App serverseitig eingeblendet und durch spätere CSV-Speicherungen nicht zurückgesetzt.
 - Wie die übrigen lokalen/Supabase-Daten ist auch der Umfragezustand für eine einzelne Serverinstanz ausgelegt.

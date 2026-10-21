@@ -827,26 +827,46 @@ function matchedSurveyForm(day, playerId) {
     };
 }
 
-function legacySurveyCandidates(dayRecord) {
+function legacySurveyMatches(dayRecord) {
     const matches = csvRows(readFile('spiele.csv'));
     const header = matches[0] || [];
     const index = Object.fromEntries(header.map((name, i) => [name, i]));
-    const candidateCounts = new Map();
     const names = playerNames();
+    const grouped = new Map();
     for (const row of matches.slice(1)) {
-        if (row[index.typ] !== 'match' || row[index.match_day_id] || !row[index.spieler_id]) continue;
-        const playedAt = new Date(row[index.zeit]);
-        if (!Number.isFinite(playedAt.getTime()) ||
-            playedAt.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' }) !== dayRecord.datum) continue;
+        if (row[index.typ] !== 'match' || row[index.match_day_id] || !row[index.match_id] || !row[index.spieler_id]) continue;
         const playerId = row[index.spieler_id];
-        candidateCounts.set(playerId, (candidateCounts.get(playerId) || 0) + 1);
+        if (!names.has(playerId)) continue;
+        const matchId = row[index.match_id];
+        const match = grouped.get(matchId) || {
+            id: matchId,
+            iso: row[index.zeit] || '',
+            date: '',
+            time: '',
+            goalsA: null,
+            goalsB: null,
+            players: new Map()
+        };
+        const playedAt = new Date(match.iso);
+        if (Number.isFinite(playedAt.getTime())) {
+            match.date = playedAt.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+            match.time = playedAt.toLocaleTimeString('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' });
+        }
+        if (row[index.team] === 'A') {
+            match.goalsA = Number.parseInt(row[index.tore_eigene], 10);
+            match.goalsB = Number.parseInt(row[index.tore_gegner], 10);
+        }
+        match.players.set(playerId, names.get(playerId));
+        grouped.set(matchId, match);
     }
-    return [...candidateCounts].map(([playerId, matchCount]) => ({
-        playerId, player: names.get(playerId) || '(gelöscht)', matchCount
-    })).filter(candidate => names.has(candidate.playerId)).sort((a, b) => a.player.localeCompare(b.player));
+    return [...grouped.values()].map(match => ({
+        ...match,
+        sameDay: match.date === dayRecord.datum,
+        players: [...match.players].map(([id, name]) => ({ id, name }))
+    })).sort((a, b) => b.iso.localeCompare(a.iso)).slice(0, 100);
 }
 
-async function startSurveyForDay(dayId, selectedLegacyIds = null) {
+async function startSurveyForDay(dayId, selectedLegacyMatchIds = null) {
     return mutateSurveys(async () => {
         const saved = surveyData();
         if (saved.days[dayId]) return { error: 'Für diesen Spieltag wurde die Umfrage bereits gestartet' };
@@ -861,20 +881,47 @@ async function startSurveyForDay(dayId, selectedLegacyIds = null) {
             .filter(Boolean))];
         let participantIds = linkedParticipantIds;
         let participantSource = 'match_day_id';
+        let selectedLegacyMatches = [];
         if (!participantIds.length) {
-            const candidates = legacySurveyCandidates(dayRecord);
-            if (!Array.isArray(selectedLegacyIds)) {
+            const candidates = legacySurveyMatches(dayRecord);
+            if (!Array.isArray(selectedLegacyMatchIds)) {
                 return candidates.length
                     ? { needsParticipants: true }
-                    : { error: 'Für diesen Spieltag wurden keine Spiele gefunden. Bitte prüfe, ob die Spielergebnisse gespeichert sind.', status: 409 };
+                    : {
+                        error: 'Der Server findet keine unzugeordneten gespeicherten Einzelspiele. Wenn Spiele in der Historie sichtbar sind, sind sie möglicherweise nicht auf dem Server gespeichert oder bereits einem anderen Spieltag zugeordnet.',
+                        status: 409
+                    };
             }
-            const selected = [...new Set(selectedLegacyIds.filter(id => typeof id === 'string' && id))];
-            const eligibleIds = new Set(candidates.map(candidate => candidate.playerId));
-            if (!selected.length || selected.some(id => !eligibleIds.has(id))) {
-                return { error: 'Bitte wähle mindestens einen Spieler aus den gespeicherten Spielen dieses Spieltags aus.', status: 400 };
+            const selected = [...new Set(selectedLegacyMatchIds.filter(id => typeof id === 'string' && id))];
+            const matchesById = new Map(candidates.map(match => [match.id, match]));
+            if (!selected.length || selected.some(id => !matchesById.has(id))) {
+                return { error: 'Bitte wähle mindestens ein unzugeordnetes Spiel aus der Historie aus.', status: 400 };
             }
-            participantIds = selected;
+            selectedLegacyMatches = selected.map(id => matchesById.get(id));
+            participantIds = [...new Set(selectedLegacyMatches.flatMap(match => match.players.map(player => player.id)))];
             participantSource = 'admin_confirmed_legacy_matches';
+            const rows = csvRows(readFile('spiele.csv'));
+            const csvHeader = rows[0] || [];
+            let matchDayIndex = csvHeader.indexOf('match_day_id');
+            if (matchDayIndex < 0) {
+                csvHeader.push('match_day_id');
+                matchDayIndex = csvHeader.length - 1;
+            }
+            const selectedSet = new Set(selected);
+            for (const row of rows.slice(1)) {
+                if (row[index.typ] === 'match' && selectedSet.has(row[index.match_id]) && !row[matchDayIndex]) {
+                    while (row.length <= matchDayIndex) row.push('');
+                    row[matchDayIndex] = dayId;
+                }
+            }
+            const quote = value => {
+                const text = String(value == null ? '' : value);
+                return /[;"\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+            };
+            await writeFileAtomic('spiele.csv', '\uFEFF' + rows.map(row => {
+                while (row.length < csvHeader.length) row.push('');
+                return row.map(quote).join(';');
+            }).join('\r\n') + '\r\n');
         }
 
         const players = surveyPlayers();
@@ -902,7 +949,7 @@ async function startSurveyForDay(dayId, selectedLegacyIds = null) {
                 catch (error) { console.error(`Versand der Umfrageeinladung für ${dayId}/${player.id} fehlgeschlagen:`, error.message); }
             }
         });
-        return { day: saved.days[dayId] };
+        return { day: saved.days[dayId], selectedLegacyMatchIds: selectedLegacyMatches.map(match => match.id) };
     });
 }
 
@@ -1281,7 +1328,7 @@ async function handle(req, res) {
             .map(row => row[index.spieler_id]).filter(Boolean))];
         return sendJson(res, 200, {
             linkedParticipantIds,
-            legacyCandidates: linkedParticipantIds.length ? [] : legacySurveyCandidates(dayRecord)
+            legacyMatches: linkedParticipantIds.length ? [] : legacySurveyMatches(dayRecord)
         });
     }
 
@@ -1292,9 +1339,9 @@ async function handle(req, res) {
         const dayRecord = loadZahlungen().spieltage.find(item => item.id === dayId);
         if (!dayRecord) return sendJson(res, 404, { ok: false, error: 'Spieltag nicht gefunden' });
         const body = await readJsonBody(req, 1e4);
-        const selectedLegacyIds = body && typeof body === 'object' && !Array.isArray(body)
-            ? body.participantIds : null;
-        const result = await startSurveyForDay(dayId, selectedLegacyIds);
+        const selectedLegacyMatchIds = body && typeof body === 'object' && !Array.isArray(body)
+            ? body.matchIds : null;
+        const result = await startSurveyForDay(dayId, selectedLegacyMatchIds);
         if (result.needsParticipants) {
             return sendJson(res, 409, {
                 ok: false, code: 'participants_required',
