@@ -42,9 +42,10 @@ test('survey API creates stable private forms, accepts each response once, and p
     fs.copyFileSync(path.join(ROOT, 'src', 'logic', 'survey.js'), path.join(appDir, 'src', 'logic', 'survey.js'));
     fs.writeFileSync(path.join(appDir, 'src', 'video', 'landing.mp4'), Buffer.from('test-video-content'));
     const playerIds = ['p1', 'p2', 'p3', 'p4', 'p5'];
-    fs.writeFileSync(path.join(dataDir, 'users.json'), JSON.stringify(Object.fromEntries(
-        playerIds.map(id => [`user-${id}`, { spielerId: id, email: '', role: 'player' }])
-    )));
+    fs.writeFileSync(path.join(dataDir, 'users.json'), JSON.stringify({
+        ...Object.fromEntries(playerIds.map(id => [`user-${id}`, { spielerId: id, email: '', role: 'player' }])),
+        admin: { spielerId: 'p1', email: '', role: 'admin' }
+    }));
 
     const port = await freePort();
     const baseUrl = `http://127.0.0.1:${port}`;
@@ -136,6 +137,9 @@ test('survey API creates stable private forms, accepts each response once, and p
         assert.ok(first.data.form.comparisons.every(question => question.a.id !== 'p1' && question.b.id !== 'p1'));
         const firstFormAgain = await call(`/api/umfragen/${dayId}`, { role: 'player', playerId: 'p1' });
         assert.deepEqual(firstFormAgain.data.form, first.data.form);
+        const adminParticipantForm = await call(`/api/umfragen/${dayId}`, { role: 'admin' });
+        assert.equal(adminParticipantForm.response.status, 200);
+        assert.deepEqual(adminParticipantForm.data.form, first.data.form);
         assert.doesNotMatch(JSON.stringify(first.data.form), /"elo"|"ges"|"stats"/);
 
         const adminLive = await call('/api/umfragen');

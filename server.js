@@ -1298,8 +1298,10 @@ async function handle(req, res) {
         const saved = await closeDueSurveys();
         const day = saved.days[dayId];
         if (!day) return sendJson(res, 404, { ok: false, error: 'Für diesen Spieltag wurde keine Umfrage gestartet' });
-        if (isAdmin) return sendJson(res, 200, publicSurveyDay(day, session));
         const playerId = spielerIdOf(session);
+        if (isAdmin && (!playerId || !day.participants.includes(playerId))) {
+            return sendJson(res, 200, publicSurveyDay(day, session));
+        }
         if (!playerId) return sendJson(res, 403, { ok: false, error: 'Dein Login ist noch keinem Spieler zugeordnet' });
         if (!day.participants.includes(playerId)) return sendJson(res, 403, { ok: false, error: 'Du bist für diesen Spieltag nicht teilnahmeberechtigt' });
         const closed = isSurveyClosed(day.closesAt);
