@@ -1787,7 +1787,13 @@ async function handle(req, res) {
     if (fotoFile && method === 'GET') {
         const buf = await fotoGet(fotoFile[1], fotoFile[2]);
         if (!buf) { res.writeHead(404); return res.end(); }
-        res.writeHead(200, { 'Content-Type': FOTO_TYPES[fotoFile[2]], 'Cache-Control': 'private, no-cache' });
+        const etag = '"' + crypto.createHash('sha256').update(buf).digest('hex') + '"';
+        const headers = { 'Content-Type': FOTO_TYPES[fotoFile[2]], 'Cache-Control': 'private, max-age=300', ETag: etag };
+        if (req.headers['if-none-match'] === etag) {
+            res.writeHead(304, headers);
+            return res.end();
+        }
+        res.writeHead(200, headers);
         return res.end(buf);
     }
 

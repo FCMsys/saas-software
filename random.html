@@ -762,6 +762,7 @@
         let me = { role: 'admin', spielerId: null, paypal: '', authEnabled: false };   // wird in loadMe() vom Server gesetzt
         let spieltage = [];
         let surveyDays = [];
+        let renderedAwardsSignature = '';
         let activeSurvey = null;
         let surveyCountdownTimer = null;
         let kassenbuchEntries = [];
@@ -1044,7 +1045,7 @@
 
         function stateToCsv() {
             const spieler = toCsv(['id', 'name', 'elo', 'position', ...STAT_KEYS, 'foto', ...STAT_KEYS.map(k => 'survey_' + k)],
-                players.map(p => [p.id, p.name, p.elo, p.pos, ...STAT_KEYS.map(k => p.stats[k]), p.photo.startsWith('data:') ? '' : p.photo.split('?')[0], ...STAT_KEYS.map(k => p.surveyApplied?.[k] ?? '')]));
+                players.map(p => [p.id, p.name, p.elo, p.pos, ...STAT_KEYS.map(k => p.stats[k]), p.photo.startsWith('data:') ? '' : p.photo, ...STAT_KEYS.map(k => p.surveyApplied?.[k] ?? '')]));
             const presets = toCsv(['name', 'spieler_ids'], Object.entries(squadPresets).map(([n, ids]) => [n, ids.join('|')]));
 
             const rows = [];
@@ -1070,7 +1071,7 @@
             players = parseCsv(csv.spieler).map(r => ({
                 id: r.id, name: r.name, elo: parseFloat(r.elo) || 1500, history: [],
                 surveyApplied: Object.fromEntries(STAT_KEYS.map(k => [k, r['survey_' + k]])),
-                pos: r.position, photo: r.foto ? r.foto + '?v=' + Date.now() : '',
+                pos: r.position, photo: r.foto || '',
                 // alte CSVs: dri/def werden zu drl/ver (normalizeData)
                 stats: Object.fromEntries([...STAT_KEYS, 'dri', 'def'].map(k => [k, r[k]]))
             }));
@@ -1310,6 +1311,7 @@
 
         // ---- Tab 1: Spieler ----
         function renderPlayersTab() {
+            renderedAwardsSignature = JSON.stringify(players.map(player => playerCardAward(player.id)));
             const sorted = [...players].sort((a, b) => b.elo - a.elo);
             $('playerTable').innerHTML = sorted.map((p, i) => {
                 const s = playerStats(p.id);
@@ -2664,8 +2666,7 @@
             try {
                 const [state, surveyState] = await Promise.all([api('GET', '/api/state'), api('GET', '/api/umfragen')]);
                 surveyDays = surveyState.surveys;
-                renderPlayersTab();
-                if (cardPlayerId && !$('cardModal').classList.contains('hidden')) openCardModal(cardPlayerId, { replay: false });
+                let cardsChanged = renderedAwardsSignature !== JSON.stringify(players.map(player => playerCardAward(player.id)));
                 surveyEloHistory = Array.isArray(state.surveyHistory) ? state.surveyHistory : [];
                 if ($('editModal').classList.contains('hidden')) {
                     const latest = new Map(parseCsv(state.spieler).map(row => [row.id, row]));
@@ -2675,6 +2676,11 @@
                         if (!row) return;
                         const stats = Object.fromEntries(STAT_KEYS.map(key => [key, Math.max(1, Math.min(99, parseFloat(row[key]) || player.stats[key]))]));
                         const elo = parseFloat(row.elo);
+                        const photo = row.foto || '';
+                        if (photo !== player.photo && !player.photo.startsWith('data:')) {
+                            player.photo = photo;
+                            changed = true;
+                        }
                         player.surveyApplied = Object.fromEntries(STAT_KEYS.map(key => [key, row['survey_' + key]]));
                         if (STAT_KEYS.some(key => stats[key] !== player.stats[key]) || (Number.isFinite(elo) && elo !== player.elo)) {
                             if (Number.isFinite(elo)) player.elo = elo;
@@ -2682,7 +2688,11 @@
                             changed = true;
                         }
                     });
-                    if (changed) renderPlayersTab();
+                    cardsChanged ||= changed;
+                }
+                if (cardsChanged) {
+                    renderPlayersTab();
+                    if (cardPlayerId && !$('cardModal').classList.contains('hidden')) openCardModal(cardPlayerId, { replay: false });
                 }
                 renderDays();
                 if (activeTab === 'history') renderChart();

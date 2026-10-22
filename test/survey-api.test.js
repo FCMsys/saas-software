@@ -88,6 +88,27 @@ test('survey API creates stable private forms, accepts each response once, and p
 
     try {
         await startServer();
+        const photoHeaders = { Cookie: sessionCookie('admin', 'admin') };
+        // Exercise the authenticated photo endpoint directly; uploads change the validator.
+        const putPhoto = data => fetch(`${baseUrl}/api/foto/p1`, {
+            method: 'PUT', headers: { ...photoHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: 'data:image/png;base64,' + Buffer.from(data).toString('base64') })
+        });
+        assert.equal((await putPhoto('first-photo')).status, 200);
+        const photo = await fetch(`${baseUrl}/fotos/p1.png`, { headers: photoHeaders });
+        assert.equal(photo.status, 200);
+        assert.equal(photo.headers.get('cache-control'), 'private, max-age=300');
+        assert.equal(await photo.text(), 'first-photo');
+        const etag = photo.headers.get('etag');
+        assert.ok(etag);
+        const unchanged = await fetch(`${baseUrl}/fotos/p1.png`, { headers: { ...photoHeaders, 'If-None-Match': etag } });
+        assert.equal(unchanged.status, 304);
+        assert.equal(await unchanged.text(), '');
+        assert.equal((await putPhoto('updated-photo')).status, 200);
+        const updated = await fetch(`${baseUrl}/fotos/p1.png?v=updated`, { headers: { ...photoHeaders, 'If-None-Match': etag } });
+        assert.equal(updated.status, 200);
+        assert.notEqual(updated.headers.get('etag'), etag);
+        assert.equal(await updated.text(), 'updated-photo');
         const guestLanding = await fetch(`${baseUrl}/?umfrage=st_test`);
         const guestLandingHtml = await guestLanding.text();
         assert.equal(guestLanding.status, 200);
