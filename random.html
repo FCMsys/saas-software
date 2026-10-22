@@ -5,21 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FC M:sys</title>
     <link rel="icon" type="image/svg+xml" href="/img/msys.svg">
+    <script src="/design.js"></script>
+    <script>
+        const designStyle = document.createElement('style');
+        designStyle.textContent = FC_MSYS_DESIGN.cssVariables;
+        document.head.appendChild(designStyle);
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { colors: FC_MSYS_DESIGN.tailwindColors } };
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: linear-gradient(180deg, #eef3fb 0, #f7f9fd 340px) fixed; color: #0f172a; -webkit-font-smoothing: antialiased; }
-        ::selection { background: #bfdbfe; }
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(180deg, var(--cd-blueGray20) 0, var(--cd-white) 340px) fixed; color: var(--cd-blueBlack); -webkit-font-smoothing: antialiased; }
+        ::selection { background: var(--cd-blue40); }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--cd-blueGray40); border-radius: 4px; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
-        .tab-btn { color: #64748b; border-bottom: 2px solid transparent; }
-        .tab-btn:hover { color: #1e3a8a; }
-        .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; }
-        .card { background: #fff; border: 1px solid #e3e9f4; border-radius: 1rem; box-shadow: 0 1px 2px rgba(30,58,138,.04), 0 8px 24px -12px rgba(30,58,138,.10); }
+        .tab-btn { color: var(--cd-gray); border-bottom: 2px solid transparent; }
+        .tab-btn:hover { color: var(--cd-blueBlack); }
+        .tab-btn.active { color: var(--cd-darkBlue); border-bottom-color: var(--cd-blue); }
+        .card { background: var(--cd-white); border: 1px solid var(--cd-blueGray20); border-radius: 1rem; box-shadow: 0 1px 2px rgba(var(--cd-darkBlue-rgb),.04), 0 8px 24px -12px rgba(var(--cd-darkBlue-rgb),.10); }
         .fade-in { animation: fade .18s ease-out; }
         @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
         #adFlyer { position: fixed; left: 0; z-index: 55; width: min(90vw, 1100px); aspect-ratio: 2170 / 725; pointer-events: none; }
@@ -30,9 +39,9 @@
         .ad-flyer-content span { position: absolute; width: max-content; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; transform: translate(-50%, -50%); line-height: 1.15; }
         #adFlyer.ad-flyer-left .ad-flyer-graphic { transform: none; }
         #adFlyer.ad-flyer-left .ad-flyer-content { left: 55.5%; }
-        #adEditor { position: relative; aspect-ratio: 2170 / 725; background: #e2e8f0; }
+        #adEditor { position: relative; aspect-ratio: 2170 / 725; background: var(--cd-blueGray20); }
         #adEditor > img { width: 100%; }
-        #adEditor .ad-flyer-content { left: 55.5%; outline: 1px dashed #64748b; }
+        #adEditor .ad-flyer-content { left: 55.5%; outline: 1px dashed var(--cd-gray); }
         #adEditorText, #adEditorImage { touch-action: none; cursor: move; }
         @media (prefers-reduced-motion: reduce) { #adFlyer { transition: none; } }
 
@@ -40,7 +49,7 @@
         .fut-card {
             --fs: 14px; font-size: var(--fs); width: 20em; height: 28.5em; position: relative;
             color: var(--ink); user-select: none; flex-shrink: 0;
-            filter: drop-shadow(0 .5em .9em rgba(15,23,42,.28));
+            filter: drop-shadow(0 .5em .9em rgba(var(--cd-blueBlack-rgb),.28));
         }
 
         .fut-shape, .fut-inner {
@@ -56,17 +65,17 @@
         .fut-pattern {
             position: absolute; inset: 0; opacity: .55;
             background:
-                repeating-linear-gradient(62deg, rgba(255,255,255,.10) 0 .12em, transparent .12em 1.3em),
-                radial-gradient(60% 40% at 80% 30%, rgba(255,255,255,.25), transparent 70%);
+                repeating-linear-gradient(62deg, rgba(var(--cd-white-rgb),.10) 0 .12em, transparent .12em 1.3em),
+                radial-gradient(60% 40% at 80% 30%, rgba(var(--cd-white-rgb),.25), transparent 70%);
         }
         .fut-rating { position: absolute; left: 1.5em; top: 3.7em; width: 4em; text-align: center; line-height: 1; }
-        .fut-rating .num { display: block; font-size: 3.1em; font-weight: 800; letter-spacing: -.04em; text-shadow: 0 .04em .1em rgba(0,0,0,.18); }
+        .fut-rating .num { display: block; font-size: 3.1em; font-weight: 800; letter-spacing: -.04em; text-shadow: 0 .04em .1em rgba(var(--cd-black-rgb),.18); }
         .fut-rating .pos { display: block; font-size: 1.25em; font-weight: 700; margin-top: .15em; letter-spacing: .04em; }
         .fut-rating .bar { display: block; width: 2.4em; height: .1em; background: var(--ink); opacity: .45; margin: .5em auto 0; border-radius: 1em; }
         .fut-photo {
             position: absolute; right: 1.5em; top: 2.4em; width: 10.4em; height: 12.6em; display: flex; align-items: center; justify-content: center;
-            -webkit-mask-image: radial-gradient(ellipse 70% 72% at 50% 44%, #000 58%, transparent 100%);
-                    mask-image: radial-gradient(ellipse 70% 72% at 50% 44%, #000 58%, transparent 100%);
+            -webkit-mask-image: radial-gradient(ellipse 70% 72% at 50% 44%, var(--cd-black) 58%, transparent 100%);
+                    mask-image: radial-gradient(ellipse 70% 72% at 50% 44%, var(--cd-black) 58%, transparent 100%);
         }
         .fut-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; }
         .fut-photo i { font-size: 8em; color: var(--ink); opacity: .22; }
@@ -81,35 +90,35 @@
         /* Dauerhaftes Schimmern + Maus-Glanz + Hologramm */
         .fut-shine, .fut-glare, .fut-holo { position: absolute; inset: 0; pointer-events: none; }
         .fut-shine {
-            background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.65) 48%, rgba(255,255,255,.2) 53%, transparent 62%);
+            background: linear-gradient(115deg, transparent 38%, rgba(var(--cd-white-rgb),.65) 48%, rgba(var(--cd-white-rgb),.2) 53%, transparent 62%);
             background-size: 300% 100%; background-position: 160% 0; animation: shine 5.5s ease-in-out infinite; animation-delay: var(--shine-delay, 0s);
         }
         @keyframes shine { 0%, 52% { background-position: 160% 0; } 100% { background-position: -60% 0; } }
-        .fut-glare { background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(255,255,255,.55), transparent 48%); opacity: var(--glare, 0); transition: opacity .25s; mix-blend-mode: soft-light; }
-        .fut-holo { display: none; mix-blend-mode: color-dodge; opacity: .28; background: linear-gradient(115deg, #ff2bd6, #22d3ee, #a3e635, #facc15, #ff2bd6); background-size: 300% 300%; animation: holo 7s linear infinite; }
+        .fut-glare { background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(var(--cd-white-rgb),.55), transparent 48%); opacity: var(--glare, 0); transition: opacity .25s; mix-blend-mode: soft-light; }
+        .fut-holo { display: none; mix-blend-mode: color-dodge; opacity: .28; background: linear-gradient(115deg, var(--cd-lightViolet), var(--cd-lightPetrol), var(--cd-lightGreen), var(--cd-yellow), var(--cd-lightViolet)); background-size: 300% 300%; animation: holo 7s linear infinite; }
         @keyframes holo { to { background-position: 300% 300%; } }
         .tier-ikone .fut-holo { display: block; }
 
         /* Stufen */
-        .tier-bronze { --c1: #f1c9a0; --c2: #c98a55; --c3: #8a5528; --edge1: #fbe1c3; --edge2: #9a6232; --ink: #3a2310; --glow: 205, 133, 63; }
-        .tier-silber { --c1: #ffffff; --c2: #cbd5e1; --c3: #8795a6; --edge1: #ffffff; --edge2: #8c9aab; --ink: #1e293b; --glow: 186, 200, 220; }
-        .tier-gold   { --c1: #fff4b0; --c2: #f5c93a; --c3: #b9830b; --edge1: #fff8cc; --edge2: #b88308; --ink: #4a3100; --glow: 252, 211, 77; }
-        .tier-ikone  { --c1: #6d4bd8; --c2: #2b2a82; --c3: #0b1740; --edge1: #67e8f9; --edge2: #c026d3; --ink: #ffffff; --glow: 120, 130, 255; }
+        .tier-bronze { --c1: var(--cd-paleBrown); --c2: var(--cd-lightBrown); --c3: var(--cd-brown); --edge1: var(--cd-paleYellow); --edge2: var(--cd-brown); --ink: var(--cd-brownBlack); --glow: var(--cd-brown-rgb); }
+        .tier-silber { --c1: var(--cd-white); --c2: var(--cd-blueGray40); --c3: var(--cd-blueGray); --edge1: var(--cd-white); --edge2: var(--cd-blueGray80); --ink: var(--cd-blueBlack); --glow: var(--cd-blueGray40-rgb); }
+        .tier-gold   { --c1: var(--cd-paleYellow); --c2: var(--cd-yellow); --c3: var(--cd-brown); --edge1: var(--cd-paleYellow); --edge2: var(--cd-brown); --ink: var(--cd-brownBlack); --glow: var(--cd-yellow-rgb); }
+        .tier-ikone  { --c1: var(--cd-violet); --c2: var(--cd-blueBlack); --c3: var(--cd-blueBlack); --edge1: var(--cd-lightPetrol); --edge2: var(--cd-violet); --ink: var(--cd-white); --glow: var(--cd-violet-rgb); }
 
-        .award-motm { --c1: #1647bf; --c2: #082577; --c3: #020621; --edge1: #ffe59a; --edge2: #d8ac4d; --ink: #ffdb71; --glow: 255, 219, 113; }
-        .award-surprise { --c1: #d8f6ff; --c2: #b291c9; --c3: #244f9c; --edge1: #fff8ae; --edge2: #d6ac62; --ink: #fff; --glow: 153, 190, 255; }
+        .award-motm { --c1: var(--cd-darkBlue); --c2: var(--cd-blueBlack); --c3: var(--cd-blueBlack); --edge1: var(--cd-lightYellow); --edge2: var(--cd-yellow); --ink: var(--cd-yellow); --glow: var(--cd-yellow-rgb); }
+        .award-surprise { --c1: var(--cd-blue20); --c2: var(--cd-lightViolet); --c3: var(--cd-darkBlue); --edge1: var(--cd-paleYellow); --edge2: var(--cd-lightBrown); --ink: var(--cd-white); --glow: var(--cd-blue80-rgb); }
         .fut-card[class*="award-"] .fut-shape, .fut-card[class*="award-"] .fut-inner { clip-path: polygon(50% 0, 57% 5%, 64% 6%, 70% 2%, 84% 5%, 100% 12%, 100% 86%, 97% 93%, 90% 96%, 65% 98%, 50% 100%, 35% 98%, 10% 96%, 3% 93%, 0 86%, 0 12%, 16% 5%, 30% 2%, 36% 6%, 43% 5%); }
-        .award-motm .fut-shape::after { content: ''; position: absolute; inset: .13em; clip-path: inherit; background: #071b57; }
-        .award-motm .fut-inner { inset: .25em; border: .08em solid #ffe096; }
-        .award-motm .fut-pattern { opacity: 1; background: linear-gradient(180deg, transparent 42%, #030720e8 65%, #02051a 100%), repeating-conic-gradient(from -24deg at 35% 53%, #ffdf85 0deg 12deg, #eabb5a 12deg 15deg, #ffeab2 15deg 18deg, #082574 18deg 33deg, #173d9e 33deg 37deg, #030e43 37deg 46deg); clip-path: polygon(42% 0, 100% 0, 100% 100%, 0 100%, 0 65%, 30% 72%, 30% 26%); }
-        .award-motm .fut-inner::before { content: ''; position: absolute; inset: 0; opacity: .17; background: radial-gradient(ellipse at 20% 25%, transparent 30%, #5982ea 32% 35%, transparent 37%), repeating-linear-gradient(65deg, transparent 0 1.8em, #345dc6 1.85em 1.95em, transparent 2em 3.5em); background-size: 3em 4em, auto; }
-        .award-motm .fut-name { text-shadow: 0 .06em .15em #020621; }
+        .award-motm .fut-shape::after { content: ''; position: absolute; inset: .13em; clip-path: inherit; background: var(--cd-blueBlack); }
+        .award-motm .fut-inner { inset: .25em; border: .08em solid var(--cd-lightYellow); }
+        .award-motm .fut-pattern { opacity: 1; background: linear-gradient(180deg, transparent 42%, var(--cd-blueBlack) 65%, var(--cd-blueBlack) 100%), repeating-conic-gradient(from -24deg at 35% 53%, var(--cd-lightYellow) 0deg 12deg, var(--cd-yellow) 12deg 15deg, var(--cd-paleYellow) 15deg 18deg, var(--cd-blueBlack) 18deg 33deg, var(--cd-darkBlue) 33deg 37deg, var(--cd-blueBlack) 37deg 46deg); clip-path: polygon(42% 0, 100% 0, 100% 100%, 0 100%, 0 65%, 30% 72%, 30% 26%); }
+        .award-motm .fut-inner::before { content: ''; position: absolute; inset: 0; opacity: .17; background: radial-gradient(ellipse at 20% 25%, transparent 30%, var(--cd-blue80) 32% 35%, transparent 37%), repeating-linear-gradient(65deg, transparent 0 1.8em, var(--cd-darkBlue) 1.85em 1.95em, transparent 2em 3.5em); background-size: 3em 4em, auto; }
+        .award-motm .fut-name { text-shadow: 0 .06em .15em var(--cd-blueBlack); }
         .award-motm .fut-line, .award-motm .fut-stats::before { opacity: .8; }
         .award-motm .fut-stats i { opacity: 1; }
         .award-motm .fut-holo { display: none; }
-        .award-surprise .fut-pattern { opacity: .8; background: conic-gradient(from 40deg at 65% 38%, #ce8acb, #c5f5fa 15%, #758ec4 28%, #ecb4da 40%, #76dfe0 53%, #3466af 65%, #9b8bcd 80%, #ce8acb); clip-path: polygon(0 0, 100% 0, 100% 76%, 70% 64%, 90% 48%, 48% 58%, 65% 28%, 30% 43%, 0 65%); }
+        .award-surprise .fut-pattern { opacity: .8; background: conic-gradient(from 40deg at 65% 38%, var(--cd-lightViolet), var(--cd-blue20) 15%, var(--cd-blueGray80) 28%, var(--cd-paleViolet) 40%, var(--cd-lightPetrol) 53%, var(--cd-darkBlue) 65%, var(--cd-violet) 80%, var(--cd-lightViolet)); clip-path: polygon(0 0, 100% 0, 100% 76%, 70% 64%, 90% 48%, 48% 58%, 65% 28%, 30% 43%, 0 65%); }
         .award-surprise .fut-holo { display: block; opacity: .15; }
-        .award-surprise .fut-rating { color: #294585; }
+        .award-surprise .fut-rating { color: var(--cd-blueBlack); }
         .fut-award { position: absolute; bottom: 1.8em; left: 2.5em; right: 2.5em; text-align: center; font-size: .7em; line-height: 1.15; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; text-wrap: balance; }
         @media (prefers-reduced-motion: reduce) { .fut-shine, .fut-holo { animation: none; } }
 
@@ -118,14 +127,14 @@
         .card-tile:hover { transform: translateY(-.5rem) scale(1.04) rotate(-.6deg); }
 
         /* ===================== KARTEN-ENTHÜLLUNG ===================== */
-        #cardModal { --glow: 252, 211, 77; }
-        #cardModal.tier-bronze { --glow: 205, 133, 63; } #cardModal.tier-silber { --glow: 186, 200, 220; }
-        #cardModal.tier-gold { --glow: 252, 211, 77; } #cardModal.tier-ikone { --glow: 120, 130, 255; }
-        .reveal-bg { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, rgba(var(--glow), .18), transparent 55%), rgba(6, 10, 25, .93); backdrop-filter: blur(6px); animation: fade-bg .6s ease-out both; }
+        #cardModal { --glow: var(--cd-yellow-rgb); }
+        #cardModal.tier-bronze { --glow: var(--cd-brown-rgb); } #cardModal.tier-silber { --glow: var(--cd-blueGray40-rgb); }
+        #cardModal.tier-gold { --glow: var(--cd-yellow-rgb); } #cardModal.tier-ikone { --glow: var(--cd-violet-rgb); }
+        .reveal-bg { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, rgba(var(--glow), .18), transparent 55%), rgba(var(--cd-blueBlack-rgb),.93); backdrop-filter: blur(6px); animation: fade-bg .6s ease-out both; }
         @keyframes fade-bg { from { opacity: 0; } to { opacity: 1; } }
         .reveal-rays { position: absolute; left: 50%; top: 45%; width: 190vmax; height: 190vmax; margin: -95vmax 0 0 -95vmax; pointer-events: none; opacity: 0;
             background: repeating-conic-gradient(rgba(var(--glow), .22) 0 3deg, transparent 3deg 15deg);
-            -webkit-mask-image: radial-gradient(circle, #000 0, transparent 42%); mask-image: radial-gradient(circle, #000 0, transparent 42%);
+            -webkit-mask-image: radial-gradient(circle, var(--cd-black) 0, transparent 42%); mask-image: radial-gradient(circle, var(--cd-black) 0, transparent 42%);
             animation: rays-in 1.6s ease-out 1.3s both, rays-spin 50s linear infinite; }
         @keyframes rays-in { to { opacity: 1; } }
         @keyframes rays-spin { from { rotate: 0deg; } to { rotate: 360deg; } }
@@ -150,15 +159,15 @@
         .back-art { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: .8em; color: var(--ink); }
         .back-art i { font-size: 6em; opacity: .55; }
         .back-art span { font-weight: 800; letter-spacing: .3em; font-size: 1.1em; opacity: .6; }
-        .reveal-flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, #fff, rgba(var(--glow), .6) 30%, transparent 62%); opacity: 0; pointer-events: none; }
+        .reveal-flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, var(--cd-white), rgba(var(--glow), .6) 30%, transparent 62%); opacity: 0; pointer-events: none; }
         .reveal-flash.play { animation: flash 2.5s linear both; }
         @keyframes flash { 0%, 64% { opacity: 0; } 72% { opacity: .95; } 100% { opacity: 0; } }
-        .reveal-shine-once { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.9) 50%, transparent 70%); background-size: 250% 100%; }
+        .reveal-shine-once { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: linear-gradient(110deg, transparent 30%, rgba(var(--cd-white-rgb),.9) 50%, transparent 70%); background-size: 250% 100%; }
         .reveal-shine-once.play { animation: shine-once 1.5s ease-in-out 2.35s both; }
         @keyframes shine-once { 0% { background-position: 160% 0; opacity: 1; } 100% { background-position: -60% 0; opacity: 1; } }
         .reveal-particles { position: absolute; left: 50%; top: 45%; width: 0; height: 0; pointer-events: none; }
         .reveal-particles span { position: absolute; width: var(--sz); height: var(--sz); margin: calc(var(--sz) / -2); border-radius: 50%; opacity: 0;
-            background: radial-gradient(circle, #fff, rgb(var(--glow)) 55%, transparent 70%); animation: burst var(--dur) cubic-bezier(.1,.7,.3,1) var(--delay) both; }
+            background: radial-gradient(circle, var(--cd-white), rgb(var(--glow)) 55%, transparent 70%); animation: burst var(--dur) cubic-bezier(.1,.7,.3,1) var(--delay) both; }
         @keyframes burst { 0% { transform: translate(0, 0) scale(.2); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0; } }
         @media (prefers-reduced-motion: reduce) {
             .reveal-flipper.play, .reveal-flash.play, .reveal-shine-once.play, .reveal-bob.idle, .fut-shine, .fut-holo, .reveal-rays { animation: none; }
@@ -787,7 +796,7 @@
         let adDirection = Math.random() < 0.5 ? 1 : -1;
         let adPreviewObjectUrl = '';
 
-        const CHART_COLORS = ['#2563eb', '#059669', '#e11d48', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5', '#c026d3', '#64748b'];
+        const CHART_COLORS = ['var(--cd-blue)', 'var(--cd-darkGreen)', 'var(--cd-red)', 'var(--cd-brown)', 'var(--cd-violet)', 'var(--cd-petrol)', 'var(--cd-lightViolet)', 'var(--cd-lightGreen)', 'var(--cd-orange)', 'var(--cd-darkBlue)', 'var(--cd-brownBlack)', 'var(--cd-blueGray)'];
         const K_FACTOR = 32;
         const CURRENT_GAME_STORAGE_KEY = 'matchmaster_current_game_v1';
 
@@ -1550,7 +1559,7 @@
                 const hidden = hiddenInChart.has(p.id);
                 const chip = document.createElement('button');
                 chip.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs transition ${hidden ? 'border-slate-200 text-slate-400 bg-white' : 'border-slate-300 text-slate-800 bg-slate-50'}`;
-                chip.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${hidden ? '#cbd5e1' : playerColor(p.id)}"></span>${escapeHtml(p.name)}<span class="font-mono ${hidden ? '' : 'text-slate-500'}">${formatElo(p.elo)}</span>`;
+                chip.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${hidden ? 'var(--cd-blueGray40)' : playerColor(p.id)}"></span>${escapeHtml(p.name)}<span class="font-mono ${hidden ? '' : 'text-slate-500'}">${formatElo(p.elo)}</span>`;
                 chip.onclick = () => { hidden ? hiddenInChart.delete(p.id) : hiddenInChart.add(p.id); renderChart(); };
                 legend.appendChild(chip);
             });
@@ -1563,7 +1572,7 @@
             const visible = players.filter(p => !hiddenInChart.has(p.id));
             const chart = chartPlayerHistories();
             const maxSeq = chart.maxIndex;
-            const msg = t => { svgEl.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="#94a3b8" font-size="13">${t}</text>`; };
+            const msg = t => { svgEl.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="var(--cd-gray)" font-size="13">${t}</text>`; };
             if (matchHistory.length === 0 && surveyEloHistory.length === 0) return msg('Der Verlauf erscheint nach dem ersten gespeicherten Spiel.');
             if (!visible.length) return msg('Keine Spieler ausgewählt.');
 
@@ -1577,12 +1586,12 @@
             let svg = '';
             for (let i = 0; i <= 5; i++) {
                 const v = yMin + ((yMax - yMin) * i) / 5;
-                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="#eef2f6"/>`;
-                svg += `<text x="${m.l - 8}" y="${y(v) + 3}" text-anchor="end" fill="#94a3b8" font-size="10">${Math.round(v)}</text>`;
+                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--cd-blueGray20)"/>`;
+                svg += `<text x="${m.l - 8}" y="${y(v) + 3}" text-anchor="end" fill="var(--cd-gray)" font-size="10">${Math.round(v)}</text>`;
             }
             if (1500 > yMin && 1500 < yMax) {
-                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(1500)}" y2="${y(1500)}" stroke="#94a3b8" stroke-dasharray="4 4"/>`;
-                svg += `<text x="${W - m.r}" y="${y(1500) - 4}" text-anchor="end" fill="#94a3b8" font-size="9">1500</text>`;
+                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(1500)}" y2="${y(1500)}" stroke="var(--cd-gray)" stroke-dasharray="4 4"/>`;
+                svg += `<text x="${W - m.r}" y="${y(1500) - 4}" text-anchor="end" fill="var(--cd-gray)" font-size="9">1500</text>`;
             }
 
             const dots = [];
@@ -1592,12 +1601,12 @@
                 svg += `<path d="${pts.map((h, i) => `${i ? 'L' : 'M'}${x(h.chartIndex).toFixed(1)},${y(h.elo).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
                 pts.forEach(h => {
                     dots.push({ p, h, cx: x(h.chartIndex), cy: y(h.elo), color });
-                    svg += `<circle cx="${x(h.chartIndex).toFixed(1)}" cy="${y(h.elo).toFixed(1)}" r="3.4" fill="#fff" stroke="${color}" stroke-width="2"/>`;
+                    svg += `<circle cx="${x(h.chartIndex).toFixed(1)}" cy="${y(h.elo).toFixed(1)}" r="3.4" fill="var(--cd-white)" stroke="${color}" stroke-width="2"/>`;
                 });
                 const last = pts[pts.length - 1];
                 svg += `<text x="${x(last.chartIndex) + 8}" y="${y(last.elo) + 3}" fill="${color}" font-size="10.5" font-weight="700">${escapeHtml(p.name)}</text>`;
             });
-            svg += `<line id="chartCursor" y1="${m.t}" y2="${H - m.b}" stroke="#94a3b8" stroke-dasharray="3 3" style="display:none"/>`;
+            svg += `<line id="chartCursor" y1="${m.t}" y2="${H - m.b}" stroke="var(--cd-gray)" stroke-dasharray="3 3" style="display:none"/>`;
             svgEl.innerHTML = svg;
             const cursor = $('chartCursor');
 
@@ -1807,7 +1816,7 @@
             flipper.querySelector('.fut-inner').insertAdjacentHTML('beforeend', '<div class="reveal-shine-once"></div>');
 
             $('cardInfo').innerHTML = `<div class="font-bold text-base">${escapeHtml(p.name)}</div>
-                <div class="text-white/60">Rating <b class="text-white">${rating}</b> · <span class="font-semibold" style="color:rgb(${{ bronze: '230,160,100', silber: '203,213,225', gold: '252,211,77', ikone: '165,170,255' }[tier]})">${TIER_NAMES[tier]}</span></div>`;
+                <div class="text-white/60">Rating <b class="text-white">${rating}</b> · <span class="font-semibold" style="color:${{ bronze: 'var(--cd-paleBrown)', silber: 'var(--cd-blueGray40)', gold: 'var(--cd-yellow)', ikone: 'var(--cd-paleViolet)' }[tier]}">${TIER_NAMES[tier]}</span></div>`;
 
             $('revealBob').className = 'reveal-bob';
             $('revealTilt').style.transform = '';
