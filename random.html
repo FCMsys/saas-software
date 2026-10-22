@@ -96,10 +96,17 @@
         .tier-gold   { --c1: #fff4b0; --c2: #f5c93a; --c3: #b9830b; --edge1: #fff8cc; --edge2: #b88308; --ink: #4a3100; --glow: 252, 211, 77; }
         .tier-ikone  { --c1: #6d4bd8; --c2: #2b2a82; --c3: #0b1740; --edge1: #67e8f9; --edge2: #c026d3; --ink: #ffffff; --glow: 120, 130, 255; }
 
-        .award-motm { --c1: #fffef2; --c2: #e2e1dc; --c3: #bcbdb6; --edge1: #fff5bd; --edge2: #a59446; --ink: #61582b; --glow: 235, 218, 150; }
+        .award-motm { --c1: #1647bf; --c2: #082577; --c3: #020621; --edge1: #ffe59a; --edge2: #d8ac4d; --ink: #ffdb71; --glow: 255, 219, 113; }
         .award-surprise { --c1: #d8f6ff; --c2: #b291c9; --c3: #244f9c; --edge1: #fff8ae; --edge2: #d6ac62; --ink: #fff; --glow: 153, 190, 255; }
         .fut-card[class*="award-"] .fut-shape, .fut-card[class*="award-"] .fut-inner { clip-path: polygon(50% 0, 57% 5%, 64% 6%, 70% 2%, 84% 5%, 100% 12%, 100% 86%, 97% 93%, 90% 96%, 65% 98%, 50% 100%, 35% 98%, 10% 96%, 3% 93%, 0 86%, 0 12%, 16% 5%, 30% 2%, 36% 6%, 43% 5%); }
-        .award-motm .fut-pattern { opacity: .7; background: conic-gradient(from 30deg at 65% 30%, #ffffff88, #999b9d44, #fff9 25%, #b3afa744 40%, #fff8 60%, #a5a29655 80%, #fff8), repeating-linear-gradient(135deg, transparent 0 2em, #fff9 2em 2.08em); }
+        .award-motm .fut-shape::after { content: ''; position: absolute; inset: .13em; clip-path: inherit; background: #071b57; }
+        .award-motm .fut-inner { inset: .25em; border: .08em solid #ffe096; }
+        .award-motm .fut-pattern { opacity: 1; background: linear-gradient(180deg, transparent 42%, #030720e8 65%, #02051a 100%), repeating-conic-gradient(from -24deg at 35% 53%, #ffdf85 0deg 12deg, #eabb5a 12deg 15deg, #ffeab2 15deg 18deg, #082574 18deg 33deg, #173d9e 33deg 37deg, #030e43 37deg 46deg); clip-path: polygon(42% 0, 100% 0, 100% 100%, 0 100%, 0 65%, 30% 72%, 30% 26%); }
+        .award-motm .fut-inner::before { content: ''; position: absolute; inset: 0; opacity: .17; background: radial-gradient(ellipse at 20% 25%, transparent 30%, #5982ea 32% 35%, transparent 37%), repeating-linear-gradient(65deg, transparent 0 1.8em, #345dc6 1.85em 1.95em, transparent 2em 3.5em); background-size: 3em 4em, auto; }
+        .award-motm .fut-name { text-shadow: 0 .06em .15em #020621; }
+        .award-motm .fut-line, .award-motm .fut-stats::before { opacity: .8; }
+        .award-motm .fut-stats i { opacity: 1; }
+        .award-motm .fut-holo { display: none; }
         .award-surprise .fut-pattern { opacity: .8; background: conic-gradient(from 40deg at 65% 38%, #ce8acb, #c5f5fa 15%, #758ec4 28%, #ecb4da 40%, #76dfe0 53%, #3466af 65%, #9b8bcd 80%, #ce8acb); clip-path: polygon(0 0, 100% 0, 100% 76%, 70% 64%, 90% 48%, 48% 58%, 65% 28%, 30% 43%, 0 65%); }
         .award-surprise .fut-holo { display: block; opacity: .15; }
         .award-surprise .fut-rating { color: #294585; }
@@ -2460,9 +2467,10 @@
                     : 'Einladung noch nicht gesendet';
                 const btnCls = 'text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition';
                 const existingSurvey = surveyDays.some(item => item.id === s.id);
+                const canStartDay = !past && !s.finishedAt && !s.surveyStarted && !existingSurvey;
                 const admin = isAdmin ? `<div class="flex flex-wrap items-center gap-1.5">
-                    <button data-act="invite" data-st="${sid}" ${me.mailEnabled ? '' : 'disabled'} title="${me.mailEnabled ? 'Mail nur an Spieler ohne Zu- oder Absage mit bekannter Mail-Adresse' : 'Mail-Versand ist nicht eingerichtet'}" class="${btnCls} disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-envelope mr-1.5 text-blue-500"></i>${s.einladungAt ? 'Offene Antworten erinnern' : 'Einladung per Mail'}</button>
-                    <button data-act="match" data-st="${sid}" class="${btnCls}" title="Mit den Zusagen dieses Spieltags Teams bilden"><i class="fa-solid fa-futbol mr-1.5 text-blue-500"></i>Spiel starten</button>
+                    ${canStartDay ? `<button data-act="invite" data-st="${sid}" ${me.mailEnabled ? '' : 'disabled'} title="${me.mailEnabled ? 'Mail nur an Spieler ohne Zu- oder Absage mit bekannter Mail-Adresse' : 'Mail-Versand ist nicht eingerichtet'}" class="${btnCls} disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-envelope mr-1.5 text-blue-500"></i>${s.einladungAt ? 'Offene Antworten erinnern' : 'Einladung per Mail'}</button>
+                    <button data-act="match" data-st="${sid}" class="${btnCls}" title="Mit den Zusagen dieses Spieltags Teams bilden"><i class="fa-solid fa-futbol mr-1.5 text-blue-500"></i>Spiel starten</button>` : ''}
                     <button data-act="bill" data-st="${sid}" class="${btnCls}" title="Zahlung für diesen Spieltag anfordern"><i class="fa-solid fa-euro-sign mr-1.5 text-blue-500"></i>${isBilled(s) ? 'Abgerechnet · ' + eur(s.betragCent) : 'Abrechnen'}</button>
                     ${existingSurvey ? '' : `<button data-act="delete" data-st="${sid}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>`}
                 </div>` : '';
