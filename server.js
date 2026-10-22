@@ -890,7 +890,7 @@ function publicSurveyDay(day, session) {
     }
     const eligible = !!playerId && day.participants.includes(playerId);
     return {
-        id: day.id, eligible, closesAt: day.closesAt,
+        id: day.id, eligible, finishedAt: day.finishedAt, closesAt: day.closesAt,
         status: closed ? 'closed' : 'open',
         answered: !!(playerId && day.submissions && day.submissions[playerId]),
         results: closed ? surveyAwardsFor(day.results || null, session) : null

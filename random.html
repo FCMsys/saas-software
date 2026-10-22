@@ -96,6 +96,16 @@
         .tier-gold   { --c1: #fff4b0; --c2: #f5c93a; --c3: #b9830b; --edge1: #fff8cc; --edge2: #b88308; --ink: #4a3100; --glow: 252, 211, 77; }
         .tier-ikone  { --c1: #6d4bd8; --c2: #2b2a82; --c3: #0b1740; --edge1: #67e8f9; --edge2: #c026d3; --ink: #ffffff; --glow: 120, 130, 255; }
 
+        .award-motm { --c1: #fffef2; --c2: #e2e1dc; --c3: #bcbdb6; --edge1: #fff5bd; --edge2: #a59446; --ink: #61582b; --glow: 235, 218, 150; }
+        .award-surprise { --c1: #d8f6ff; --c2: #b291c9; --c3: #244f9c; --edge1: #fff8ae; --edge2: #d6ac62; --ink: #fff; --glow: 153, 190, 255; }
+        .fut-card[class*="award-"] .fut-shape, .fut-card[class*="award-"] .fut-inner { clip-path: polygon(50% 0, 57% 5%, 64% 6%, 70% 2%, 84% 5%, 100% 12%, 100% 86%, 97% 93%, 90% 96%, 65% 98%, 50% 100%, 35% 98%, 10% 96%, 3% 93%, 0 86%, 0 12%, 16% 5%, 30% 2%, 36% 6%, 43% 5%); }
+        .award-motm .fut-pattern { opacity: .7; background: conic-gradient(from 30deg at 65% 30%, #ffffff88, #999b9d44, #fff9 25%, #b3afa744 40%, #fff8 60%, #a5a29655 80%, #fff8), repeating-linear-gradient(135deg, transparent 0 2em, #fff9 2em 2.08em); }
+        .award-surprise .fut-pattern { opacity: .8; background: conic-gradient(from 40deg at 65% 38%, #ce8acb, #c5f5fa 15%, #758ec4 28%, #ecb4da 40%, #76dfe0 53%, #3466af 65%, #9b8bcd 80%, #ce8acb); clip-path: polygon(0 0, 100% 0, 100% 76%, 70% 64%, 90% 48%, 48% 58%, 65% 28%, 30% 43%, 0 65%); }
+        .award-surprise .fut-holo { display: block; opacity: .15; }
+        .award-surprise .fut-rating { color: #294585; }
+        .fut-award { position: absolute; top: 32.5em; left: 1em; right: 1em; text-align: center; font-size: .75em; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+        @media (prefers-reduced-motion: reduce) { .fut-shine, .fut-holo { animation: none; } }
+
         /* Karten-Raster */
         .card-tile { cursor: pointer; transition: transform .25s cubic-bezier(.2,.8,.2,1); }
         .card-tile:hover { transform: translateY(-.5rem) scale(1.04) rotate(-.6deg); }
@@ -918,11 +928,22 @@
         let tiers = { ...DEFAULT_TIERS };
         function tierFor(elo, t = tiers) { return elo >= t.ikone ? 'ikone' : elo >= t.gold ? 'gold' : elo >= t.silber ? 'silber' : 'bronze'; }
 
+        function playerCardAward(playerId, now = Date.now()) {
+            const latest = [...surveyDays].filter(day => Number.isFinite(Date.parse(day.finishedAt)))
+                .sort((a, b) => Date.parse(b.finishedAt) - Date.parse(a.finishedAt))[0];
+            if (!latest || !latest.results || latest.status !== 'closed') return null;
+            const published = Date.parse(latest.closesAt);
+            if (!Number.isFinite(published) || now < published || now >= published + 7 * 86400000) return null;
+            const keys = ['motm', 'surprise'].filter(key => (latest.results[key]?.winners || []).some(winner => winner.playerId === playerId));
+            if (!keys.length) return null;
+            return { kind: keys[0], label: keys.map(key => key === 'motm' ? 'Man of the Match' : 'Überraschungsspieler').join(' · ') };
+        }
+
         function cardHtml(p, { fs = 14, reveal = false, delay = 0 } = {}) {
-            const rating = ratingFromElo(p.elo), tier = tierFor(p.elo);
+            const rating = ratingFromElo(p.elo), tier = tierFor(p.elo), award = playerCardAward(p.id);
             const val = v => reveal ? 0 : v;
             const stat = k => { const v = Math.round(statVal(p, k)); return `<div><b data-val="${v}">${val(v)}</b><i>${STAT_LABELS[k]}</i></div>`; };
-            return `<div class="fut-card tier-${tier}" style="--fs:${fs}px;--shine-delay:${delay}s">
+            return `<div class="fut-card tier-${tier}${award ? ` award-${award.kind}` : ''}" style="--fs:${fs}px;--shine-delay:${delay}s">
                 <div class="fut-shape"></div>
                 <div class="fut-inner">
                     <div class="fut-pattern"></div>
@@ -931,6 +952,7 @@
                     <div class="fut-name">${escapeHtml(p.name)}</div>
                     <div class="fut-line"></div>
                     <div class="fut-stats">${STAT_KEYS.map(stat).join('')}</div>
+                    ${award ? `<div class="fut-award" title="Bis zum nächsten Spieltagsabschluss, maximal sieben Tage">${escapeHtml(award.label)}</div>` : ''}
                     <div class="fut-holo"></div>
                     <div class="fut-shine"></div>
                     <div class="fut-glare"></div>
@@ -2243,6 +2265,7 @@
             }
             renderDays();
             renderPayments();
+            renderPlayersTab();
             if (activeTab === 'history') renderMatchHistory();
             if (me.role === 'admin') renderMatchTab();
         }
@@ -2641,6 +2664,8 @@
             try {
                 const [state, surveyState] = await Promise.all([api('GET', '/api/state'), api('GET', '/api/umfragen')]);
                 surveyDays = surveyState.surveys;
+                renderPlayersTab();
+                if (cardPlayerId && !$('cardModal').classList.contains('hidden')) openCardModal(cardPlayerId, { replay: false });
                 surveyEloHistory = Array.isArray(state.surveyHistory) ? state.surveyHistory : [];
                 if ($('editModal').classList.contains('hidden')) {
                     const latest = new Map(parseCsv(state.spieler).map(row => [row.id, row]));
