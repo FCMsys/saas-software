@@ -2360,7 +2360,8 @@
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div><p class="text-sm font-bold text-indigo-950">Spieltagsumfrage · ${survey.status === 'closed' ? 'abgeschlossen' : 'offen'}</p>
                         <p class="text-xs text-slate-600">${survey.submittedCount} von ${survey.participantCount} beantwortet (${responseRate}%)${survey.participantSource === 'admin_confirmed_legacy_matches' ? ' · Teilnehmer aus alten Spielen bestätigt' : ''}${survey.status === 'open' ? ` · noch ${Math.max(0, Math.floor((Date.parse(survey.closesAt) - Date.now()) / 3600000))} Std. bis zur Schließung` : ''}</p></div>
-                        <span class="text-[11px] text-slate-500">${statusCounts}</span>
+                        <div class="flex flex-wrap items-center gap-2"><span class="text-[11px] text-slate-500">${statusCounts}</span>
+                        ${survey.status === 'open' && survey.submittedCount < survey.participantCount ? `<button data-act="remindSurvey" data-st="${escapeHtml(day.id)}" ${me.mailEnabled ? '' : 'disabled'} class="rounded-lg border border-indigo-300 px-3 py-2 text-xs font-semibold text-indigo-800 disabled:opacity-40"><i class="fa-solid fa-envelope mr-1.5"></i>An Umfrage erinnern</button>` : ''}</div>
                     </div>
                     ${inviteDetails ? `<details data-survey-detail="${escapeHtml(day.id)}:invites" class="mt-2"><summary class="cursor-pointer text-xs font-semibold text-slate-700">Umfragestatus anzeigen</summary><div class="mt-1 divide-y divide-indigo-100">${inviteDetails}</div></details>` : ''}
                     ${aggregates}${changeHistory}
@@ -2479,6 +2480,10 @@
                         throw error;
                     }
                     showToast('Spieltag abgeschlossen', 'Die 48-Stunden-Umfrage wurde gestartet.', 'success');
+                } else if (act === 'remindSurvey') {
+                    b.disabled = true;
+                    const m = (await api('POST', `/api/spieltage/${st}/umfrage/erinnerung`)).mail;
+                    showToast('Umfrage-Erinnerung', `${m.sent} Mails gesendet, ${m.skipped} übersprungen, ${m.failed.length} fehlgeschlagen.`, m.failed.length ? 'error' : 'success');
                 } else if (act === 'retrySurveyInvite') {
                     await api('POST', `/api/spieltage/${st}/umfrage/einladungen/${sp}`);
                     showToast('Einladung erneut versendet', 'Die Umfrageeinladung wurde angenommen.', 'success');

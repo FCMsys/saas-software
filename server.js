@@ -1397,6 +1397,28 @@ async function handle(req, res) {
         });
     }
 
+    const remindSurveyApi = /^\/api\/spieltage\/([\w-]+)\/umfrage\/erinnerung$/.exec(url);
+    if (remindSurveyApi && method === 'POST') {
+        if (!requireAdmin()) return;
+        if (!MAIL_ENABLED) return sendJson(res, 400, { ok: false, error: 'Mail-Versand ist nicht eingerichtet' });
+        const dayId = remindSurveyApi[1], day = surveyData().days[dayId];
+        if (!day) return sendJson(res, 404, { ok: false, error: 'Umfrage nicht gefunden' });
+        if (isSurveyClosed(day.closesAt)) return sendJson(res, 410, { ok: false, error: 'Die Umfrage ist abgeschlossen' });
+        const mail = { sent: 0, skipped: 0, failed: [] };
+        for (const playerId of day.participants) {
+            const current = surveyData().days[dayId];
+            if (current.submissions[playerId] || isSurveyClosed(current.closesAt)) continue;
+            const invite = current.invites[playerId];
+            if (!invite || !['sent', 'failed'].includes(invite.status)) { mail.skipped++; continue; }
+            await sendSurveyInvitation(dayId, playerId, true);
+            const updated = surveyData().days[dayId].invites[playerId];
+            if (updated.status === 'sent') mail.sent++;
+            else if (updated.status === 'failed') mail.failed.push(playerId);
+            else mail.skipped++;
+        }
+        return sendJson(res, 200, { ok: true, mail });
+    }
+
     const retrySurveyInviteApi = /^\/api\/spieltage\/([\w-]+)\/umfrage\/einladungen\/([\w-]+)$/.exec(url);
     if (retrySurveyInviteApi && method === 'POST') {
         if (!requireAdmin()) return;

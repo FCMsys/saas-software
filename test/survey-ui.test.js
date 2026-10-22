@@ -5,6 +5,19 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const html = fs.readFileSync(require('node:path').join(__dirname, '..', 'random.html'), 'utf8');
 const awardsSource = html.slice(html.indexOf('        function surveyAwardsHtml'), html.indexOf('        function surveySectionHtml'));
+
+test('survey reminder is visible outside collapsed details only for outstanding open surveys', () => {
+    const survey = { id: 'day', status: 'open', participantCount: 3, submittedCount: 1, closesAt: new Date(Date.now() + 3600000).toISOString() };
+    const context = vm.createContext({ surveyDays: [survey], me: { mailEnabled: true }, escapeHtml: String, surveyAwardsHtml: () => '' });
+    vm.runInContext(html.slice(html.indexOf('        function surveySectionHtml'), html.indexOf('        const surveyDetailState =')), context);
+    const rendered = context.surveySectionHtml({ id: 'day' }, true);
+    assert.match(rendered, /data-act="remindSurvey"/);
+    assert.match(rendered, /An Umfrage erinnern/);
+    survey.status = 'closed';
+    assert.doesNotMatch(context.surveySectionHtml({ id: 'day' }, true), /data-act="remindSurvey"/);
+    survey.status = 'open'; survey.submittedCount = 3;
+    assert.doesNotMatch(context.surveySectionHtml({ id: 'day' }, true), /data-act="remindSurvey"/);
+});
 test('awards have separate sections before and after publication', () => {
     const context = vm.createContext({ escapeHtml: value => String(value) });
     vm.runInContext(awardsSource, context);
