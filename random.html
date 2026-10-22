@@ -5,32 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FC M:sys</title>
     <link rel="icon" type="image/svg+xml" href="/img/msys.svg">
-    <script src="/design.js"></script>
-    <script>
-        const designStyle = document.createElement('style');
-        designStyle.textContent = FC_MSYS_DESIGN.cssVariables;
-        document.head.appendChild(designStyle);
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { theme: { colors: FC_MSYS_DESIGN.tailwindColors, textColor: FC_MSYS_DESIGN.textColors } };
-    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: var(--cd-white); color: var(--cd-black); -webkit-font-smoothing: antialiased; }
-        .brand-colon { color: var(--cd-blue); }
-        :is(.bg-blue-500,.bg-blue-600,.bg-blue-700,.bg-indigo-600,.bg-indigo-700,.bg-amber-500).text-white { color: var(--cd-black); }
-        ::selection { background: var(--cd-blue40); }
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(180deg, #eef3fb 0, #f7f9fd 340px) fixed; color: #0f172a; -webkit-font-smoothing: antialiased; }
+        ::selection { background: #bfdbfe; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--cd-gray20); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
-        .tab-btn { color: var(--cd-black); border-bottom: 2px solid transparent; }
-        .tab-btn:hover { color: var(--cd-black); }
-        .tab-btn.active { color: var(--cd-black); border-bottom-color: var(--cd-blue); }
-        .card { background: var(--cd-white); border: 1px solid var(--cd-gray20); border-radius: 1rem; box-shadow: 0 1px 2px rgba(var(--cd-darkBlue-rgb),.04), 0 8px 24px -12px rgba(var(--cd-darkBlue-rgb),.10); }
+        .tab-btn { color: #64748b; border-bottom: 2px solid transparent; }
+        .tab-btn:hover { color: #1e3a8a; }
+        .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; }
+        .card { background: #fff; border: 1px solid #e3e9f4; border-radius: 1rem; box-shadow: 0 1px 2px rgba(30,58,138,.04), 0 8px 24px -12px rgba(30,58,138,.10); }
         .fade-in { animation: fade .18s ease-out; }
         @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
         #adFlyer { position: fixed; left: 0; z-index: 55; width: min(90vw, 1100px); aspect-ratio: 2170 / 725; pointer-events: none; }
@@ -41,9 +30,9 @@
         .ad-flyer-content span { position: absolute; width: max-content; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; transform: translate(-50%, -50%); line-height: 1.15; }
         #adFlyer.ad-flyer-left .ad-flyer-graphic { transform: none; }
         #adFlyer.ad-flyer-left .ad-flyer-content { left: 55.5%; }
-        #adEditor { position: relative; aspect-ratio: 2170 / 725; background: var(--cd-gray20); }
+        #adEditor { position: relative; aspect-ratio: 2170 / 725; background: #e2e8f0; }
         #adEditor > img { width: 100%; }
-        #adEditor .ad-flyer-content { left: 55.5%; outline: 1px dashed var(--cd-gray); }
+        #adEditor .ad-flyer-content { left: 55.5%; outline: 1px dashed #64748b; }
         #adEditorText, #adEditorImage { touch-action: none; cursor: move; }
         @media (prefers-reduced-motion: reduce) { #adFlyer { transition: none; } }
 
@@ -51,7 +40,7 @@
         .fut-card {
             --fs: 14px; font-size: var(--fs); width: 20em; height: 28.5em; position: relative;
             color: var(--ink); user-select: none; flex-shrink: 0;
-            filter: drop-shadow(0 .5em .9em rgba(var(--cd-blueBlack-rgb),.28));
+            filter: drop-shadow(0 .5em .9em rgba(15,23,42,.28));
         }
 
         .fut-shape, .fut-inner {
@@ -67,17 +56,17 @@
         .fut-pattern {
             position: absolute; inset: 0; opacity: .55;
             background:
-                repeating-linear-gradient(62deg, rgba(var(--cd-white-rgb),.10) 0 .12em, transparent .12em 1.3em),
-                radial-gradient(60% 40% at 80% 30%, rgba(var(--cd-white-rgb),.25), transparent 70%);
+                repeating-linear-gradient(62deg, rgba(255,255,255,.10) 0 .12em, transparent .12em 1.3em),
+                radial-gradient(60% 40% at 80% 30%, rgba(255,255,255,.25), transparent 70%);
         }
         .fut-rating { position: absolute; left: 1.5em; top: 3.7em; width: 4em; text-align: center; line-height: 1; }
-        .fut-rating .num { display: block; font-size: 3.1em; font-weight: 800; letter-spacing: -.04em; text-shadow: 0 .04em .1em rgba(var(--cd-black-rgb),.18); }
+        .fut-rating .num { display: block; font-size: 3.1em; font-weight: 800; letter-spacing: -.04em; text-shadow: 0 .04em .1em rgba(0,0,0,.18); }
         .fut-rating .pos { display: block; font-size: 1.25em; font-weight: 700; margin-top: .15em; letter-spacing: .04em; }
         .fut-rating .bar { display: block; width: 2.4em; height: .1em; background: var(--ink); opacity: .45; margin: .5em auto 0; border-radius: 1em; }
         .fut-photo {
             position: absolute; right: 1.5em; top: 2.4em; width: 10.4em; height: 12.6em; display: flex; align-items: center; justify-content: center;
-            -webkit-mask-image: radial-gradient(ellipse 70% 72% at 50% 44%, var(--cd-black) 58%, transparent 100%);
-                    mask-image: radial-gradient(ellipse 70% 72% at 50% 44%, var(--cd-black) 58%, transparent 100%);
+            -webkit-mask-image: radial-gradient(ellipse 70% 72% at 50% 44%, #000 58%, transparent 100%);
+                    mask-image: radial-gradient(ellipse 70% 72% at 50% 44%, #000 58%, transparent 100%);
         }
         .fut-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; }
         .fut-photo i { font-size: 8em; color: var(--ink); opacity: .22; }
@@ -92,28 +81,35 @@
         /* Dauerhaftes Schimmern + Maus-Glanz + Hologramm */
         .fut-shine, .fut-glare, .fut-holo { position: absolute; inset: 0; pointer-events: none; }
         .fut-shine {
-            background: linear-gradient(115deg, transparent 38%, rgba(var(--cd-white-rgb),.65) 48%, rgba(var(--cd-white-rgb),.2) 53%, transparent 62%);
+            background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.65) 48%, rgba(255,255,255,.2) 53%, transparent 62%);
             background-size: 300% 100%; background-position: 160% 0; animation: shine 5.5s ease-in-out infinite; animation-delay: var(--shine-delay, 0s);
         }
         @keyframes shine { 0%, 52% { background-position: 160% 0; } 100% { background-position: -60% 0; } }
-        .fut-glare { background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(var(--cd-white-rgb),.55), transparent 48%); opacity: var(--glare, 0); transition: opacity .25s; mix-blend-mode: soft-light; }
-        .fut-holo { display: none; }
+        .fut-glare { background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(255,255,255,.55), transparent 48%); opacity: var(--glare, 0); transition: opacity .25s; mix-blend-mode: soft-light; }
+        .fut-holo { display: none; mix-blend-mode: color-dodge; opacity: .28; background: linear-gradient(115deg, #ff2bd6, #22d3ee, #a3e635, #facc15, #ff2bd6); background-size: 300% 300%; animation: holo 7s linear infinite; }
         @keyframes holo { to { background-position: 300% 300%; } }
+        .tier-ikone .fut-holo { display: block; }
 
-        /* Mostly white cards; tier and award accents stay small. */
-        .tier-bronze, .tier-silber, .tier-gold, .tier-ikone, .award-motm, .award-surprise {
-            --c1: var(--cd-white); --c2: var(--cd-white); --c3: var(--cd-white);
-            --edge1: var(--cd-gray20); --edge2: var(--cd-blue); --ink: var(--cd-black); --glow: var(--cd-blue-rgb);
-        }
-        .tier-silber { --edge1: var(--cd-gray40); }
-        .tier-gold { --edge1: var(--cd-yellow); }
-        .tier-ikone { --edge1: var(--cd-blue); }
-        .award-motm { --edge1: var(--cd-yellow); --edge2: var(--cd-blue); }
-        .award-surprise { --edge1: var(--cd-blue); --edge2: var(--cd-gray); }
-        .fut-holo { display: none; }
-        .fut-inner { background: linear-gradient(180deg, var(--cd-white) 0 78%, var(--cd-blue20) 100%); }
-        .fut-pattern { opacity: .15; background: repeating-linear-gradient(62deg, var(--cd-blue) 0 .04em, transparent .04em 2em); }
-        .fut-rating .num { text-shadow: none; }
+        /* Stufen */
+        .tier-bronze { --c1: #f1c9a0; --c2: #c98a55; --c3: #8a5528; --edge1: #fbe1c3; --edge2: #9a6232; --ink: #3a2310; --glow: 205, 133, 63; }
+        .tier-silber { --c1: #ffffff; --c2: #cbd5e1; --c3: #8795a6; --edge1: #ffffff; --edge2: #8c9aab; --ink: #1e293b; --glow: 186, 200, 220; }
+        .tier-gold   { --c1: #fff4b0; --c2: #f5c93a; --c3: #b9830b; --edge1: #fff8cc; --edge2: #b88308; --ink: #4a3100; --glow: 252, 211, 77; }
+        .tier-ikone  { --c1: #6d4bd8; --c2: #2b2a82; --c3: #0b1740; --edge1: #67e8f9; --edge2: #c026d3; --ink: #ffffff; --glow: 120, 130, 255; }
+
+        .award-motm { --c1: #1647bf; --c2: #082577; --c3: #020621; --edge1: #ffe59a; --edge2: #d8ac4d; --ink: #ffdb71; --glow: 255, 219, 113; }
+        .award-surprise { --c1: #d8f6ff; --c2: #b291c9; --c3: #244f9c; --edge1: #fff8ae; --edge2: #d6ac62; --ink: #fff; --glow: 153, 190, 255; }
+        .fut-card[class*="award-"] .fut-shape, .fut-card[class*="award-"] .fut-inner { clip-path: polygon(50% 0, 57% 5%, 64% 6%, 70% 2%, 84% 5%, 100% 12%, 100% 86%, 97% 93%, 90% 96%, 65% 98%, 50% 100%, 35% 98%, 10% 96%, 3% 93%, 0 86%, 0 12%, 16% 5%, 30% 2%, 36% 6%, 43% 5%); }
+        .award-motm .fut-shape::after { content: ''; position: absolute; inset: .13em; clip-path: inherit; background: #071b57; }
+        .award-motm .fut-inner { inset: .25em; border: .08em solid #ffe096; }
+        .award-motm .fut-pattern { opacity: 1; background: linear-gradient(180deg, transparent 42%, #030720e8 65%, #02051a 100%), repeating-conic-gradient(from -24deg at 35% 53%, #ffdf85 0deg 12deg, #eabb5a 12deg 15deg, #ffeab2 15deg 18deg, #082574 18deg 33deg, #173d9e 33deg 37deg, #030e43 37deg 46deg); clip-path: polygon(42% 0, 100% 0, 100% 100%, 0 100%, 0 65%, 30% 72%, 30% 26%); }
+        .award-motm .fut-inner::before { content: ''; position: absolute; inset: 0; opacity: .17; background: radial-gradient(ellipse at 20% 25%, transparent 30%, #5982ea 32% 35%, transparent 37%), repeating-linear-gradient(65deg, transparent 0 1.8em, #345dc6 1.85em 1.95em, transparent 2em 3.5em); background-size: 3em 4em, auto; }
+        .award-motm .fut-name { text-shadow: 0 .06em .15em #020621; }
+        .award-motm .fut-line, .award-motm .fut-stats::before { opacity: .8; }
+        .award-motm .fut-stats i { opacity: 1; }
+        .award-motm .fut-holo { display: none; }
+        .award-surprise .fut-pattern { opacity: .8; background: conic-gradient(from 40deg at 65% 38%, #ce8acb, #c5f5fa 15%, #758ec4 28%, #ecb4da 40%, #76dfe0 53%, #3466af 65%, #9b8bcd 80%, #ce8acb); clip-path: polygon(0 0, 100% 0, 100% 76%, 70% 64%, 90% 48%, 48% 58%, 65% 28%, 30% 43%, 0 65%); }
+        .award-surprise .fut-holo { display: block; opacity: .15; }
+        .award-surprise .fut-rating { color: #294585; }
         .fut-award { position: absolute; bottom: 1.8em; left: 2.5em; right: 2.5em; text-align: center; font-size: .7em; line-height: 1.15; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; text-wrap: balance; }
         @media (prefers-reduced-motion: reduce) { .fut-shine, .fut-holo { animation: none; } }
 
@@ -122,14 +118,14 @@
         .card-tile:hover { transform: translateY(-.5rem) scale(1.04) rotate(-.6deg); }
 
         /* ===================== KARTEN-ENTHÜLLUNG ===================== */
-        #cardModal { --glow: var(--cd-yellow-rgb); }
-        #cardModal.tier-bronze { --glow: var(--cd-gray-rgb); } #cardModal.tier-silber { --glow: var(--cd-gray20-rgb); }
-        #cardModal.tier-gold { --glow: var(--cd-yellow-rgb); } #cardModal.tier-ikone { --glow: var(--cd-blue-rgb); }
-        .reveal-bg { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, rgba(var(--glow), .18), transparent 55%), rgba(var(--cd-blueBlack-rgb),.93); backdrop-filter: blur(6px); animation: fade-bg .6s ease-out both; }
+        #cardModal { --glow: 252, 211, 77; }
+        #cardModal.tier-bronze { --glow: 205, 133, 63; } #cardModal.tier-silber { --glow: 186, 200, 220; }
+        #cardModal.tier-gold { --glow: 252, 211, 77; } #cardModal.tier-ikone { --glow: 120, 130, 255; }
+        .reveal-bg { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, rgba(var(--glow), .18), transparent 55%), rgba(6, 10, 25, .93); backdrop-filter: blur(6px); animation: fade-bg .6s ease-out both; }
         @keyframes fade-bg { from { opacity: 0; } to { opacity: 1; } }
         .reveal-rays { position: absolute; left: 50%; top: 45%; width: 190vmax; height: 190vmax; margin: -95vmax 0 0 -95vmax; pointer-events: none; opacity: 0;
             background: repeating-conic-gradient(rgba(var(--glow), .22) 0 3deg, transparent 3deg 15deg);
-            -webkit-mask-image: radial-gradient(circle, var(--cd-black) 0, transparent 42%); mask-image: radial-gradient(circle, var(--cd-black) 0, transparent 42%);
+            -webkit-mask-image: radial-gradient(circle, #000 0, transparent 42%); mask-image: radial-gradient(circle, #000 0, transparent 42%);
             animation: rays-in 1.6s ease-out 1.3s both, rays-spin 50s linear infinite; }
         @keyframes rays-in { to { opacity: 1; } }
         @keyframes rays-spin { from { rotate: 0deg; } to { rotate: 360deg; } }
@@ -154,15 +150,15 @@
         .back-art { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: .8em; color: var(--ink); }
         .back-art i { font-size: 6em; opacity: .55; }
         .back-art span { font-weight: 800; letter-spacing: .3em; font-size: 1.1em; opacity: .6; }
-        .reveal-flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, var(--cd-white), rgba(var(--glow), .6) 30%, transparent 62%); opacity: 0; pointer-events: none; }
+        .reveal-flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, #fff, rgba(var(--glow), .6) 30%, transparent 62%); opacity: 0; pointer-events: none; }
         .reveal-flash.play { animation: flash 2.5s linear both; }
         @keyframes flash { 0%, 64% { opacity: 0; } 72% { opacity: .95; } 100% { opacity: 0; } }
-        .reveal-shine-once { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: linear-gradient(110deg, transparent 30%, rgba(var(--cd-white-rgb),.9) 50%, transparent 70%); background-size: 250% 100%; }
+        .reveal-shine-once { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.9) 50%, transparent 70%); background-size: 250% 100%; }
         .reveal-shine-once.play { animation: shine-once 1.5s ease-in-out 2.35s both; }
         @keyframes shine-once { 0% { background-position: 160% 0; opacity: 1; } 100% { background-position: -60% 0; opacity: 1; } }
         .reveal-particles { position: absolute; left: 50%; top: 45%; width: 0; height: 0; pointer-events: none; }
         .reveal-particles span { position: absolute; width: var(--sz); height: var(--sz); margin: calc(var(--sz) / -2); border-radius: 50%; opacity: 0;
-            background: radial-gradient(circle, var(--cd-white), rgb(var(--glow)) 55%, transparent 70%); animation: burst var(--dur) cubic-bezier(.1,.7,.3,1) var(--delay) both; }
+            background: radial-gradient(circle, #fff, rgb(var(--glow)) 55%, transparent 70%); animation: burst var(--dur) cubic-bezier(.1,.7,.3,1) var(--delay) both; }
         @keyframes burst { 0% { transform: translate(0, 0) scale(.2); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0; } }
         @media (prefers-reduced-motion: reduce) {
             .reveal-flipper.play, .reveal-flash.play, .reveal-shine-once.play, .reveal-bob.idle, .fut-shine, .fut-holo, .reveal-rays { animation: none; }
@@ -179,7 +175,7 @@
         <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
             <div class="flex items-center gap-3 shrink-0">
                 <img src="/img/msys.svg" alt="FC-M:Sys" class="h-10 w-auto drop-shadow-sm">
-                <h1 class="text-base font-extrabold tracking-tight text-slate-900 hidden sm:block">FC M<span class="brand-colon">:</span>sys</h1>
+                <h1 class="text-base font-extrabold tracking-tight text-slate-900 hidden sm:block">FC M<span class="text-blue-600">:sys</span></h1>
             </div>
 
             <nav class="flex items-stretch h-16 gap-1 sm:gap-3 text-sm font-semibold">
@@ -354,10 +350,10 @@
                                     </div>
                                     <ul id="teamAList" class="space-y-1.5"></ul>
                                 </div>
-                                <div class="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5">
+                                <div class="rounded-xl border border-rose-200 bg-rose-50/50 p-3.5">
                                     <div class="flex items-center justify-between mb-2.5">
-                                        <h3 class="font-bold text-slate-700 text-sm flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>Team B</h3>
-                                        <span class="text-xs text-slate-500">Ø <b id="teamBAvg" class="text-slate-700">0</b> · <span id="teamBCount">0</span> Sp.</span>
+                                        <h3 class="font-bold text-rose-700 text-sm flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>Team B</h3>
+                                        <span class="text-xs text-slate-500">Ø <b id="teamBAvg" class="text-rose-700">0</b> · <span id="teamBCount">0</span> Sp.</span>
                                     </div>
                                     <ul id="teamBList" class="space-y-1.5"></ul>
                                 </div>
@@ -377,9 +373,9 @@
                             </div>
                             <div class="text-4xl font-bold text-slate-300 pt-6">:</div>
                             <div class="text-center flex-1">
-                                <div class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Team B</div>
+                                <div class="text-xs font-bold uppercase tracking-wider text-rose-700 mb-2">Team B</div>
                                 <input type="number" id="goalsBInput" min="0" max="99" placeholder="0"
-                                       class="w-full max-w-[9rem] h-24 text-6xl font-extrabold text-center text-slate-700 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-2xl outline-none transition">
+                                       class="w-full max-w-[9rem] h-24 text-6xl font-extrabold text-center text-rose-700 bg-rose-50 border-2 border-rose-200 focus:border-rose-500 rounded-2xl outline-none transition">
                             </div>
                         </div>
                         <p id="eloPreview" class="text-center text-sm text-slate-500 mt-4 min-h-[1.25rem]">Tore eintragen, um die Elo-Änderung zu sehen.</p>
@@ -437,7 +433,7 @@
             <div class="card p-5">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="font-bold text-sm">Spiele</h3>
-                    <button id="clearHistoryBtn" class="text-xs text-slate-500 hover:text-slate-600 transition">Historie leeren</button>
+                    <button id="clearHistoryBtn" class="text-xs text-slate-500 hover:text-rose-600 transition">Historie leeren</button>
                 </div>
                 <div id="matchHistoryList" class="space-y-2.5"></div>
             </div>
@@ -460,8 +456,8 @@
                     <p class="text-xs text-slate-500 mt-1">Der Kassenstand zeigt tatsächliche Einnahmen minus Ausgaben; Spielerguthaben wird getrennt geführt. Vorleistungen erhöhen das Guthaben der zahlenden Person, Beiträge werden zuerst daraus verrechnet.</p>
                 </div>
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div class="rounded-xl bg-slate-50 border border-slate-100 p-3"><div class="text-xs text-slate-700">Einnahmen</div><div id="cashIncome" class="text-lg font-bold text-slate-800">0,00 €</div></div>
-                    <div class="rounded-xl bg-slate-50 border border-slate-100 p-3"><div class="text-xs text-slate-700">Ausgaben</div><div id="cashExpenses" class="text-lg font-bold text-slate-800">0,00 €</div></div>
+                    <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-3"><div class="text-xs text-emerald-700">Einnahmen</div><div id="cashIncome" class="text-lg font-bold text-emerald-800">0,00 €</div></div>
+                    <div class="rounded-xl bg-rose-50 border border-rose-100 p-3"><div class="text-xs text-rose-700">Ausgaben</div><div id="cashExpenses" class="text-lg font-bold text-rose-800">0,00 €</div></div>
                     <div class="rounded-xl bg-blue-50 border border-blue-100 p-3"><div class="text-xs text-blue-700">Kontostand</div><div id="cashBalance" class="text-lg font-bold text-blue-800">0,00 €</div></div>
                     <div class="rounded-xl bg-amber-50 border border-amber-100 p-3"><div class="text-xs text-amber-700">Beiträge noch offen</div><div id="cashOutstanding" class="text-lg font-bold text-amber-800">0,00 €</div></div>
                 </div>
@@ -561,7 +557,7 @@
                     <input id="adImage" type="file" accept="image/png,image/jpeg" class="block mt-1 w-full text-sm text-slate-600">
                     <div id="adImagePreviewWrap" class="hidden mt-3 flex items-center gap-3">
                         <img id="adImagePreview" alt="Vorschau Werbebild" class="max-h-20 max-w-48 object-contain rounded border border-slate-200 p-1">
-                        <label class="text-xs text-slate-700"><input id="adRemoveImage" type="checkbox" class="accent-slate-600 mr-1">Vorhandenes Bild entfernen</label>
+                        <label class="text-xs text-rose-700"><input id="adRemoveImage" type="checkbox" class="accent-rose-600 mr-1">Vorhandenes Bild entfernen</label>
                     </div>
                 </div>
                 <p class="text-xs text-slate-500">Text direkt auf der Flagge bearbeiten. Text und Bild zum Positionieren direkt auf der Flagge ziehen.</p>
@@ -657,7 +653,7 @@
                     <div class="space-y-1.5">
                         <div class="flex gap-2">
                             <button type="button" id="editPhotoBtn" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-semibold text-slate-700 transition"><i class="fa-solid fa-image mr-1.5"></i>Bild hochladen</button>
-                            <button type="button" id="editPhotoRemoveBtn" class="px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:text-slate-600 hover:bg-slate-50 transition">Entfernen</button>
+                            <button type="button" id="editPhotoRemoveBtn" class="px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition">Entfernen</button>
                         </div>
                         <p class="text-[11px] text-slate-400">Am besten ein freigestelltes PNG (Kopf/Oberkörper).</p>
                         <input type="file" id="editPhotoInput" accept="image/*" class="hidden">
@@ -684,7 +680,7 @@
                 </div>
                 <p class="text-[11px] text-slate-400 -mt-2">Elo und Gesamtwert werden unabhängig von den Attributen geführt. Die hier gesetzten Attributwerte dienen als Startwerte; nach Spieltagsumfragen werden die Werte aus den Antworten berechnet.</p>
                 <div class="flex gap-2 pt-2">
-                    <button type="button" id="deletePlayerBtn" title="Spieler löschen" class="px-3.5 text-slate-600 hover:bg-slate-50 border border-slate-200 text-sm font-semibold rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
+                    <button type="button" id="deletePlayerBtn" title="Spieler löschen" class="px-3.5 text-rose-600 hover:bg-rose-50 border border-rose-200 text-sm font-semibold rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
                     <button type="button" id="cancelEditBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-2.5 rounded-lg transition">Abbrechen</button>
                     <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-lg transition">Speichern</button>
                 </div>
@@ -791,7 +787,7 @@
         let adDirection = Math.random() < 0.5 ? 1 : -1;
         let adPreviewObjectUrl = '';
 
-        const CHART_COLORS = ['var(--cd-blue)', 'var(--cd-darkBlue)', 'var(--cd-gray)', 'var(--cd-blue80)', 'var(--cd-grayDark)', 'var(--cd-blueBlack)'];
+        const CHART_COLORS = ['#2563eb', '#059669', '#e11d48', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5', '#c026d3', '#64748b'];
         const K_FACTOR = 32;
         const CURRENT_GAME_STORAGE_KEY = 'matchmaster_current_game_v1';
 
@@ -1210,7 +1206,7 @@
                 $('eloPreview').innerHTML = `Unentschieden · keine Elo-Änderung <span class="text-slate-400">(Erwartung A: ${Math.round(expectedA * 100)} %)</span>`;
                 return;
             }
-            const fmt = (v, c) => `<b class="${v > 0 ? 'text-slate-600' : 'text-slate-600'}">${formatDelta(v)}</b>`;
+            const fmt = (v, c) => `<b class="${v > 0 ? 'text-emerald-600' : 'text-rose-600'}">${formatDelta(v)}</b>`;
             $('eloPreview').innerHTML = `Team A ${fmt(changeA)} · Team B ${fmt(0 - changeA)} Elo <span class="text-slate-400">(Siegchance A: ${Math.round(expectedA * 100)} %)</span>`;
         }
 
@@ -1291,7 +1287,7 @@
         const formatElo = value => String(Math.round(value));
         function formatDelta(d) { d = Math.round(d); return (d > 0 ? '+' : (d < 0 ? '−' : '')) + Math.abs(d); }
         function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
-        function deltaClass(d) { return d > 0 ? 'text-slate-600' : (d < 0 ? 'text-slate-600' : 'text-slate-400'); }
+        function deltaClass(d) { return d > 0 ? 'text-emerald-600' : (d < 0 ? 'text-rose-600' : 'text-slate-400'); }
 
         function renderAll() {
             renderPlayersTab();
@@ -1340,7 +1336,7 @@
                     <td class="px-4 py-3 hidden md:table-cell">${sparklineSvg(p.history, playerColor(p.id))}</td>
                     <td class="admin-only px-4 py-3 text-right whitespace-nowrap">
                         <button class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition" title="Bearbeiten" data-edit="${p.id}"><i class="fa-solid fa-pen text-xs"></i></button>
-                        <button class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition" title="Löschen" data-del="${p.id}"><i class="fa-solid fa-trash text-xs"></i></button>
+                        <button class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition" title="Löschen" data-del="${p.id}"><i class="fa-solid fa-trash text-xs"></i></button>
                     </td>
                 </tr>`;
             }).join('') || '<tr><td colspan="8" class="px-4 py-8 text-center text-slate-400">Noch keine Spieler</td></tr>';
@@ -1513,11 +1509,11 @@
                         <span class="text-lg font-extrabold font-mono tracking-tight"><span class="${aWin ? 'text-blue-700' : 'text-slate-500'}">${m.goalsA}</span><span class="text-slate-300 mx-1">:</span><span class="${bWin ? 'text-rose-700' : 'text-slate-500'}">${m.goalsB}</span></span>
                         <span class="text-[11px] font-semibold ${m.result === 'DRAW' ? 'text-slate-500' : (aWin ? 'text-blue-700' : 'text-rose-700')}">${m.result === 'DRAW' ? 'Unentschieden' : 'Sieg Team ' + m.result}</span>
                         <span class="text-[11px] text-slate-400 sm:ml-auto">${date}</span>
-                        <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold ${m.matchDayId ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-amber-200 bg-amber-50 text-amber-700'}">${escapeHtml(matchDayLabel)}</span>
+                        <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold ${m.matchDayId ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}">${escapeHtml(matchDayLabel)}</span>
                     </div>
                     <div class="space-y-1.5 text-[11px]">
                         <div class="flex flex-wrap items-center gap-1.5"><span class="font-bold text-blue-700 w-3">A</span>${chips(m.teamA)}</div>
-                        <div class="flex flex-wrap items-center gap-1.5"><span class="font-bold text-slate-700 w-3">B</span>${chips(m.teamB)}</div>
+                        <div class="flex flex-wrap items-center gap-1.5"><span class="font-bold text-rose-700 w-3">B</span>${chips(m.teamB)}</div>
                     </div>
                 </div>`;
             }).join('');
@@ -1554,7 +1550,7 @@
                 const hidden = hiddenInChart.has(p.id);
                 const chip = document.createElement('button');
                 chip.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs transition ${hidden ? 'border-slate-200 text-slate-400 bg-white' : 'border-slate-300 text-slate-800 bg-slate-50'}`;
-                chip.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${hidden ? 'var(--cd-gray20)' : playerColor(p.id)}"></span>${escapeHtml(p.name)}<span class="font-mono ${hidden ? '' : 'text-slate-500'}">${formatElo(p.elo)}</span>`;
+                chip.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${hidden ? '#cbd5e1' : playerColor(p.id)}"></span>${escapeHtml(p.name)}<span class="font-mono ${hidden ? '' : 'text-slate-500'}">${formatElo(p.elo)}</span>`;
                 chip.onclick = () => { hidden ? hiddenInChart.delete(p.id) : hiddenInChart.add(p.id); renderChart(); };
                 legend.appendChild(chip);
             });
@@ -1567,7 +1563,7 @@
             const visible = players.filter(p => !hiddenInChart.has(p.id));
             const chart = chartPlayerHistories();
             const maxSeq = chart.maxIndex;
-            const msg = t => { svgEl.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="var(--cd-black)" font-size="13">${t}</text>`; };
+            const msg = t => { svgEl.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="#94a3b8" font-size="13">${t}</text>`; };
             if (matchHistory.length === 0 && surveyEloHistory.length === 0) return msg('Der Verlauf erscheint nach dem ersten gespeicherten Spiel.');
             if (!visible.length) return msg('Keine Spieler ausgewählt.');
 
@@ -1581,12 +1577,12 @@
             let svg = '';
             for (let i = 0; i <= 5; i++) {
                 const v = yMin + ((yMax - yMin) * i) / 5;
-                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--cd-gray20)"/>`;
-                svg += `<text x="${m.l - 8}" y="${y(v) + 3}" text-anchor="end" fill="var(--cd-black)" font-size="10">${Math.round(v)}</text>`;
+                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="#eef2f6"/>`;
+                svg += `<text x="${m.l - 8}" y="${y(v) + 3}" text-anchor="end" fill="#94a3b8" font-size="10">${Math.round(v)}</text>`;
             }
             if (1500 > yMin && 1500 < yMax) {
-                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(1500)}" y2="${y(1500)}" stroke="var(--cd-gray)" stroke-dasharray="4 4"/>`;
-                svg += `<text x="${W - m.r}" y="${y(1500) - 4}" text-anchor="end" fill="var(--cd-black)" font-size="9">1500</text>`;
+                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(1500)}" y2="${y(1500)}" stroke="#94a3b8" stroke-dasharray="4 4"/>`;
+                svg += `<text x="${W - m.r}" y="${y(1500) - 4}" text-anchor="end" fill="#94a3b8" font-size="9">1500</text>`;
             }
 
             const dots = [];
@@ -1596,12 +1592,12 @@
                 svg += `<path d="${pts.map((h, i) => `${i ? 'L' : 'M'}${x(h.chartIndex).toFixed(1)},${y(h.elo).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
                 pts.forEach(h => {
                     dots.push({ p, h, cx: x(h.chartIndex), cy: y(h.elo), color });
-                    svg += `<circle cx="${x(h.chartIndex).toFixed(1)}" cy="${y(h.elo).toFixed(1)}" r="3.4" fill="var(--cd-white)" stroke="${color}" stroke-width="2"/>`;
+                    svg += `<circle cx="${x(h.chartIndex).toFixed(1)}" cy="${y(h.elo).toFixed(1)}" r="3.4" fill="#fff" stroke="${color}" stroke-width="2"/>`;
                 });
                 const last = pts[pts.length - 1];
-                svg += `<text x="${x(last.chartIndex) + 8}" y="${y(last.elo) + 3}" fill="var(--cd-black)" font-size="10.5" font-weight="700">${escapeHtml(p.name)}</text>`;
+                svg += `<text x="${x(last.chartIndex) + 8}" y="${y(last.elo) + 3}" fill="${color}" font-size="10.5" font-weight="700">${escapeHtml(p.name)}</text>`;
             });
-            svg += `<line id="chartCursor" y1="${m.t}" y2="${H - m.b}" stroke="var(--cd-gray)" stroke-dasharray="3 3" style="display:none"/>`;
+            svg += `<line id="chartCursor" y1="${m.t}" y2="${H - m.b}" stroke="#94a3b8" stroke-dasharray="3 3" style="display:none"/>`;
             svgEl.innerHTML = svg;
             const cursor = $('chartCursor');
 
@@ -1614,7 +1610,7 @@
                 cursor.setAttribute('x1', best.cx); cursor.setAttribute('x2', best.cx); cursor.style.display = '';
                 const { p, h } = best;
                 const when = h.surveyDayNumber ? `Umfrage ${h.surveyDayNumber}. Spieltag` : h.seq === 0 ? 'Startwert' : `Spiel #${h.seq} · ${new Date(h.t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`;
-                tip.innerHTML = `<div class="font-bold" style="color:var(--cd-black)">${escapeHtml(p.name)}</div>
+                tip.innerHTML = `<div class="font-bold" style="color:${best.color}">${escapeHtml(p.name)}</div>
                     <div class="text-slate-500">${when}${!h.surveyDayNumber && !h.matchId && h.seq > 0 ? ' · manuell' : ''}</div>
                     <div><span class="font-mono font-bold text-slate-900 text-sm">${formatElo(h.elo)}</span> ${(h.surveyDayNumber || h.seq > 0) ? `<span class="font-mono font-bold ${deltaClass(h.delta)}">(${h.delta ? formatDelta(h.delta) : '±0'})</span>` : ''}</div>`;
                 tip.classList.remove('hidden');
@@ -1805,13 +1801,13 @@
                 <div class="reveal-face">${cardHtml(p, { fs: Math.min(17, Math.max(10.5, (window.innerHeight - 190) / 28.5)), reveal: animate })}</div>
                 <div class="reveal-face reveal-back"><div class="fut-card tier-${tier}" style="--fs:${Math.min(17, Math.max(10.5, (window.innerHeight - 190) / 28.5))}px">
                     <div class="fut-shape"></div><div class="fut-inner"><div class="fut-pattern"></div>
-                    <div class="back-art"><i class="fa-solid fa-futbol"></i><span>FC M<span class="brand-colon">:</span>sys</span></div><div class="fut-holo"></div><div class="fut-shine"></div></div></div></div>`;
+                    <div class="back-art"><i class="fa-solid fa-futbol"></i><span>FC-M:SYS</span></div><div class="fut-holo"></div><div class="fut-shine"></div></div></div></div>`;
             // Die große Karte soll ruhig und gleichmäßig schimmern
             flipper.querySelectorAll('.fut-shine').forEach(s => s.style.setProperty('animation-duration', '4s'));
             flipper.querySelector('.fut-inner').insertAdjacentHTML('beforeend', '<div class="reveal-shine-once"></div>');
 
             $('cardInfo').innerHTML = `<div class="font-bold text-base">${escapeHtml(p.name)}</div>
-                <div class="text-white/60">Rating <b class="text-white">${rating}</b> · <span class="font-semibold" style="color:${{ bronze: 'var(--cd-gray20)', silber: 'var(--cd-gray20)', gold: 'var(--cd-yellow)', ikone: 'var(--cd-blue20)' }[tier]}">${TIER_NAMES[tier]}</span></div>`;
+                <div class="text-white/60">Rating <b class="text-white">${rating}</b> · <span class="font-semibold" style="color:rgb(${{ bronze: '230,160,100', silber: '203,213,225', gold: '252,211,77', ikone: '165,170,255' }[tier]})">${TIER_NAMES[tier]}</span></div>`;
 
             $('revealBob').className = 'reveal-bob';
             $('revealTilt').style.transform = '';
@@ -2476,7 +2472,7 @@
                     ${canStartDay ? `<button data-act="invite" data-st="${sid}" ${me.mailEnabled ? '' : 'disabled'} title="${me.mailEnabled ? 'Mail nur an Spieler ohne Zu- oder Absage mit bekannter Mail-Adresse' : 'Mail-Versand ist nicht eingerichtet'}" class="${btnCls} disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-envelope mr-1.5 text-blue-500"></i>${s.einladungAt ? 'Offene Antworten erinnern' : 'Einladung per Mail'}</button>
                     <button data-act="match" data-st="${sid}" class="${btnCls}" title="Mit den Zusagen dieses Spieltags Teams bilden"><i class="fa-solid fa-futbol mr-1.5 text-blue-500"></i>Spiel starten</button>` : ''}
                     <button data-act="bill" data-st="${sid}" class="${btnCls}" title="Zahlung für diesen Spieltag anfordern"><i class="fa-solid fa-euro-sign mr-1.5 text-blue-500"></i>${isBilled(s) ? 'Abgerechnet · ' + eur(s.betragCent) : 'Abrechnen'}</button>
-                    ${existingSurvey ? '' : `<button data-act="delete" data-st="${sid}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>`}
+                    ${existingSurvey ? '' : `<button data-act="delete" data-st="${sid}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>`}
                 </div>` : '';
 
                 return `<div class="card p-5 ${past ? 'opacity-80' : ''}">
@@ -2773,7 +2769,7 @@
             } else {
                 const credit = Number(me.guthabenCent) || 0;
                 const accountText = credit > 0 ? `Guthaben: ${eur(credit)}` : credit < 0 ? `Offen: ${eur(-credit)}` : 'Guthaben: 0,00 €';
-                const accountClass = credit < 0 ? 'text-slate-600' : credit > 0 ? 'text-slate-600' : 'text-slate-500';
+                const accountClass = credit < 0 ? 'text-rose-600' : credit > 0 ? 'text-emerald-600' : 'text-slate-500';
                 my.innerHTML = `<div class="flex items-center justify-between mb-3"><h3 class="font-bold text-sm">Meine Beiträge · ${escapeHtml(playerName(me.spielerId))}</h3>
                     <span class="text-sm font-bold ${accountClass}">${accountText}</span></div>
                     ${open.length && me.paypal && !/^https:/.test(me.paypal) ? `<p class="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-2"><i class="fa-brands fa-paypal text-blue-600 mr-1.5"></i>Bezahlen per PayPal an <b class="select-all">${escapeHtml(me.paypal)}</b> (Freunde &amp; Familie, damit keine Gebühren anfallen). Der Admin hakt es danach ab.</p>` : ''}
@@ -2829,12 +2825,12 @@
             $('cashIncome').textContent = eur(summary.incomeCent);
             $('cashExpenses').textContent = eur(summary.expensesCent);
             $('cashBalance').textContent = eur(summary.balanceCent);
-            $('cashBalance').className = `text-lg font-bold ${summary.balanceCent < 0 ? 'text-slate-800' : 'text-blue-800'}`;
+            $('cashBalance').className = `text-lg font-bold ${summary.balanceCent < 0 ? 'text-rose-800' : 'text-blue-800'}`;
             $('cashOutstanding').textContent = eur(summary.outstandingCent);
             $('playerBalances').innerHTML = [...players].sort((a, b) => a.name.localeCompare(b.name)).map(p => {
                 const balance = summary.playerBalances[p.id] || 0;
                 const text = balance > 0 ? `Guthaben ${eur(balance)}` : balance < 0 ? `offen ${eur(-balance)}` : 'ausgeglichen';
-                const color = balance > 0 ? 'text-slate-700' : balance < 0 ? 'text-slate-700' : 'text-slate-500';
+                const color = balance > 0 ? 'text-emerald-700' : balance < 0 ? 'text-rose-700' : 'text-slate-500';
                 return `<div class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"><span class="font-medium truncate">${escapeHtml(p.name)}</span><span class="font-semibold whitespace-nowrap ${color}">${text}</span></div>`;
             }).join('') || '<p class="text-sm text-slate-400">Noch keine Spieler angelegt.</p>';
             $('cashTransactions').innerHTML = allBookings.map(e => {
@@ -2844,9 +2840,9 @@
                 const sourceName = e.spielerId ? playerName(e.spielerId) : e.gegenkonto;
                 const source = sourceName ? ` · ${escapeHtml(sourceName)}` : '';
                 const remove = e.manual
-                    ? `<button data-cash-delete="${escapeHtml(e.id)}" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition" title="Buchung löschen"><i class="fa-solid fa-trash text-xs"></i></button>`
+                    ? `<button data-cash-delete="${escapeHtml(e.id)}" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition" title="Buchung löschen"><i class="fa-solid fa-trash text-xs"></i></button>`
                     : '';
-                const amountClass = isIncome ? 'text-slate-700' : isExpense ? 'text-slate-700' : 'text-blue-700';
+                const amountClass = isIncome ? 'text-emerald-700' : isExpense ? 'text-rose-700' : 'text-blue-700';
                 const sign = isIncome ? '+' : isExpense ? '−' : '↘';
                 const amountText = isIncome || isExpense ? eur(e.betragCent) : `${eur(e.betragCent)} Guthaben`;
                 return `<div class="py-2.5 flex items-center gap-3 text-sm">
@@ -2921,7 +2917,7 @@
                                     ? `<button data-act="remind" data-st="${escapeHtml(s.id)}" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition" title="Mail an alle offenen Spieler mit bekannter Mail-Adresse (${mails.length} von ${openIds.length})"><i class="fa-solid fa-envelope mr-1.5 text-amber-500"></i>Offene erinnern (${mails.length})</button>`
                                     : `<a href="${escapeHtml(mailto)}" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition" title="Öffnet dein Mailprogramm (Mail-Versand der App ist nicht eingerichtet)"><i class="fa-solid fa-envelope mr-1.5 text-amber-500"></i>Offene erinnern (${mails.length})</a>`)
                                 : '<span class="text-[11px] text-slate-400" title="Unter „Benutzer &amp; Zuordnung“ Spielern einen Login zuweisen, dann ist ihre Mail bekannt">keine Mails bekannt</span>') : ''}
-                            <button data-act="unbill" data-st="${escapeHtml(s.id)}" title="Abrechnung entfernen (der Spieltag bleibt bestehen)" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button data-act="unbill" data-st="${escapeHtml(s.id)}" title="Abrechnung entfernen (der Spieltag bleibt bestehen)" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>
                         </div>
                     </div>
                     <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2"><div class="h-full bg-emerald-500" style="width:${pct}%"></div></div>
