@@ -6,10 +6,13 @@
     <title>FC M:sys</title>
     <link rel="icon" type="image/svg+xml" href="/img/msys.svg">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Encode Sans', 'sans-serif'] } } } };
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/fonts/fonts.css">
     <style>
-        body { font-family: 'Inter', sans-serif; background: linear-gradient(180deg, #eef3fb 0, #f7f9fd 340px) fixed; color: #0f172a; -webkit-font-smoothing: antialiased; }
+        body { font-family: var(--font-sans); background: linear-gradient(180deg, #eef3fb 0, #f7f9fd 340px) fixed; color: #0f172a; -webkit-font-smoothing: antialiased; }
         ::selection { background: #bfdbfe; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -562,7 +565,7 @@
                 </div>
                 <p class="text-xs text-slate-500">Text direkt auf der Flagge bearbeiten. Text und Bild zum Positionieren direkt auf der Flagge ziehen.</p>
                 <div id="adEditor"><img src="/img/ad-plane-banner.png" alt="Werbeflieger Vorschau"><div class="ad-flyer-content"><img id="adEditorImage" alt="Werbebild" draggable="false"><span id="adEditorText" contenteditable="plaintext-only" role="textbox" aria-label="Werbetext auf der Flagge"></span></div></div>
-                <div class="grid sm:grid-cols-2 gap-3"><label class="text-sm">Schriftart<select id="ad_fontFamily" class="block w-full border rounded-lg px-3 py-2"><option>Arial</option><option>Verdana</option><option>Georgia</option><option>Trebuchet MS</option><option>Courier New</option></select></label><label class="block text-sm">Schriftgröße (% Flaggenbreite)<input id="ad_fontSize" type="number" min="2" max="40" step="0.1" required value="5" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Bildgröße (%)<input id="ad_imageSize" type="number" min="5" max="100" step="0.1" required value="28" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Flugzeit in Sekunden (kleiner = schneller)<input id="ad_flightSeconds" type="number" min="0.1" max="3600" step="0.1" required value="8" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Inaktivität in Sekunden<input id="ad_idleSeconds" type="number" min="0" max="86400" step="0.1" required value="5" class="block w-full border rounded-lg px-3 py-2"></label></div>
+                <div class="grid sm:grid-cols-2 gap-3"><label class="text-sm">Schriftart<select id="ad_fontFamily" class="block w-full border rounded-lg px-3 py-2"><option>Encode Sans</option><option>Arial</option><option>Verdana</option><option>Georgia</option><option>Trebuchet MS</option><option>Courier New</option></select></label><label class="block text-sm">Schriftgröße (% Flaggenbreite)<input id="ad_fontSize" type="number" min="2" max="40" step="0.1" required value="5" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Bildgröße (%)<input id="ad_imageSize" type="number" min="5" max="100" step="0.1" required value="28" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Flugzeit in Sekunden (kleiner = schneller)<input id="ad_flightSeconds" type="number" min="0.1" max="3600" step="0.1" required value="8" class="block w-full border rounded-lg px-3 py-2"></label><label class="block text-sm">Inaktivität in Sekunden<input id="ad_idleSeconds" type="number" min="0" max="86400" step="0.1" required value="5" class="block w-full border rounded-lg px-3 py-2"></label></div>
                 <p class="text-xs text-slate-500">Bei anhaltender Inaktivität folgt nach einer Sekunde der nächste Flug. Begonnene Flüge laufen bei Aktivit?t zu Ende.</p>
                 <div class="flex items-center gap-3">
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">Werbung speichern</button>
@@ -774,7 +777,7 @@
         let kassenbuchSummary = null;
         let kindeUsers = {};
         const TABS = ['players', 'days', 'match', 'history', 'payments', 'advertising'];
-        const AD_DEFAULTS = {"fontSize":5,"textX":55,"textY":50,"imageSize":28,"imageX":18,"imageY":50,"flightSeconds":8,"idleSeconds":5,"fontFamily":"Arial"};
+        const AD_DEFAULTS = {"fontSize":5,"textX":55,"textY":50,"imageSize":28,"imageX":18,"imageY":50,"flightSeconds":8,"idleSeconds":5,"fontFamily":"Encode Sans"};
 
         const AD_GAP_MS = 1000;
         let adConfig = { enabled: false, text: '', image: '' };
@@ -1328,11 +1331,11 @@
                         <span class="w-9 h-9 rounded-full overflow-hidden bg-slate-100 border-2 flex items-center justify-center text-slate-300 shrink-0" style="border-color:${playerColor(p.id)}">${p.photo ? `<img src="${escapeHtml(p.photo)}" class="w-full h-full object-cover object-top">` : '<i class="fa-solid fa-user text-sm"></i>'}</span>
                         <span class="font-semibold">${escapeHtml(p.name)}</span>
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">${escapeHtml(p.pos)}</span></div></td>
-                    <td class="px-4 py-3 text-right whitespace-nowrap"><span class="font-mono font-bold text-base">${formatElo(p.elo)}</span>
+                    <td class="px-4 py-3 text-right whitespace-nowrap"><span class="tabular-nums font-bold text-base">${formatElo(p.elo)}</span>
                         <span class="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${{ bronze: 'bg-orange-100 text-orange-800', silber: 'bg-slate-200 text-slate-700', gold: 'bg-amber-100 text-amber-800', ikone: 'bg-indigo-100 text-indigo-700' }[tierFor(p.elo)]}" title="${TIER_NAMES[tierFor(p.elo)]}">${rating}</span></td>
-                    <td class="px-4 py-3 text-right font-mono text-xs font-bold ${deltaClass(d)}">${d ? (d > 0 ? '▲ ' : '▼ ') + formatElo(Math.abs(d)) : '–'}</td>
+                    <td class="px-4 py-3 text-right tabular-nums text-xs font-bold ${deltaClass(d)}">${d ? (d > 0 ? '▲ ' : '▼ ') + formatElo(Math.abs(d)) : '–'}</td>
                     <td class="px-4 py-3 text-right text-slate-600 hidden sm:table-cell">${s.games}</td>
-                    <td class="px-4 py-3 text-right text-slate-600 hidden sm:table-cell font-mono text-xs">${s.w} / ${s.d} / ${s.l}</td>
+                    <td class="px-4 py-3 text-right text-slate-600 hidden sm:table-cell tabular-nums text-xs">${s.w} / ${s.d} / ${s.l}</td>
                     <td class="px-4 py-3 hidden md:table-cell">${sparklineSvg(p.history, playerColor(p.id))}</td>
                     <td class="admin-only px-4 py-3 text-right whitespace-nowrap">
                         <button class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition" title="Bearbeiten" data-edit="${p.id}"><i class="fa-solid fa-pen text-xs"></i></button>
@@ -1390,7 +1393,7 @@
                 const on = selectedPlayerIds.has(p.id);
                 const btn = document.createElement('button');
                 btn.className = `flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-left text-sm transition ${on ? 'bg-blue-50 border-blue-500 text-blue-900' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`;
-                btn.innerHTML = `<span class="font-semibold truncate">${mark(p.id)}${escapeHtml(p.name)}</span><span class="font-mono text-[11px] ${on ? 'text-blue-700' : 'text-slate-400'}">${formatElo(p.elo)}</span>`;
+                btn.innerHTML = `<span class="font-semibold truncate">${mark(p.id)}${escapeHtml(p.name)}</span><span class="tabular-nums text-[11px] ${on ? 'text-blue-700' : 'text-slate-400'}">${formatElo(p.elo)}</span>`;
                 btn.onclick = () => { on ? selectedPlayerIds.delete(p.id) : selectedPlayerIds.add(p.id); renderMatchTab(); };
                 $('attendanceList').appendChild(btn);
             });
@@ -1429,7 +1432,7 @@
                     [...list].sort((a, b) => b.elo - a.elo).forEach(p => {
                         const li = document.createElement('li');
                         li.className = 'flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-200 text-sm cursor-pointer hover:border-slate-400 transition';
-                        li.innerHTML = `<span class="font-semibold">${escapeHtml(p.name)}</span><span class="font-mono text-xs text-slate-500">${formatElo(p.elo)}</span>`;
+                        li.innerHTML = `<span class="font-semibold">${escapeHtml(p.name)}</span><span class="tabular-nums text-xs text-slate-500">${formatElo(p.elo)}</span>`;
                         li.onclick = () => movePlayer(p.id);
                         $(id).appendChild(li);
                     });
@@ -1477,10 +1480,10 @@
                 return `<tr>
                     <td class="px-4 py-2.5 text-slate-500 font-medium">${medal}</td>
                     <td class="px-4 py-2.5 font-semibold"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle" style="background:${playerColor(p.id)}"></span>${escapeHtml(p.name)}</td>
-                    <td class="px-4 py-2.5 text-right font-mono font-bold">${formatElo(p.elo)}</td>
-                    <td class="px-4 py-2.5 text-right font-mono text-xs font-bold ${deltaClass(total)}">${total ? formatDelta(total) : '–'}</td>
+                    <td class="px-4 py-2.5 text-right tabular-nums font-bold">${formatElo(p.elo)}</td>
+                    <td class="px-4 py-2.5 text-right tabular-nums text-xs font-bold ${deltaClass(total)}">${total ? formatDelta(total) : '–'}</td>
                     <td class="px-4 py-2.5 text-right text-slate-600 hidden sm:table-cell">${s.games}</td>
-                    <td class="px-4 py-2.5 text-right text-slate-600 hidden sm:table-cell font-mono text-xs">${s.w} / ${s.d} / ${s.l}</td>
+                    <td class="px-4 py-2.5 text-right text-slate-600 hidden sm:table-cell tabular-nums text-xs">${s.w} / ${s.d} / ${s.l}</td>
                     <td class="px-4 py-2.5 text-right whitespace-nowrap">${form || '<span class="text-slate-300">–</span>'}</td>
                 </tr>`;
             }).join('');
@@ -1494,8 +1497,8 @@
             }
             const chips = team => team.map(p => `<span class="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-md px-2 py-1">
                 <span class="font-medium text-slate-800">${escapeHtml(p.name)}</span>
-                <span class="font-mono text-slate-400">${formatElo(p.before)}→${formatElo(p.after)}</span>
-                <span class="font-mono font-bold ${deltaClass(p.delta)}">${p.delta ? formatDelta(p.delta) : '±0'}</span></span>`).join(' ');
+                <span class="tabular-nums text-slate-400">${formatElo(p.before)}→${formatElo(p.after)}</span>
+                <span class="tabular-nums font-bold ${deltaClass(p.delta)}">${p.delta ? formatDelta(p.delta) : '±0'}</span></span>`).join(' ');
 
             list.innerHTML = [...matchHistory].reverse().map((m, i) => {
                 const nr = matchHistory.length - i;
@@ -1506,7 +1509,7 @@
                 return `<div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
                     <div class="flex flex-wrap items-center gap-2 mb-2.5">
                         <span class="text-xs font-bold text-slate-400">#${nr}</span>
-                        <span class="text-lg font-extrabold font-mono tracking-tight"><span class="${aWin ? 'text-blue-700' : 'text-slate-500'}">${m.goalsA}</span><span class="text-slate-300 mx-1">:</span><span class="${bWin ? 'text-rose-700' : 'text-slate-500'}">${m.goalsB}</span></span>
+                        <span class="text-lg font-extrabold tabular-nums tracking-tight"><span class="${aWin ? 'text-blue-700' : 'text-slate-500'}">${m.goalsA}</span><span class="text-slate-300 mx-1">:</span><span class="${bWin ? 'text-rose-700' : 'text-slate-500'}">${m.goalsB}</span></span>
                         <span class="text-[11px] font-semibold ${m.result === 'DRAW' ? 'text-slate-500' : (aWin ? 'text-blue-700' : 'text-rose-700')}">${m.result === 'DRAW' ? 'Unentschieden' : 'Sieg Team ' + m.result}</span>
                         <span class="text-[11px] text-slate-400 sm:ml-auto">${date}</span>
                         <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold ${m.matchDayId ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}">${escapeHtml(matchDayLabel)}</span>
@@ -1550,7 +1553,7 @@
                 const hidden = hiddenInChart.has(p.id);
                 const chip = document.createElement('button');
                 chip.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs transition ${hidden ? 'border-slate-200 text-slate-400 bg-white' : 'border-slate-300 text-slate-800 bg-slate-50'}`;
-                chip.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${hidden ? '#cbd5e1' : playerColor(p.id)}"></span>${escapeHtml(p.name)}<span class="font-mono ${hidden ? '' : 'text-slate-500'}">${formatElo(p.elo)}</span>`;
+                chip.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${hidden ? '#cbd5e1' : playerColor(p.id)}"></span>${escapeHtml(p.name)}<span class="tabular-nums ${hidden ? '' : 'text-slate-500'}">${formatElo(p.elo)}</span>`;
                 chip.onclick = () => { hidden ? hiddenInChart.delete(p.id) : hiddenInChart.add(p.id); renderChart(); };
                 legend.appendChild(chip);
             });
@@ -1612,7 +1615,7 @@
                 const when = h.surveyDayNumber ? `Umfrage ${h.surveyDayNumber}. Spieltag` : h.seq === 0 ? 'Startwert' : `Spiel #${h.seq} · ${new Date(h.t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`;
                 tip.innerHTML = `<div class="font-bold" style="color:${best.color}">${escapeHtml(p.name)}</div>
                     <div class="text-slate-500">${when}${!h.surveyDayNumber && !h.matchId && h.seq > 0 ? ' · manuell' : ''}</div>
-                    <div><span class="font-mono font-bold text-slate-900 text-sm">${formatElo(h.elo)}</span> ${(h.surveyDayNumber || h.seq > 0) ? `<span class="font-mono font-bold ${deltaClass(h.delta)}">(${h.delta ? formatDelta(h.delta) : '±0'})</span>` : ''}</div>`;
+                    <div><span class="tabular-nums font-bold text-slate-900 text-sm">${formatElo(h.elo)}</span> ${(h.surveyDayNumber || h.seq > 0) ? `<span class="tabular-nums font-bold ${deltaClass(h.delta)}">(${h.delta ? formatDelta(h.delta) : '±0'})</span>` : ''}</div>`;
                 tip.classList.remove('hidden');
                 const tw = tip.offsetWidth;
                 tip.style.left = Math.max(0, best.cx + 14 + tw > W ? best.cx - 14 - tw : best.cx + 14) + 'px';
@@ -2782,7 +2785,7 @@
                             : badge(false);
                         return `<div class="py-2.5 flex items-center gap-3 text-sm">
                             <div class="flex-1 min-w-0"><div class="font-semibold">${fmtDate(s.datum)}</div><div class="text-xs text-slate-500 truncate">${escapeHtml(s.ort || s.titel || '')}${credited ? ` · ${eur(credited)} aus Guthaben` : ''}${paid ? ` · ${eur(paid)} bezahlt` : ''}</div></div>
-                            <div class="font-mono font-bold">${eur(due || s.betragCent)}</div>
+                            <div class="tabular-nums font-bold">${eur(due || s.betragCent)}</div>
                             ${status}
                             ${due > 0 && /^https:/.test(me.paypal) ? `<a href="${escapeHtml(me.paypal.replace(/\/+$/, '') + '/' + (due / 100).toFixed(2) + 'EUR')}" target="_blank" rel="noopener" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition"><i class="fa-brands fa-paypal mr-1"></i>Bezahlen</a>` : ''}
                         </div>`;
@@ -2848,7 +2851,7 @@
                 return `<div class="py-2.5 flex items-center gap-3 text-sm">
                     <span class="w-20 shrink-0 text-xs text-slate-500">${date}</span>
                     <span class="flex-1 min-w-0"><b class="font-semibold">${escapeHtml(e.beschreibung)}</b><span class="text-xs text-slate-500">${source}</span></span>
-                    <span class="font-mono font-semibold whitespace-nowrap ${amountClass}">${sign}${amountText}</span>
+                    <span class="tabular-nums font-semibold whitespace-nowrap ${amountClass}">${sign}${amountText}</span>
                     ${remove}
                 </div>`;
             }).join('') || '<p class="py-3 text-sm text-slate-400">Noch keine Einnahmen oder Ausgaben erfasst.</p>';
@@ -2903,7 +2906,7 @@
                     return `<div class="py-2 flex items-center gap-3 text-sm">
                         <span class="flex-1 font-medium">${escapeHtml(playerName(id))}${detail}</span>
                         ${status}
-                        ${due > 0 ? `<span class="font-mono text-xs text-amber-700">${eur(due)} offen</span>` : ''}
+                        ${due > 0 ? `<span class="tabular-nums text-xs text-amber-700">${eur(due)} offen</span>` : ''}
                         ${paid ? `<button data-act="toggle" data-st="${escapeHtml(s.id)}" data-sp="${escapeHtml(id)}" data-paid="0" class="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-300 text-slate-500 hover:bg-slate-50 transition">Zurücksetzen</button>` : due > 0 ? `<button data-act="toggle" data-st="${escapeHtml(s.id)}" data-sp="${escapeHtml(id)}" data-paid="1" data-due="${due}" class="text-xs font-semibold px-2.5 py-1 rounded-lg border border-blue-300 text-blue-700 hover:bg-blue-50 transition">Als bezahlt markieren</button>` : ''}
                     </div>`;
                 }).join('');

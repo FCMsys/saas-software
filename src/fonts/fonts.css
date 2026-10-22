@@ -1,0 +1,14 @@
+/* Original Encode Sans files supplied by the Msys corporate design. */
+@font-face { font-family: 'Encode Sans'; font-style: normal; font-weight: 100; font-display: swap; src: url('./EncodeSans-Thin.ttf') format('truetype'); }
+@font-face { font-family: 'Encode Sans'; font-style: normal; font-weight: 200; font-display: swap; src: url('./EncodeSans-ExtraLight.ttf') format('truetype'); }
+@font-face { font-family: 'Encode Sans'; font-style: normal; font-weight: 300; font-display: swap; src: url('./EncodeSans-Light.ttf') format('truetype'); }
+@font-face { font-family: 'Encode Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('./EncodeSans-Regular.ttf') format('truetype'); }
+@font-face { font-family: 'Encode Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('./EncodeSans-Medium.ttf') format('truetype'); }
+@font-face { font-family: 'Encode Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('./EncodeSans-SemiBold.ttf') format('truetype'); }
+@font-face { font-family: 'Encode Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('./EncodeSans-Bold.ttf') format('truetype'); }
+@font-face { font-family: 'Encode Sans'; font-style: normal; font-weight: 800; font-display: swap; src: url('./EncodeSans-ExtraBold.ttf') format('truetype'); }
+@font-face { font-family: 'Encode Sans'; font-style: normal; font-weight: 900; font-display: swap; src: url('./EncodeSans-Black.ttf') format('truetype'); }
+
+:root { --font-sans: 'Encode Sans', sans-serif; }
+html { font-family: var(--font-sans); }
+button, input, select, textarea { font-family: inherit; }

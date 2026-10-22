@@ -10,6 +10,7 @@ WORKDIR /app
 COPY package.json ./
 COPY server.js random.html ./
 COPY src/img ./src/img
+COPY src/fonts ./src/fonts
 COPY src/logic ./src/logic
 
 # Lokaler Speicher (nur genutzt, wenn Supabase_* nicht gesetzt ist); gehört dem unprivilegierten Benutzer

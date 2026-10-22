@@ -1062,7 +1062,7 @@ async function mailEinladung(s) {
     return result;
 }
 
-const RSVP_STYLE = `body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#eef3fb,#f7f9fd);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a}
+const RSVP_STYLE = `body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#eef3fb,#f7f9fd);font-family:var(--font-sans);color:#0f172a}
   .box{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 24px rgba(15,23,42,.08);padding:28px 24px;width:min(92vw,380px);text-align:center}
   .logo{display:block;height:72px;width:auto;margin:0 auto 12px}
   h1{font-size:19px;margin:0 0 6px}p{font-size:14px;color:#475569;margin:0 0 14px;line-height:1.5}
@@ -1072,7 +1072,7 @@ const RSVP_STYLE = `body{margin:0;min-height:100vh;display:flex;align-items:cent
   .pick{box-shadow:0 0 0 4px rgba(37,99,235,.25)}small{display:block;margin-top:12px;font-size:12px;color:#94a3b8}`;
 const rsvpPage = (res, code, inner) => {
     res.writeHead(code, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
-    res.end(`<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>FC M:sys – Spieltag</title><style>${RSVP_STYLE}</style></head><body><div class="box"><img class="logo" src="/img/msys.svg" alt="FC M:sys">${inner}</div></body></html>`);
+    res.end(`<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>FC M:sys – Spieltag</title><link rel="stylesheet" href="/fonts/fonts.css"><style>${RSVP_STYLE}</style></head><body><div class="box"><img class="logo" src="/img/msys.svg" alt="FC M:sys">${inner}</div></body></html>`);
 };
 
 // Öffentliche Seite für die Links aus der Mail: GET zeigt nur an, erst der Klick (POST) speichert. Mail-Scanner, die Links vorab aufrufen, ändern so nichts.
@@ -1159,8 +1159,9 @@ function zahlungenFor(session) {
 const LOGIN_PAGE = `<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FC M:sys – Anmelden</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
 <style>
-  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#eef3fb,#f7f9fd);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#eef3fb,#f7f9fd);font-family:var(--font-sans);color:#0f172a}
   .box{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 24px rgba(15,23,42,.08);padding:32px 28px;width:min(92vw,360px);text-align:center}
   .logo{display:block;height:84px;width:auto;margin:0 auto 14px}
   h1{font-size:20px;margin:0 0 6px}h1 span{color:#2563eb}
@@ -1179,11 +1180,11 @@ const LOGIN_PAGE = `<!doctype html>
 
 function appIntro() {
     return `<style>
-  #appIntro{position:fixed;inset:0;width:100%;max-width:none;height:100%;max-height:none;margin:0;border:0;padding:20px;background:#fff;color:#0f172a;font-family:system-ui,-apple-system,Segoe UI,sans-serif;overflow:auto}
+  #appIntro{position:fixed;inset:0;width:100%;max-width:none;height:100%;max-height:none;margin:0;border:0;padding:20px;background:#fff;color:#0f172a;font-family:var(--font-sans);overflow:auto}
   #appIntro[open]{display:grid;place-items:center}#appIntro::backdrop{background:#fff}
   #appIntro section{width:100%;max-width:960px;text-align:center}#appIntro h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px);font-weight:700}
   #appIntro video{display:block;width:auto;height:auto;max-width:100%;margin:0 auto;background:#fff;filter:contrast(1.08)}
-  #appIntro button{margin-top:16px;min-height:46px;padding:0 24px;border:0;border-radius:10px;background:#2563eb;color:#fff;font:700 16px system-ui;cursor:pointer}
+  #appIntro button{margin-top:16px;min-height:46px;padding:0 24px;border:0;border-radius:10px;background:#2563eb;color:#fff;font:700 16px var(--font-sans);cursor:pointer}
 </style>
 <dialog id="appIntro" aria-labelledby="appIntroTitle"><section>
   <h1 id="appIntroTitle">Willkommen beim FC M:sys</h1>
@@ -1215,8 +1216,9 @@ function landingPage(destination, isAuthenticated) {
     return `<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#ffffff"><title>FC M:sys</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
 <style>
-  *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#fff;color:#0f172a;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+  *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#fff;color:#0f172a;font-family:var(--font-sans)}
   main{width:100%;max-width:960px;min-width:0;text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}main video{display:block;width:auto;height:auto;max-width:100%;max-height:none;margin:0 auto;border:0;border-radius:0;background:#fff;filter:contrast(1.08)}
   .continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:16px;padding:0 24px;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;text-decoration:none}.continue:hover{background:#1d4ed8}.continue:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
 </style></head><body>
@@ -1269,6 +1271,19 @@ async function handle(req, res) {
     const parsed = new URL(req.url, 'http://x');
     const url = parsed.pathname;
     const method = req.method;
+
+    // Public font assets are also needed before login; only known files are served.
+    const fontFiles = ['fonts.css', ...['Thin', 'ExtraLight', 'Light', 'Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold', 'Black'].map(weight => `EncodeSans-${weight}.ttf`)];
+    if (method === 'GET' && url.startsWith('/fonts/')) {
+        const filename = url.slice('/fonts/'.length);
+        if (!fontFiles.includes(filename)) { res.writeHead(404); return res.end(); }
+        res.writeHead(200, {
+            'Content-Type': filename.endsWith('.css') ? 'text/css; charset=utf-8' : 'font/ttf',
+            'Cache-Control': 'public, max-age=86400',
+            'X-Content-Type-Options': 'nosniff'
+        });
+        return res.end(fs.readFileSync(path.join(ROOT, 'src', 'fonts', filename)));
+    }
 
     // --- Logos (öffentlich, auch für die Login-Seite): feste Liste, keine freien Pfade ---
     const imgFile = method === 'GET' && (url === '/favicon.ico' ? IMAGES['msys.svg'] : IMAGES[url.replace(/^\/img\//, '')]);
@@ -1509,7 +1524,7 @@ async function handle(req, res) {
     }
 
     function adSettings(input, strict = false) {
-        const defaults = {"fontSize":5,"textX":55,"textY":50,"imageSize":28,"imageX":18,"imageY":50,"flightSeconds":8,"idleSeconds":5,"fontFamily":"Arial"};
+        const defaults = {"fontSize":5,"textX":55,"textY":50,"imageSize":28,"imageX":18,"imageY":50,"flightSeconds":8,"idleSeconds":5,"fontFamily":"Encode Sans"};
         const limits = {"fontSize":[2,40],"textX":[0,100],"textY":[0,100],"imageSize":[5,100],"imageX":[0,100],"imageY":[0,100],"flightSeconds":[0.1,3600],"idleSeconds":[0,86400]};
         const result = {};
         for (const [key, [min, max]] of Object.entries(limits)) {
@@ -1518,7 +1533,7 @@ async function handle(req, res) {
             if (strict && value !== undefined && !valid) throw new Error('Ungültiger Wert: ' + key + ' (' + min + ' bis ' + max + ')');
             result[key] = valid ? value : defaults[key];
         }
-        const fonts = ['Arial', 'Verdana', 'Georgia', 'Trebuchet MS', 'Courier New'];
+        const fonts = ['Encode Sans', 'Arial', 'Verdana', 'Georgia', 'Trebuchet MS', 'Courier New'];
         if (strict && input.fontFamily !== undefined && !fonts.includes(input.fontFamily)) throw new Error('Ungültige Schriftart');
         result.fontFamily = fonts.includes(input.fontFamily) ? input.fontFamily : defaults.fontFamily;
         return result;
