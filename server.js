@@ -715,10 +715,19 @@ function historicalSurveyElos(saved, at, replay) {
 }
 
 async function closeDueSurveys(now = Date.now()) {
-    return mutateSurveys(async () => {
-        const saved = surveyData();
+    return mutateSurveys(() => finalizeSurveyDays(surveyData(), now));
+}
+
+async function finalizeSurveyDays(saved, now = Date.now(), persist = false) {
         let changed = false;
         for (const day of Object.values(saved.days)) {
+            if (!day.results && !isSurveyClosed(day.closesAt, now) && day.participants.length > 0 &&
+                day.participants.every(playerId => !!day.submissions[playerId])) {
+                day.scheduledClosesAt = day.closesAt;
+                day.closesAt = new Date(now).toISOString();
+                day.closedReason = 'all_answered';
+                changed = true;
+            }
             if (!day.results && isSurveyClosed(day.closesAt, now)) {
                 day.results = calculateSurveyAwards(day);
                 day.publishedAt = day.closesAt;
@@ -740,9 +749,8 @@ async function closeDueSurveys(now = Date.now()) {
             };
             changed = true;
         }
-        if (changed) await writeJson('umfragen.json', saved);
+        if (changed || persist) await writeJson('umfragen.json', saved);
         return saved;
-    });
 }
 
 function scheduleNextSurveyClose(retryDelay = 0) {
@@ -1325,10 +1333,11 @@ async function handle(req, res) {
                 }
             };
             await recalculateSurveyRatings(saved, dayId);
-            await writeJson('umfragen.json', saved);
+            await finalizeSurveyDays(saved, Date.now(), true);
             return { submittedAt: day.submissions[playerId].submittedAt, ratings: saved.ratings.current };
         });
         if (result.error) return sendJson(res, result.status, { ok: false, error: result.error });
+        scheduleNextSurveyClose();
         return sendJson(res, 200, { ok: true, submittedAt: result.submittedAt });
     }
 

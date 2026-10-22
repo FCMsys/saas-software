@@ -292,6 +292,50 @@ test('survey API creates stable private forms, accepts each response once, and p
             assert.ok(Math.abs(change.delta - original.delta) < 1e-9);
         }
         assert.deepEqual((await call('/api/state')).data.surveyHistory, recovered);
+
+        // Full participation closes immediately, without waiting for the deadline.
+        const earlyId = unlinkedDay.data.id;
+        for (const playerId of playerIds) {
+            const detail = await call(`/api/umfragen/${earlyId}`, { role: 'player', playerId });
+            const answers = makeAnswers(detail.data.form);
+            const nominee = playerIds.find(id => id !== playerId);
+            answers.motm = nominee;
+            answers.surprise = nominee;
+            const submit = await call(`/api/umfragen/${earlyId}/antwort`, { role: 'player', playerId, method: 'POST', body: { answers } });
+            assert.equal(submit.response.status, 200);
+            const persisted = JSON.parse(fs.readFileSync(path.join(dataDir, 'umfragen.json'), 'utf8')).days[earlyId];
+            if (playerId !== playerIds.at(-1)) {
+                assert.equal(persisted.results, null);
+                assert.equal(persisted.eloHistory, undefined);
+            } else {
+                assert.equal(persisted.closedReason, 'all_answered');
+                assert.ok(Date.parse(persisted.closesAt) < Date.parse(persisted.scheduledClosesAt));
+                assert.ok(persisted.results.motm.winners.length);
+                assert.ok(persisted.results.surprise.winners.length);
+                assert.equal(persisted.eloHistory.t, persisted.closesAt);
+            }
+        }
+        const earlyView = (await call('/api/umfragen')).data.surveys.find(day => day.id === earlyId);
+        assert.equal(earlyView.status, 'closed');
+        assert.ok(earlyView.results.motm.winners.length);
+        const earlyHistory = (await call('/api/state')).data.surveyHistory;
+        assert.equal(earlyHistory.filter(point => point.dayId === earlyId).length, 1);
+        assert.deepEqual((await call('/api/state')).data.surveyHistory, earlyHistory);
+
+        // Already completed surveys from the old version close on startup too.
+        const completedStore = JSON.parse(fs.readFileSync(path.join(dataDir, 'umfragen.json'), 'utf8'));
+        const completedDay = completedStore.days[earlyId];
+        completedDay.closesAt = completedDay.scheduledClosesAt;
+        completedDay.results = null;
+        delete completedDay.eloHistory;
+        delete completedDay.closedReason;
+        await stopServer();
+        fs.writeFileSync(path.join(dataDir, 'umfragen.json'), JSON.stringify(completedStore));
+        await startServer();
+        const backfilled = (await call('/api/umfragen')).data.surveys.find(day => day.id === earlyId);
+        assert.equal(backfilled.status, 'closed');
+        assert.deepEqual(backfilled.results, earlyView.results);
+        assert.equal((await call('/api/state')).data.surveyHistory.filter(point => point.dayId === earlyId).length, 1);
     } finally {
         await stopServer();
         fs.rmSync(temp, { recursive: true, force: true });
