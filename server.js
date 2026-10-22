@@ -1177,6 +1177,39 @@ const LOGIN_PAGE = `<!doctype html>
   <small>Neue Accounts sehen zunächst nur die Statistiken, bis der Admin sie einem Spieler zuordnet.</small>
 </div></body></html>`;
 
+function appIntro() {
+    return `<style>
+  #appIntro{position:fixed;inset:0;width:100%;max-width:none;height:100%;max-height:none;margin:0;border:0;padding:20px;background:#fff;color:#0f172a;font-family:system-ui,-apple-system,Segoe UI,sans-serif;overflow:auto}
+  #appIntro[open]{display:grid;place-items:center}#appIntro::backdrop{background:#fff}
+  #appIntro section{width:100%;max-width:960px;text-align:center}#appIntro h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px);font-weight:700}
+  #appIntro video{display:block;width:auto;height:auto;max-width:100%;margin:0 auto;background:#fff;filter:contrast(1.08)}
+  #appIntro button{margin-top:16px;min-height:46px;padding:0 24px;border:0;border-radius:10px;background:#2563eb;color:#fff;font:700 16px system-ui;cursor:pointer}
+</style>
+<dialog id="appIntro" aria-labelledby="appIntroTitle"><section>
+  <h1 id="appIntroTitle">Willkommen beim FC M:sys</h1>
+  <video src="/img/landing.mp4" autoplay muted playsinline preload="auto"></video>
+  <button type="button">Weiter zur App</button>
+</section></dialog>
+<script>
+  (() => {
+    const intro = document.getElementById('appIntro');
+    const video = intro.querySelector('video');
+    let dismissed = false;
+    const dismiss = () => {
+      if (dismissed) return;
+      dismissed = true;
+      video.pause(); intro.close(); intro.remove();
+    };
+    intro.showModal();
+    intro.querySelector('button').addEventListener('click', dismiss);
+    intro.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
+    video.addEventListener('timeupdate', () => { if (video.currentTime >= 4) dismiss(); });
+    video.addEventListener('ended', dismiss, { once: true });
+    video.addEventListener('error', dismiss, { once: true });
+  })();
+</script>`;
+}
+
 function landingPage(destination, isAuthenticated) {
     const label = isAuthenticated ? 'Weiter zur App' : 'Weiter zur Anmeldung';
     return `<!doctype html>
@@ -1268,7 +1301,7 @@ async function handle(req, res) {
     // --- ab hier nur mit Login ---
     const session = getSession(req);
     const landingRoutes = ['/', '/index.html', '/random.html'];
-    if (method === 'GET' && landingRoutes.includes(url) && parsed.searchParams.get('intro') !== 'done') {
+    if (!session && method === 'GET' && landingRoutes.includes(url) && parsed.searchParams.get('intro') !== 'done') {
         const destination = new URL(parsed);
         destination.searchParams.set('intro', 'done');
         const appPath = destination.pathname + destination.search;
@@ -1457,7 +1490,11 @@ async function handle(req, res) {
 
     if (method === 'GET' && (url === '/' || url === '/index.html' || url === '/random.html')) {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-        return res.end(fs.readFileSync(path.join(ROOT, 'random.html')));
+        let html = fs.readFileSync(path.join(ROOT, 'random.html'), 'utf8');
+        if (parsed.searchParams.get('intro') !== 'done') {
+            html = html.replace(/<body\b[^>]*>/i, match => match + appIntro());
+        }
+        return res.end(html);
     }
 
     if (method === 'GET' && url === '/api/me') {
