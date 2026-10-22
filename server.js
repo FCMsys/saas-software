@@ -1063,14 +1063,14 @@ async function mailEinladung(s) {
     return result;
 }
 
-const RSVP_STYLE = `body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,${CD.colors.blueGray20},${CD.colors.white});font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:${CD.colors.blueBlack}}
-  .box{background:${CD.colors.white};border:1px solid ${CD.colors.blueGray20};border-radius:16px;box-shadow:0 4px 24px rgba(${CD.rgb.blueBlack},.08);padding:28px 24px;width:min(92vw,380px);text-align:center}
+const RSVP_STYLE = `body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:${CD.colors.white};font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:${CD.colors.black}}
+  .box{background:${CD.colors.white};border:1px solid ${CD.colors.gray20};border-radius:16px;box-shadow:0 4px 24px rgba(${CD.rgb.blueBlack},.08);padding:28px 24px;width:min(92vw,380px);text-align:center}
   .logo{display:block;height:72px;width:auto;margin:0 auto 12px}
-  h1{font-size:19px;margin:0 0 6px}p{font-size:14px;color:${CD.colors.grayDark};margin:0 0 14px;line-height:1.5}
-  .info{background:${CD.colors.blueGray20};border-radius:10px;padding:10px 12px;font-size:14px;color:${CD.colors.blueBlack};margin-bottom:14px}
+  h1{font-size:19px;margin:0 0 6px}p{font-size:14px;color:${CD.colors.black};margin:0 0 14px;line-height:1.5}
+  .info{background:${CD.colors.gray20};border-radius:10px;padding:10px 12px;font-size:14px;color:${CD.colors.black};margin-bottom:14px}
   .row{display:flex;gap:10px}button{flex:1;font:inherit;font-weight:700;padding:14px 8px;border:2px solid;border-radius:10px;cursor:pointer;background:${CD.colors.white}}
   .yes{color:${CD.colors.darkGreen};border-color:${CD.colors.darkGreen}}.yes.on{background:${CD.colors.darkGreen};color:${CD.colors.white}}.no{color:${CD.colors.red};border-color:${CD.colors.red}}.no.on{background:${CD.colors.red};color:${CD.colors.white}}
-  .pick{box-shadow:0 0 0 4px rgba(${CD.rgb.blue},.25)}small{display:block;margin-top:12px;font-size:12px;color:${CD.colors.gray}}`;
+  .pick{box-shadow:0 0 0 4px rgba(${CD.rgb.blue},.25)}small{display:block;margin-top:12px;font-size:12px;color:${CD.colors.black}}`;
 const rsvpPage = (res, code, inner) => {
     res.writeHead(code, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
     res.end(`<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>FC M:sys – Spieltag</title><style>${RSVP_STYLE}</style></head><body><div class="box"><img class="logo" src="/img/msys.svg" alt="FC M:sys">${inner}</div></body></html>`);
@@ -1161,18 +1161,18 @@ const LOGIN_PAGE = `<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FC M:sys – Anmelden</title>
 <style>
-  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,${CD.colors.blueGray20},${CD.colors.white});font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:${CD.colors.blueBlack}}
-  .box{background:${CD.colors.white};border:1px solid ${CD.colors.blueGray20};border-radius:16px;box-shadow:0 4px 24px rgba(${CD.rgb.blueBlack},.08);padding:32px 28px;width:min(92vw,360px);text-align:center}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:${CD.colors.white};font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:${CD.colors.black}}
+  .box{background:${CD.colors.white};border:1px solid ${CD.colors.gray20};border-radius:16px;box-shadow:0 4px 24px rgba(${CD.rgb.blueBlack},.08);padding:32px 28px;width:min(92vw,360px);text-align:center}
   .logo{display:block;height:84px;width:auto;margin:0 auto 14px}
-  h1{font-size:20px;margin:0 0 6px}h1 span{color:${CD.colors.darkBlue}}
-  p{font-size:14px;color:${CD.colors.gray};margin:0 0 22px}
-  a.btn{display:block;background:${CD.colors.darkBlue};color:${CD.colors.white};text-decoration:none;font-weight:600;padding:12px;border-radius:10px}
-  a.btn:hover{background:${CD.colors.blueBlack}}
-  small{display:block;margin-top:14px;font-size:12px;color:${CD.colors.gray}}
+  h1{font-size:20px;margin:0 0 6px}h1 span{color:${CD.colors.blue}}
+  p{font-size:14px;color:${CD.colors.black};margin:0 0 22px}
+  a.btn{display:block;background:${CD.colors.blue};color:${CD.colors.black};text-decoration:none;font-weight:600;padding:12px;border-radius:10px}
+  a.btn:hover{background:${CD.colors.blue80}}
+  small{display:block;margin-top:14px;font-size:12px;color:${CD.colors.black}}
 </style></head><body>
 <div class="box">
   <img class="logo" src="/img/msys.svg" alt="FC M:Sys">
-  <h1>FC M<span>:sys</span></h1>
+  <h1>FC M<span>:</span>sys</h1>
   <p>Bitte melde dich an, um Statistiken und Zahlungen zu sehen.</p>
   <a class="btn" href="/login">Anmelden / Registrieren</a>
   <small>Neue Accounts sehen zunächst nur die Statistiken, bis der Admin sie einem Spieler zuordnet.</small>
@@ -1180,14 +1180,14 @@ const LOGIN_PAGE = `<!doctype html>
 
 function appIntro() {
     return `<style>
-  #appIntro{position:fixed;inset:0;width:100%;max-width:none;height:100%;max-height:none;margin:0;border:0;padding:20px;background:${CD.colors.white};color:${CD.colors.blueBlack};font-family:system-ui,-apple-system,Segoe UI,sans-serif;overflow:auto}
+  #appIntro{position:fixed;inset:0;width:100%;max-width:none;height:100%;max-height:none;margin:0;border:0;padding:20px;background:${CD.colors.white};color:${CD.colors.black};font-family:system-ui,-apple-system,Segoe UI,sans-serif;overflow:auto}
   #appIntro[open]{display:grid;place-items:center}#appIntro::backdrop{background:${CD.colors.white}}
   #appIntro section{width:100%;max-width:960px;text-align:center}#appIntro h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px);font-weight:700}
   #appIntro video{display:block;width:auto;height:auto;max-width:100%;margin:0 auto;background:${CD.colors.white}}
-  #appIntro button{margin-top:16px;min-height:46px;padding:0 24px;border:0;border-radius:10px;background:${CD.colors.darkBlue};color:${CD.colors.white};font:700 16px system-ui;cursor:pointer}
+  #appIntro button{margin-top:16px;min-height:46px;padding:0 24px;border:0;border-radius:10px;background:${CD.colors.blue};color:${CD.colors.black};font:700 16px system-ui;cursor:pointer}
 </style>
 <dialog id="appIntro" aria-labelledby="appIntroTitle"><section>
-  <h1 id="appIntroTitle">Willkommen beim FC M:sys</h1>
+  <h1 id="appIntroTitle">Willkommen beim FC M<span style="color:${CD.colors.blue}">:</span>sys</h1>
   <video src="/img/landing.mp4" autoplay muted playsinline preload="auto"></video>
   <button type="button">Weiter zur App</button>
 </section></dialog>
@@ -1217,11 +1217,11 @@ function landingPage(destination, isAuthenticated) {
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="${CD.colors.white}"><title>FC M:sys</title>
 <style>
-  *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:${CD.colors.white};color:${CD.colors.blueBlack};font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+  *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:${CD.colors.white};color:${CD.colors.black};font-family:system-ui,-apple-system,Segoe UI,sans-serif}
   main{width:100%;max-width:960px;min-width:0;text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}main video{display:block;width:auto;height:auto;max-width:100%;max-height:none;margin:0 auto;border:0;border-radius:0;background:${CD.colors.white}}
-  .continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:16px;padding:0 24px;border-radius:10px;background:${CD.colors.darkBlue};color:${CD.colors.white};font-weight:700;text-decoration:none}.continue:hover{background:${CD.colors.blueBlack}}.continue:focus-visible{outline:3px solid ${CD.colors.blue40};outline-offset:3px}
+  .continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:16px;padding:0 24px;border-radius:10px;background:${CD.colors.blue};color:${CD.colors.black};font-weight:700;text-decoration:none}.continue:hover{background:${CD.colors.blue80}}.continue:focus-visible{outline:3px solid ${CD.colors.blue40};outline-offset:3px}
 </style></head><body>
-<main><h1>Willkommen beim FC M:sys</h1>
+<main><h1>Willkommen beim FC M<span style="color:${CD.colors.blue}">:</span>sys</h1>
   <video id="landingVideo" src="/img/landing.mp4" autoplay muted playsinline preload="auto"></video>
   <a class="continue" id="continueLink" href="${escHtml(destination)}">${label}</a>
 </main>

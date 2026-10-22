@@ -6,15 +6,20 @@ Die gemeinsame Palette steht in `src/design.js`. Die App verwendet daraus CSS-Va
 
 | Rolle | Farbe | Hex |
 | --- | --- | --- |
-| Marke, Akzente | Signalblau | `#00a0e4` |
-| Buttons, Links mit weißem Hintergrund | Dunkelblau | `#204a97` |
-| Text, dunkle Flächen | Blauschwarz | `#283278` |
-| Hinweise, Gold-Karten | Signalgelb | `#ffd200` |
-| Fehler, Absagen | Signalrot | `#dd2e42` |
-| Erfolg, Zusagen | Dunkelgrün | `#0a642d` |
-| Flächen und Abgrenzungen | Weiß, Grau, Grau-Blau und dokumentierte Abstufungen | siehe Palette |
+| Überwiegende Flächen, auch Spielerkarten | Weiß | `#ffffff` |
+| Allgemeine Schrift | Schwarz | `#000000` |
+| Hauptakzent, aktive Elemente, Buttons, Doppelpunkt in M:sys | Signalblau | `#00a0e4` |
+| Kleine Auszeichnungsdetails | Signalgelb | `#ffd200` |
+| Dezente Abgrenzungen | Grau und dokumentierte Abstufungen | siehe Palette |
+| Untergeordnete Diagramm- und Effektakzente | Dunkelblau | `#204a97` |
+| Absagen, abgelehnte/fehlgeschlagene Aktionen | Signalrot | `#dd2e42` |
+| Zusagen, Bestätigungen | Dunkelgrün | `#0a642d` |
 
-Diagramme und Karten verwenden zusätzlich die eindeutigen Braun-, Violett-, Grün-, Petrol- und Orange-Werte des PDFs. Bestehende Tailwind-Klassennamen werden auf diese Palette abgebildet; es werden keine Standardfarben von Tailwind ergänzt. Neue Farben gehören ausschließlich in die gemeinsame Palette und müssen im PDF belegt sein.
+Maßgeblich ist die Abbildung **Gewichtung der Farben**: Weiß dominiert, Signalblau ist der wichtigste Farbakzent; Gelb, Grau und Dunkelblau bleiben deutlich untergeordnet. Dies ist eine visuelle Hierarchie, keine feste Pixelquote für jede Ansicht. Braun, Violett, Petrol und Orange werden nicht als dekorative Farben verwendet. Grün und Rot bleiben semantischen Bestätigungen beziehungsweise Absagen/Fehlern vorbehalten und erscheinen nicht als Team- oder Diagrammfarben.
+
+Spielerkarten bleiben überwiegend weiß; Stufen und Auszeichnungen unterscheiden sich durch schmale Ränder, kleine Akzente und Beschriftungen. Allgemeine Schrift ist schwarz, auf dunklen Overlays und Bestätigungs-/Absageflächen weiß. Signalblaue und gelbe Buttons erhalten schwarze Schrift. Der Schriftzug lautet `M<span class="brand-colon">:</span>sys`: ausschließlich der Doppelpunkt ist signalblau.
+
+Bestehende Tailwind-Klassennamen werden auf diese Palette abgebildet; für Textfarben gibt es eine eigene schwarze Standardskala. Es werden keine Standardfarben von Tailwind ergänzt. Neue Farben gehören ausschließlich in die gemeinsame Palette und müssen im PDF belegt sein.
 
 Das PDF enthält widersprüchliche Angaben, etwa bei Kaki, Pastellpetrol und einzelnen RGB-Zeilen. Diese Einträge werden nicht verwendet. Bei Signalblau 20 % stimmen Farbfeld und RGB `212/237/252` überein; verwendet wird daher `#d4edfc` statt des abweichenden gedruckten Hex-Werts `#0cedfc`.
 

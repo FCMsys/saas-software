@@ -13,22 +13,24 @@
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { theme: { colors: FC_MSYS_DESIGN.tailwindColors } };
+        tailwind.config = { theme: { colors: FC_MSYS_DESIGN.tailwindColors, textColor: FC_MSYS_DESIGN.textColors } };
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: linear-gradient(180deg, var(--cd-blueGray20) 0, var(--cd-white) 340px) fixed; color: var(--cd-blueBlack); -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; background: var(--cd-white); color: var(--cd-black); -webkit-font-smoothing: antialiased; }
+        .brand-colon { color: var(--cd-blue); }
+        :is(.bg-blue-500,.bg-blue-600,.bg-blue-700,.bg-indigo-600,.bg-indigo-700,.bg-amber-500).text-white { color: var(--cd-black); }
         ::selection { background: var(--cd-blue40); }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--cd-blueGray40); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--cd-gray20); border-radius: 4px; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
-        .tab-btn { color: var(--cd-gray); border-bottom: 2px solid transparent; }
-        .tab-btn:hover { color: var(--cd-blueBlack); }
-        .tab-btn.active { color: var(--cd-darkBlue); border-bottom-color: var(--cd-blue); }
-        .card { background: var(--cd-white); border: 1px solid var(--cd-blueGray20); border-radius: 1rem; box-shadow: 0 1px 2px rgba(var(--cd-darkBlue-rgb),.04), 0 8px 24px -12px rgba(var(--cd-darkBlue-rgb),.10); }
+        .tab-btn { color: var(--cd-black); border-bottom: 2px solid transparent; }
+        .tab-btn:hover { color: var(--cd-black); }
+        .tab-btn.active { color: var(--cd-black); border-bottom-color: var(--cd-blue); }
+        .card { background: var(--cd-white); border: 1px solid var(--cd-gray20); border-radius: 1rem; box-shadow: 0 1px 2px rgba(var(--cd-darkBlue-rgb),.04), 0 8px 24px -12px rgba(var(--cd-darkBlue-rgb),.10); }
         .fade-in { animation: fade .18s ease-out; }
         @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
         #adFlyer { position: fixed; left: 0; z-index: 55; width: min(90vw, 1100px); aspect-ratio: 2170 / 725; pointer-events: none; }
@@ -39,7 +41,7 @@
         .ad-flyer-content span { position: absolute; width: max-content; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; transform: translate(-50%, -50%); line-height: 1.15; }
         #adFlyer.ad-flyer-left .ad-flyer-graphic { transform: none; }
         #adFlyer.ad-flyer-left .ad-flyer-content { left: 55.5%; }
-        #adEditor { position: relative; aspect-ratio: 2170 / 725; background: var(--cd-blueGray20); }
+        #adEditor { position: relative; aspect-ratio: 2170 / 725; background: var(--cd-gray20); }
         #adEditor > img { width: 100%; }
         #adEditor .ad-flyer-content { left: 55.5%; outline: 1px dashed var(--cd-gray); }
         #adEditorText, #adEditorImage { touch-action: none; cursor: move; }
@@ -95,30 +97,23 @@
         }
         @keyframes shine { 0%, 52% { background-position: 160% 0; } 100% { background-position: -60% 0; } }
         .fut-glare { background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(var(--cd-white-rgb),.55), transparent 48%); opacity: var(--glare, 0); transition: opacity .25s; mix-blend-mode: soft-light; }
-        .fut-holo { display: none; mix-blend-mode: color-dodge; opacity: .28; background: linear-gradient(115deg, var(--cd-lightViolet), var(--cd-lightPetrol), var(--cd-lightGreen), var(--cd-yellow), var(--cd-lightViolet)); background-size: 300% 300%; animation: holo 7s linear infinite; }
+        .fut-holo { display: none; }
         @keyframes holo { to { background-position: 300% 300%; } }
-        .tier-ikone .fut-holo { display: block; }
 
-        /* Stufen */
-        .tier-bronze { --c1: var(--cd-paleBrown); --c2: var(--cd-lightBrown); --c3: var(--cd-brown); --edge1: var(--cd-paleYellow); --edge2: var(--cd-brown); --ink: var(--cd-brownBlack); --glow: var(--cd-brown-rgb); }
-        .tier-silber { --c1: var(--cd-white); --c2: var(--cd-blueGray40); --c3: var(--cd-blueGray); --edge1: var(--cd-white); --edge2: var(--cd-blueGray80); --ink: var(--cd-blueBlack); --glow: var(--cd-blueGray40-rgb); }
-        .tier-gold   { --c1: var(--cd-paleYellow); --c2: var(--cd-yellow); --c3: var(--cd-brown); --edge1: var(--cd-paleYellow); --edge2: var(--cd-brown); --ink: var(--cd-brownBlack); --glow: var(--cd-yellow-rgb); }
-        .tier-ikone  { --c1: var(--cd-violet); --c2: var(--cd-blueBlack); --c3: var(--cd-blueBlack); --edge1: var(--cd-lightPetrol); --edge2: var(--cd-violet); --ink: var(--cd-white); --glow: var(--cd-violet-rgb); }
-
-        .award-motm { --c1: var(--cd-darkBlue); --c2: var(--cd-blueBlack); --c3: var(--cd-blueBlack); --edge1: var(--cd-lightYellow); --edge2: var(--cd-yellow); --ink: var(--cd-yellow); --glow: var(--cd-yellow-rgb); }
-        .award-surprise { --c1: var(--cd-blue20); --c2: var(--cd-lightViolet); --c3: var(--cd-darkBlue); --edge1: var(--cd-paleYellow); --edge2: var(--cd-lightBrown); --ink: var(--cd-white); --glow: var(--cd-blue80-rgb); }
-        .fut-card[class*="award-"] .fut-shape, .fut-card[class*="award-"] .fut-inner { clip-path: polygon(50% 0, 57% 5%, 64% 6%, 70% 2%, 84% 5%, 100% 12%, 100% 86%, 97% 93%, 90% 96%, 65% 98%, 50% 100%, 35% 98%, 10% 96%, 3% 93%, 0 86%, 0 12%, 16% 5%, 30% 2%, 36% 6%, 43% 5%); }
-        .award-motm .fut-shape::after { content: ''; position: absolute; inset: .13em; clip-path: inherit; background: var(--cd-blueBlack); }
-        .award-motm .fut-inner { inset: .25em; border: .08em solid var(--cd-lightYellow); }
-        .award-motm .fut-pattern { opacity: 1; background: linear-gradient(180deg, transparent 42%, var(--cd-blueBlack) 65%, var(--cd-blueBlack) 100%), repeating-conic-gradient(from -24deg at 35% 53%, var(--cd-lightYellow) 0deg 12deg, var(--cd-yellow) 12deg 15deg, var(--cd-paleYellow) 15deg 18deg, var(--cd-blueBlack) 18deg 33deg, var(--cd-darkBlue) 33deg 37deg, var(--cd-blueBlack) 37deg 46deg); clip-path: polygon(42% 0, 100% 0, 100% 100%, 0 100%, 0 65%, 30% 72%, 30% 26%); }
-        .award-motm .fut-inner::before { content: ''; position: absolute; inset: 0; opacity: .17; background: radial-gradient(ellipse at 20% 25%, transparent 30%, var(--cd-blue80) 32% 35%, transparent 37%), repeating-linear-gradient(65deg, transparent 0 1.8em, var(--cd-darkBlue) 1.85em 1.95em, transparent 2em 3.5em); background-size: 3em 4em, auto; }
-        .award-motm .fut-name { text-shadow: 0 .06em .15em var(--cd-blueBlack); }
-        .award-motm .fut-line, .award-motm .fut-stats::before { opacity: .8; }
-        .award-motm .fut-stats i { opacity: 1; }
-        .award-motm .fut-holo { display: none; }
-        .award-surprise .fut-pattern { opacity: .8; background: conic-gradient(from 40deg at 65% 38%, var(--cd-lightViolet), var(--cd-blue20) 15%, var(--cd-blueGray80) 28%, var(--cd-paleViolet) 40%, var(--cd-lightPetrol) 53%, var(--cd-darkBlue) 65%, var(--cd-violet) 80%, var(--cd-lightViolet)); clip-path: polygon(0 0, 100% 0, 100% 76%, 70% 64%, 90% 48%, 48% 58%, 65% 28%, 30% 43%, 0 65%); }
-        .award-surprise .fut-holo { display: block; opacity: .15; }
-        .award-surprise .fut-rating { color: var(--cd-blueBlack); }
+        /* Mostly white cards; tier and award accents stay small. */
+        .tier-bronze, .tier-silber, .tier-gold, .tier-ikone, .award-motm, .award-surprise {
+            --c1: var(--cd-white); --c2: var(--cd-white); --c3: var(--cd-white);
+            --edge1: var(--cd-gray20); --edge2: var(--cd-blue); --ink: var(--cd-black); --glow: var(--cd-blue-rgb);
+        }
+        .tier-silber { --edge1: var(--cd-gray40); }
+        .tier-gold { --edge1: var(--cd-yellow); }
+        .tier-ikone { --edge1: var(--cd-blue); }
+        .award-motm { --edge1: var(--cd-yellow); --edge2: var(--cd-blue); }
+        .award-surprise { --edge1: var(--cd-blue); --edge2: var(--cd-gray); }
+        .fut-holo { display: none; }
+        .fut-inner { background: linear-gradient(180deg, var(--cd-white) 0 78%, var(--cd-blue20) 100%); }
+        .fut-pattern { opacity: .15; background: repeating-linear-gradient(62deg, var(--cd-blue) 0 .04em, transparent .04em 2em); }
+        .fut-rating .num { text-shadow: none; }
         .fut-award { position: absolute; bottom: 1.8em; left: 2.5em; right: 2.5em; text-align: center; font-size: .7em; line-height: 1.15; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; text-wrap: balance; }
         @media (prefers-reduced-motion: reduce) { .fut-shine, .fut-holo { animation: none; } }
 
@@ -128,8 +123,8 @@
 
         /* ===================== KARTEN-ENTHÜLLUNG ===================== */
         #cardModal { --glow: var(--cd-yellow-rgb); }
-        #cardModal.tier-bronze { --glow: var(--cd-brown-rgb); } #cardModal.tier-silber { --glow: var(--cd-blueGray40-rgb); }
-        #cardModal.tier-gold { --glow: var(--cd-yellow-rgb); } #cardModal.tier-ikone { --glow: var(--cd-violet-rgb); }
+        #cardModal.tier-bronze { --glow: var(--cd-gray-rgb); } #cardModal.tier-silber { --glow: var(--cd-gray20-rgb); }
+        #cardModal.tier-gold { --glow: var(--cd-yellow-rgb); } #cardModal.tier-ikone { --glow: var(--cd-blue-rgb); }
         .reveal-bg { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, rgba(var(--glow), .18), transparent 55%), rgba(var(--cd-blueBlack-rgb),.93); backdrop-filter: blur(6px); animation: fade-bg .6s ease-out both; }
         @keyframes fade-bg { from { opacity: 0; } to { opacity: 1; } }
         .reveal-rays { position: absolute; left: 50%; top: 45%; width: 190vmax; height: 190vmax; margin: -95vmax 0 0 -95vmax; pointer-events: none; opacity: 0;
@@ -184,7 +179,7 @@
         <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
             <div class="flex items-center gap-3 shrink-0">
                 <img src="/img/msys.svg" alt="FC-M:Sys" class="h-10 w-auto drop-shadow-sm">
-                <h1 class="text-base font-extrabold tracking-tight text-slate-900 hidden sm:block">FC M<span class="text-blue-600">:sys</span></h1>
+                <h1 class="text-base font-extrabold tracking-tight text-slate-900 hidden sm:block">FC M<span class="brand-colon">:</span>sys</h1>
             </div>
 
             <nav class="flex items-stretch h-16 gap-1 sm:gap-3 text-sm font-semibold">
@@ -359,10 +354,10 @@
                                     </div>
                                     <ul id="teamAList" class="space-y-1.5"></ul>
                                 </div>
-                                <div class="rounded-xl border border-rose-200 bg-rose-50/50 p-3.5">
+                                <div class="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5">
                                     <div class="flex items-center justify-between mb-2.5">
-                                        <h3 class="font-bold text-rose-700 text-sm flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>Team B</h3>
-                                        <span class="text-xs text-slate-500">Ø <b id="teamBAvg" class="text-rose-700">0</b> · <span id="teamBCount">0</span> Sp.</span>
+                                        <h3 class="font-bold text-slate-700 text-sm flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>Team B</h3>
+                                        <span class="text-xs text-slate-500">Ø <b id="teamBAvg" class="text-slate-700">0</b> · <span id="teamBCount">0</span> Sp.</span>
                                     </div>
                                     <ul id="teamBList" class="space-y-1.5"></ul>
                                 </div>
@@ -382,9 +377,9 @@
                             </div>
                             <div class="text-4xl font-bold text-slate-300 pt-6">:</div>
                             <div class="text-center flex-1">
-                                <div class="text-xs font-bold uppercase tracking-wider text-rose-700 mb-2">Team B</div>
+                                <div class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Team B</div>
                                 <input type="number" id="goalsBInput" min="0" max="99" placeholder="0"
-                                       class="w-full max-w-[9rem] h-24 text-6xl font-extrabold text-center text-rose-700 bg-rose-50 border-2 border-rose-200 focus:border-rose-500 rounded-2xl outline-none transition">
+                                       class="w-full max-w-[9rem] h-24 text-6xl font-extrabold text-center text-slate-700 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-2xl outline-none transition">
                             </div>
                         </div>
                         <p id="eloPreview" class="text-center text-sm text-slate-500 mt-4 min-h-[1.25rem]">Tore eintragen, um die Elo-Änderung zu sehen.</p>
@@ -442,7 +437,7 @@
             <div class="card p-5">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="font-bold text-sm">Spiele</h3>
-                    <button id="clearHistoryBtn" class="text-xs text-slate-500 hover:text-rose-600 transition">Historie leeren</button>
+                    <button id="clearHistoryBtn" class="text-xs text-slate-500 hover:text-slate-600 transition">Historie leeren</button>
                 </div>
                 <div id="matchHistoryList" class="space-y-2.5"></div>
             </div>
@@ -465,8 +460,8 @@
                     <p class="text-xs text-slate-500 mt-1">Der Kassenstand zeigt tatsächliche Einnahmen minus Ausgaben; Spielerguthaben wird getrennt geführt. Vorleistungen erhöhen das Guthaben der zahlenden Person, Beiträge werden zuerst daraus verrechnet.</p>
                 </div>
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-3"><div class="text-xs text-emerald-700">Einnahmen</div><div id="cashIncome" class="text-lg font-bold text-emerald-800">0,00 €</div></div>
-                    <div class="rounded-xl bg-rose-50 border border-rose-100 p-3"><div class="text-xs text-rose-700">Ausgaben</div><div id="cashExpenses" class="text-lg font-bold text-rose-800">0,00 €</div></div>
+                    <div class="rounded-xl bg-slate-50 border border-slate-100 p-3"><div class="text-xs text-slate-700">Einnahmen</div><div id="cashIncome" class="text-lg font-bold text-slate-800">0,00 €</div></div>
+                    <div class="rounded-xl bg-slate-50 border border-slate-100 p-3"><div class="text-xs text-slate-700">Ausgaben</div><div id="cashExpenses" class="text-lg font-bold text-slate-800">0,00 €</div></div>
                     <div class="rounded-xl bg-blue-50 border border-blue-100 p-3"><div class="text-xs text-blue-700">Kontostand</div><div id="cashBalance" class="text-lg font-bold text-blue-800">0,00 €</div></div>
                     <div class="rounded-xl bg-amber-50 border border-amber-100 p-3"><div class="text-xs text-amber-700">Beiträge noch offen</div><div id="cashOutstanding" class="text-lg font-bold text-amber-800">0,00 €</div></div>
                 </div>
@@ -566,7 +561,7 @@
                     <input id="adImage" type="file" accept="image/png,image/jpeg" class="block mt-1 w-full text-sm text-slate-600">
                     <div id="adImagePreviewWrap" class="hidden mt-3 flex items-center gap-3">
                         <img id="adImagePreview" alt="Vorschau Werbebild" class="max-h-20 max-w-48 object-contain rounded border border-slate-200 p-1">
-                        <label class="text-xs text-rose-700"><input id="adRemoveImage" type="checkbox" class="accent-rose-600 mr-1">Vorhandenes Bild entfernen</label>
+                        <label class="text-xs text-slate-700"><input id="adRemoveImage" type="checkbox" class="accent-slate-600 mr-1">Vorhandenes Bild entfernen</label>
                     </div>
                 </div>
                 <p class="text-xs text-slate-500">Text direkt auf der Flagge bearbeiten. Text und Bild zum Positionieren direkt auf der Flagge ziehen.</p>
@@ -662,7 +657,7 @@
                     <div class="space-y-1.5">
                         <div class="flex gap-2">
                             <button type="button" id="editPhotoBtn" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-semibold text-slate-700 transition"><i class="fa-solid fa-image mr-1.5"></i>Bild hochladen</button>
-                            <button type="button" id="editPhotoRemoveBtn" class="px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition">Entfernen</button>
+                            <button type="button" id="editPhotoRemoveBtn" class="px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:text-slate-600 hover:bg-slate-50 transition">Entfernen</button>
                         </div>
                         <p class="text-[11px] text-slate-400">Am besten ein freigestelltes PNG (Kopf/Oberkörper).</p>
                         <input type="file" id="editPhotoInput" accept="image/*" class="hidden">
@@ -689,7 +684,7 @@
                 </div>
                 <p class="text-[11px] text-slate-400 -mt-2">Elo und Gesamtwert werden unabhängig von den Attributen geführt. Die hier gesetzten Attributwerte dienen als Startwerte; nach Spieltagsumfragen werden die Werte aus den Antworten berechnet.</p>
                 <div class="flex gap-2 pt-2">
-                    <button type="button" id="deletePlayerBtn" title="Spieler löschen" class="px-3.5 text-rose-600 hover:bg-rose-50 border border-rose-200 text-sm font-semibold rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
+                    <button type="button" id="deletePlayerBtn" title="Spieler löschen" class="px-3.5 text-slate-600 hover:bg-slate-50 border border-slate-200 text-sm font-semibold rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
                     <button type="button" id="cancelEditBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-2.5 rounded-lg transition">Abbrechen</button>
                     <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-lg transition">Speichern</button>
                 </div>
@@ -796,7 +791,7 @@
         let adDirection = Math.random() < 0.5 ? 1 : -1;
         let adPreviewObjectUrl = '';
 
-        const CHART_COLORS = ['var(--cd-blue)', 'var(--cd-darkGreen)', 'var(--cd-red)', 'var(--cd-brown)', 'var(--cd-violet)', 'var(--cd-petrol)', 'var(--cd-lightViolet)', 'var(--cd-lightGreen)', 'var(--cd-orange)', 'var(--cd-darkBlue)', 'var(--cd-brownBlack)', 'var(--cd-blueGray)'];
+        const CHART_COLORS = ['var(--cd-blue)', 'var(--cd-darkBlue)', 'var(--cd-gray)', 'var(--cd-blue80)', 'var(--cd-grayDark)', 'var(--cd-blueBlack)'];
         const K_FACTOR = 32;
         const CURRENT_GAME_STORAGE_KEY = 'matchmaster_current_game_v1';
 
@@ -1215,7 +1210,7 @@
                 $('eloPreview').innerHTML = `Unentschieden · keine Elo-Änderung <span class="text-slate-400">(Erwartung A: ${Math.round(expectedA * 100)} %)</span>`;
                 return;
             }
-            const fmt = (v, c) => `<b class="${v > 0 ? 'text-emerald-600' : 'text-rose-600'}">${formatDelta(v)}</b>`;
+            const fmt = (v, c) => `<b class="${v > 0 ? 'text-slate-600' : 'text-slate-600'}">${formatDelta(v)}</b>`;
             $('eloPreview').innerHTML = `Team A ${fmt(changeA)} · Team B ${fmt(0 - changeA)} Elo <span class="text-slate-400">(Siegchance A: ${Math.round(expectedA * 100)} %)</span>`;
         }
 
@@ -1296,7 +1291,7 @@
         const formatElo = value => String(Math.round(value));
         function formatDelta(d) { d = Math.round(d); return (d > 0 ? '+' : (d < 0 ? '−' : '')) + Math.abs(d); }
         function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
-        function deltaClass(d) { return d > 0 ? 'text-emerald-600' : (d < 0 ? 'text-rose-600' : 'text-slate-400'); }
+        function deltaClass(d) { return d > 0 ? 'text-slate-600' : (d < 0 ? 'text-slate-600' : 'text-slate-400'); }
 
         function renderAll() {
             renderPlayersTab();
@@ -1345,7 +1340,7 @@
                     <td class="px-4 py-3 hidden md:table-cell">${sparklineSvg(p.history, playerColor(p.id))}</td>
                     <td class="admin-only px-4 py-3 text-right whitespace-nowrap">
                         <button class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition" title="Bearbeiten" data-edit="${p.id}"><i class="fa-solid fa-pen text-xs"></i></button>
-                        <button class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition" title="Löschen" data-del="${p.id}"><i class="fa-solid fa-trash text-xs"></i></button>
+                        <button class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition" title="Löschen" data-del="${p.id}"><i class="fa-solid fa-trash text-xs"></i></button>
                     </td>
                 </tr>`;
             }).join('') || '<tr><td colspan="8" class="px-4 py-8 text-center text-slate-400">Noch keine Spieler</td></tr>';
@@ -1518,11 +1513,11 @@
                         <span class="text-lg font-extrabold font-mono tracking-tight"><span class="${aWin ? 'text-blue-700' : 'text-slate-500'}">${m.goalsA}</span><span class="text-slate-300 mx-1">:</span><span class="${bWin ? 'text-rose-700' : 'text-slate-500'}">${m.goalsB}</span></span>
                         <span class="text-[11px] font-semibold ${m.result === 'DRAW' ? 'text-slate-500' : (aWin ? 'text-blue-700' : 'text-rose-700')}">${m.result === 'DRAW' ? 'Unentschieden' : 'Sieg Team ' + m.result}</span>
                         <span class="text-[11px] text-slate-400 sm:ml-auto">${date}</span>
-                        <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold ${m.matchDayId ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}">${escapeHtml(matchDayLabel)}</span>
+                        <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold ${m.matchDayId ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-amber-200 bg-amber-50 text-amber-700'}">${escapeHtml(matchDayLabel)}</span>
                     </div>
                     <div class="space-y-1.5 text-[11px]">
                         <div class="flex flex-wrap items-center gap-1.5"><span class="font-bold text-blue-700 w-3">A</span>${chips(m.teamA)}</div>
-                        <div class="flex flex-wrap items-center gap-1.5"><span class="font-bold text-rose-700 w-3">B</span>${chips(m.teamB)}</div>
+                        <div class="flex flex-wrap items-center gap-1.5"><span class="font-bold text-slate-700 w-3">B</span>${chips(m.teamB)}</div>
                     </div>
                 </div>`;
             }).join('');
@@ -1559,7 +1554,7 @@
                 const hidden = hiddenInChart.has(p.id);
                 const chip = document.createElement('button');
                 chip.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs transition ${hidden ? 'border-slate-200 text-slate-400 bg-white' : 'border-slate-300 text-slate-800 bg-slate-50'}`;
-                chip.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${hidden ? 'var(--cd-blueGray40)' : playerColor(p.id)}"></span>${escapeHtml(p.name)}<span class="font-mono ${hidden ? '' : 'text-slate-500'}">${formatElo(p.elo)}</span>`;
+                chip.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${hidden ? 'var(--cd-gray20)' : playerColor(p.id)}"></span>${escapeHtml(p.name)}<span class="font-mono ${hidden ? '' : 'text-slate-500'}">${formatElo(p.elo)}</span>`;
                 chip.onclick = () => { hidden ? hiddenInChart.delete(p.id) : hiddenInChart.add(p.id); renderChart(); };
                 legend.appendChild(chip);
             });
@@ -1572,7 +1567,7 @@
             const visible = players.filter(p => !hiddenInChart.has(p.id));
             const chart = chartPlayerHistories();
             const maxSeq = chart.maxIndex;
-            const msg = t => { svgEl.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="var(--cd-gray)" font-size="13">${t}</text>`; };
+            const msg = t => { svgEl.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="var(--cd-black)" font-size="13">${t}</text>`; };
             if (matchHistory.length === 0 && surveyEloHistory.length === 0) return msg('Der Verlauf erscheint nach dem ersten gespeicherten Spiel.');
             if (!visible.length) return msg('Keine Spieler ausgewählt.');
 
@@ -1586,12 +1581,12 @@
             let svg = '';
             for (let i = 0; i <= 5; i++) {
                 const v = yMin + ((yMax - yMin) * i) / 5;
-                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--cd-blueGray20)"/>`;
-                svg += `<text x="${m.l - 8}" y="${y(v) + 3}" text-anchor="end" fill="var(--cd-gray)" font-size="10">${Math.round(v)}</text>`;
+                svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--cd-gray20)"/>`;
+                svg += `<text x="${m.l - 8}" y="${y(v) + 3}" text-anchor="end" fill="var(--cd-black)" font-size="10">${Math.round(v)}</text>`;
             }
             if (1500 > yMin && 1500 < yMax) {
                 svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(1500)}" y2="${y(1500)}" stroke="var(--cd-gray)" stroke-dasharray="4 4"/>`;
-                svg += `<text x="${W - m.r}" y="${y(1500) - 4}" text-anchor="end" fill="var(--cd-gray)" font-size="9">1500</text>`;
+                svg += `<text x="${W - m.r}" y="${y(1500) - 4}" text-anchor="end" fill="var(--cd-black)" font-size="9">1500</text>`;
             }
 
             const dots = [];
@@ -1604,7 +1599,7 @@
                     svg += `<circle cx="${x(h.chartIndex).toFixed(1)}" cy="${y(h.elo).toFixed(1)}" r="3.4" fill="var(--cd-white)" stroke="${color}" stroke-width="2"/>`;
                 });
                 const last = pts[pts.length - 1];
-                svg += `<text x="${x(last.chartIndex) + 8}" y="${y(last.elo) + 3}" fill="${color}" font-size="10.5" font-weight="700">${escapeHtml(p.name)}</text>`;
+                svg += `<text x="${x(last.chartIndex) + 8}" y="${y(last.elo) + 3}" fill="var(--cd-black)" font-size="10.5" font-weight="700">${escapeHtml(p.name)}</text>`;
             });
             svg += `<line id="chartCursor" y1="${m.t}" y2="${H - m.b}" stroke="var(--cd-gray)" stroke-dasharray="3 3" style="display:none"/>`;
             svgEl.innerHTML = svg;
@@ -1619,7 +1614,7 @@
                 cursor.setAttribute('x1', best.cx); cursor.setAttribute('x2', best.cx); cursor.style.display = '';
                 const { p, h } = best;
                 const when = h.surveyDayNumber ? `Umfrage ${h.surveyDayNumber}. Spieltag` : h.seq === 0 ? 'Startwert' : `Spiel #${h.seq} · ${new Date(h.t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`;
-                tip.innerHTML = `<div class="font-bold" style="color:${best.color}">${escapeHtml(p.name)}</div>
+                tip.innerHTML = `<div class="font-bold" style="color:var(--cd-black)">${escapeHtml(p.name)}</div>
                     <div class="text-slate-500">${when}${!h.surveyDayNumber && !h.matchId && h.seq > 0 ? ' · manuell' : ''}</div>
                     <div><span class="font-mono font-bold text-slate-900 text-sm">${formatElo(h.elo)}</span> ${(h.surveyDayNumber || h.seq > 0) ? `<span class="font-mono font-bold ${deltaClass(h.delta)}">(${h.delta ? formatDelta(h.delta) : '±0'})</span>` : ''}</div>`;
                 tip.classList.remove('hidden');
@@ -1810,13 +1805,13 @@
                 <div class="reveal-face">${cardHtml(p, { fs: Math.min(17, Math.max(10.5, (window.innerHeight - 190) / 28.5)), reveal: animate })}</div>
                 <div class="reveal-face reveal-back"><div class="fut-card tier-${tier}" style="--fs:${Math.min(17, Math.max(10.5, (window.innerHeight - 190) / 28.5))}px">
                     <div class="fut-shape"></div><div class="fut-inner"><div class="fut-pattern"></div>
-                    <div class="back-art"><i class="fa-solid fa-futbol"></i><span>FC-M:SYS</span></div><div class="fut-holo"></div><div class="fut-shine"></div></div></div></div>`;
+                    <div class="back-art"><i class="fa-solid fa-futbol"></i><span>FC M<span class="brand-colon">:</span>sys</span></div><div class="fut-holo"></div><div class="fut-shine"></div></div></div></div>`;
             // Die große Karte soll ruhig und gleichmäßig schimmern
             flipper.querySelectorAll('.fut-shine').forEach(s => s.style.setProperty('animation-duration', '4s'));
             flipper.querySelector('.fut-inner').insertAdjacentHTML('beforeend', '<div class="reveal-shine-once"></div>');
 
             $('cardInfo').innerHTML = `<div class="font-bold text-base">${escapeHtml(p.name)}</div>
-                <div class="text-white/60">Rating <b class="text-white">${rating}</b> · <span class="font-semibold" style="color:${{ bronze: 'var(--cd-paleBrown)', silber: 'var(--cd-blueGray40)', gold: 'var(--cd-yellow)', ikone: 'var(--cd-paleViolet)' }[tier]}">${TIER_NAMES[tier]}</span></div>`;
+                <div class="text-white/60">Rating <b class="text-white">${rating}</b> · <span class="font-semibold" style="color:${{ bronze: 'var(--cd-gray20)', silber: 'var(--cd-gray20)', gold: 'var(--cd-yellow)', ikone: 'var(--cd-blue20)' }[tier]}">${TIER_NAMES[tier]}</span></div>`;
 
             $('revealBob').className = 'reveal-bob';
             $('revealTilt').style.transform = '';
@@ -2481,7 +2476,7 @@
                     ${canStartDay ? `<button data-act="invite" data-st="${sid}" ${me.mailEnabled ? '' : 'disabled'} title="${me.mailEnabled ? 'Mail nur an Spieler ohne Zu- oder Absage mit bekannter Mail-Adresse' : 'Mail-Versand ist nicht eingerichtet'}" class="${btnCls} disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-envelope mr-1.5 text-blue-500"></i>${s.einladungAt ? 'Offene Antworten erinnern' : 'Einladung per Mail'}</button>
                     <button data-act="match" data-st="${sid}" class="${btnCls}" title="Mit den Zusagen dieses Spieltags Teams bilden"><i class="fa-solid fa-futbol mr-1.5 text-blue-500"></i>Spiel starten</button>` : ''}
                     <button data-act="bill" data-st="${sid}" class="${btnCls}" title="Zahlung für diesen Spieltag anfordern"><i class="fa-solid fa-euro-sign mr-1.5 text-blue-500"></i>${isBilled(s) ? 'Abgerechnet · ' + eur(s.betragCent) : 'Abrechnen'}</button>
-                    ${existingSurvey ? '' : `<button data-act="delete" data-st="${sid}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>`}
+                    ${existingSurvey ? '' : `<button data-act="delete" data-st="${sid}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>`}
                 </div>` : '';
 
                 return `<div class="card p-5 ${past ? 'opacity-80' : ''}">
@@ -2778,7 +2773,7 @@
             } else {
                 const credit = Number(me.guthabenCent) || 0;
                 const accountText = credit > 0 ? `Guthaben: ${eur(credit)}` : credit < 0 ? `Offen: ${eur(-credit)}` : 'Guthaben: 0,00 €';
-                const accountClass = credit < 0 ? 'text-rose-600' : credit > 0 ? 'text-emerald-600' : 'text-slate-500';
+                const accountClass = credit < 0 ? 'text-slate-600' : credit > 0 ? 'text-slate-600' : 'text-slate-500';
                 my.innerHTML = `<div class="flex items-center justify-between mb-3"><h3 class="font-bold text-sm">Meine Beiträge · ${escapeHtml(playerName(me.spielerId))}</h3>
                     <span class="text-sm font-bold ${accountClass}">${accountText}</span></div>
                     ${open.length && me.paypal && !/^https:/.test(me.paypal) ? `<p class="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-2"><i class="fa-brands fa-paypal text-blue-600 mr-1.5"></i>Bezahlen per PayPal an <b class="select-all">${escapeHtml(me.paypal)}</b> (Freunde &amp; Familie, damit keine Gebühren anfallen). Der Admin hakt es danach ab.</p>` : ''}
@@ -2834,12 +2829,12 @@
             $('cashIncome').textContent = eur(summary.incomeCent);
             $('cashExpenses').textContent = eur(summary.expensesCent);
             $('cashBalance').textContent = eur(summary.balanceCent);
-            $('cashBalance').className = `text-lg font-bold ${summary.balanceCent < 0 ? 'text-rose-800' : 'text-blue-800'}`;
+            $('cashBalance').className = `text-lg font-bold ${summary.balanceCent < 0 ? 'text-slate-800' : 'text-blue-800'}`;
             $('cashOutstanding').textContent = eur(summary.outstandingCent);
             $('playerBalances').innerHTML = [...players].sort((a, b) => a.name.localeCompare(b.name)).map(p => {
                 const balance = summary.playerBalances[p.id] || 0;
                 const text = balance > 0 ? `Guthaben ${eur(balance)}` : balance < 0 ? `offen ${eur(-balance)}` : 'ausgeglichen';
-                const color = balance > 0 ? 'text-emerald-700' : balance < 0 ? 'text-rose-700' : 'text-slate-500';
+                const color = balance > 0 ? 'text-slate-700' : balance < 0 ? 'text-slate-700' : 'text-slate-500';
                 return `<div class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"><span class="font-medium truncate">${escapeHtml(p.name)}</span><span class="font-semibold whitespace-nowrap ${color}">${text}</span></div>`;
             }).join('') || '<p class="text-sm text-slate-400">Noch keine Spieler angelegt.</p>';
             $('cashTransactions').innerHTML = allBookings.map(e => {
@@ -2849,9 +2844,9 @@
                 const sourceName = e.spielerId ? playerName(e.spielerId) : e.gegenkonto;
                 const source = sourceName ? ` · ${escapeHtml(sourceName)}` : '';
                 const remove = e.manual
-                    ? `<button data-cash-delete="${escapeHtml(e.id)}" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition" title="Buchung löschen"><i class="fa-solid fa-trash text-xs"></i></button>`
+                    ? `<button data-cash-delete="${escapeHtml(e.id)}" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition" title="Buchung löschen"><i class="fa-solid fa-trash text-xs"></i></button>`
                     : '';
-                const amountClass = isIncome ? 'text-emerald-700' : isExpense ? 'text-rose-700' : 'text-blue-700';
+                const amountClass = isIncome ? 'text-slate-700' : isExpense ? 'text-slate-700' : 'text-blue-700';
                 const sign = isIncome ? '+' : isExpense ? '−' : '↘';
                 const amountText = isIncome || isExpense ? eur(e.betragCent) : `${eur(e.betragCent)} Guthaben`;
                 return `<div class="py-2.5 flex items-center gap-3 text-sm">
@@ -2926,7 +2921,7 @@
                                     ? `<button data-act="remind" data-st="${escapeHtml(s.id)}" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition" title="Mail an alle offenen Spieler mit bekannter Mail-Adresse (${mails.length} von ${openIds.length})"><i class="fa-solid fa-envelope mr-1.5 text-amber-500"></i>Offene erinnern (${mails.length})</button>`
                                     : `<a href="${escapeHtml(mailto)}" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition" title="Öffnet dein Mailprogramm (Mail-Versand der App ist nicht eingerichtet)"><i class="fa-solid fa-envelope mr-1.5 text-amber-500"></i>Offene erinnern (${mails.length})</a>`)
                                 : '<span class="text-[11px] text-slate-400" title="Unter „Benutzer &amp; Zuordnung“ Spielern einen Login zuweisen, dann ist ihre Mail bekannt">keine Mails bekannt</span>') : ''}
-                            <button data-act="unbill" data-st="${escapeHtml(s.id)}" title="Abrechnung entfernen (der Spieltag bleibt bestehen)" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button data-act="unbill" data-st="${escapeHtml(s.id)}" title="Abrechnung entfernen (der Spieltag bleibt bestehen)" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>
                         </div>
                     </div>
                     <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2"><div class="h-full bg-emerald-500" style="width:${pct}%"></div></div>
