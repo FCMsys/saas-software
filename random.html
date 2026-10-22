@@ -3147,6 +3147,10 @@
         (async function init() {
             if (!(await loadMe())) return;
             await initData();
+            if (serverMode) {
+                try { surveyDays = (await api('GET', '/api/umfragen')).surveys; }
+                catch (error) { showToast('Auszeichnungen konnten nicht geladen werden', error.message, 'error'); }
+            }
             initAdFlyer();
             selectedPlayerIds = new Set(players.map(p => p.id));
             restoreCurrentGame();

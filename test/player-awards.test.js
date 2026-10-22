@@ -6,6 +6,28 @@ const vm = require('node:vm');
 const html = fs.readFileSync(require('node:path').join(__dirname, '..', 'random.html'), 'utf8');
 const source = html.slice(html.indexOf('        function playerCardAward('), html.indexOf('        function cardHtml('));
 
+test('initial render waits for award data instead of the first polling interval', async () => {
+    let resolveAwards;
+    const response = new Promise(resolve => { resolveAwards = resolve; });
+    let renders = 0;
+    const context = vm.createContext({
+        loadMe: async () => true, initData: async () => {}, serverMode: true,
+        api: () => response, surveyDays: [], players: [],
+        initAdFlyer() {}, restoreCurrentGame() {},
+        renderAll() { renders++; assert.equal(context.surveyDays[0].id, 'awarded-day'); },
+        localStorage: { getItem: () => null }, showTab() {},
+        URLSearchParams, location: { search: '' }, setInterval() {}, refreshSurveyState() {},
+        showToast() { assert.fail('award loading should succeed'); }
+    });
+    const init = html.slice(html.indexOf('        (async function init()'), html.indexOf('    </script>', html.indexOf('        (async function init()')));
+    const pending = vm.runInContext(init, context);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(renders, 0);
+    resolveAwards({ surveys: [{ id: 'awarded-day' }] });
+    await pending;
+    assert.equal(renders, 1);
+});
+
 test('special cards start at publication, honor ties and end after a week or the next finished day', () => {
     const published = Date.parse('2026-10-20T18:00:00Z');
     const day = { id: 'one', finishedAt: '2026-10-18T18:00:00Z', closesAt: new Date(published).toISOString(), status: 'closed', results: {
