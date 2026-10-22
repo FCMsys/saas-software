@@ -2320,7 +2320,7 @@
                         ${player.photo ? `<img src="${escapeHtml(player.photo)}" class="h-8 w-8 rounded-full object-cover" alt="">` : '<span class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100"><i class="fa-solid fa-user text-amber-700"></i></span>'}
                         <span class="font-semibold">${escapeHtml(player.player)}</span><span class="text-xs text-slate-500">${player.votes} ${player.votes === 1 ? 'Stimme' : 'Stimmen'}</span>
                     </div>`).join('')}</div>` : '<p class="mt-1 text-xs text-slate-500">Keine gültigen Nominierungen.</p>'}
-                    ${award && award.ranking.length > winners.length ? `<details data-survey-detail="${escapeHtml(survey.id)}:nominations:${key}" class="mt-2 text-xs text-slate-600"><summary class="cursor-pointer font-semibold">Weitere Nominierungen</summary><ol class="mt-1 list-inside list-decimal">${award.ranking.slice(winners.length).map(player => `<li>${escapeHtml(player.player)} · ${player.votes}</li>`).join('')}</ol></details>` : ''}
+                    ${me.role === 'admin' && award && award.ranking && award.ranking.length > winners.length ? `<details data-survey-detail="${escapeHtml(survey.id)}:nominations:${key}" class="mt-2 text-xs text-slate-600"><summary class="cursor-pointer font-semibold">Weitere Nominierungen</summary><ol class="mt-1 list-inside list-decimal">${award.ranking.slice(winners.length).map(player => `<li>${escapeHtml(player.player)} · ${player.votes}</li>`).join('')}</ol></details>` : ''}
                 </details>`;
             }).join('');
         }

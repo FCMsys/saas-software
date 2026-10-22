@@ -864,6 +864,11 @@ async function sendSurveyInvitation(dayId, playerId, retry = false) {
     }
 }
 
+function surveyAwardsFor(results, session) {
+    if (!results || session.role === 'admin') return results;
+    return Object.fromEntries(Object.entries(results).map(([key, award]) => [key, { winners: award.winners }]));
+}
+
 function publicSurveyDay(day, session) {
     const playerId = spielerIdOf(session);
     const closed = isSurveyClosed(day.closesAt);
@@ -888,7 +893,7 @@ function publicSurveyDay(day, session) {
         id: day.id, eligible, closesAt: day.closesAt,
         status: closed ? 'closed' : 'open',
         answered: !!(playerId && day.submissions && day.submissions[playerId]),
-        results: closed ? day.results || null : null
+        results: closed ? surveyAwardsFor(day.results || null, session) : null
     };
 }
 
@@ -1359,7 +1364,7 @@ async function handle(req, res) {
             submitted: !!submission, submittedAt: submission ? submission.submittedAt : null,
             answers: submission ? submission.answers : null,
             form: !closed && !submission ? matchedSurveyForm(day, playerId) : null,
-            results: closed ? day.results : null
+            results: closed ? surveyAwardsFor(day.results, session) : null
         });
     }
 

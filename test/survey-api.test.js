@@ -318,6 +318,16 @@ test('survey API creates stable private forms, accepts each response once, and p
         const earlyView = (await call('/api/umfragen')).data.surveys.find(day => day.id === earlyId);
         assert.equal(earlyView.status, 'closed');
         assert.ok(earlyView.results.motm.winners.length);
+        assert.ok(earlyView.results.motm.ranking.length);
+        for (const endpoint of ['/api/umfragen', `/api/umfragen/${earlyId}`]) {
+            const userResponse = await call(endpoint, { role: 'player', playerId: 'p1' });
+            assert.equal(userResponse.response.status, 200);
+            const userResults = endpoint === '/api/umfragen' ? userResponse.data.surveys.find(day => day.id === earlyId).results : userResponse.data.results;
+            for (const key of ['motm', 'surprise']) {
+                assert.deepEqual(userResults[key].winners, earlyView.results[key].winners);
+                assert.equal(Object.hasOwn(userResults[key], 'ranking'), false);
+            }
+        }
         const earlyHistory = (await call('/api/state')).data.surveyHistory;
         assert.equal(earlyHistory.filter(point => point.dayId === earlyId).length, 1);
         assert.deepEqual((await call('/api/state')).data.surveyHistory, earlyHistory);

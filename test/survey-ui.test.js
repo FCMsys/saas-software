@@ -19,7 +19,7 @@ test('survey reminder is visible outside collapsed details only for outstanding 
     assert.doesNotMatch(context.surveySectionHtml({ id: 'day' }, true), /data-act="remindSurvey"/);
 });
 test('awards have separate sections before and after publication', () => {
-    const context = vm.createContext({ escapeHtml: value => String(value) });
+    const context = vm.createContext({ escapeHtml: value => String(value), me: { role: 'player' } });
     vm.runInContext(awardsSource, context);
     const pending = context.surveyAwardsHtml({ id: 'day', results: null });
     assert.match(pending, /Man of the Match/);
@@ -29,6 +29,22 @@ test('awards have separate sections before and after publication', () => {
         surprise: { winners: [{ player: 'Bob', votes: 2 }], ranking: [{ player: 'Bob', votes: 2 }] }
     } });
     assert.match(published, /award:motm[\s\S]*Alice[\s\S]*award:surprise[\s\S]*Bob/);
+});
+
+test('only admins see further nominations, users see all tied winners', () => {
+    const context = vm.createContext({ escapeHtml: String, me: { role: 'player' } });
+    vm.runInContext(awardsSource, context);
+    const winners = [{ player: 'Alice', votes: 3 }, { player: 'Bob', votes: 3 }];
+    const survey = { id: 'day', results: { motm: { winners, ranking: [...winners, { player: 'Other nominee', votes: 1 }] } } };
+    const userView = context.surveyAwardsHtml(survey);
+    assert.match(userView, /Alice/);
+    assert.match(userView, /Bob/);
+    assert.doesNotMatch(userView, /Weitere Nominierungen|Other nominee/);
+    context.me.role = 'admin';
+    assert.match(context.surveyAwardsHtml(survey), /Weitere Nominierungen[\s\S]*Other nominee/);
+    context.me.role = 'player';
+    delete survey.results.motm.ranking;
+    assert.doesNotThrow(() => context.surveyAwardsHtml(survey));
 });
 test('refresh, temporary removal and reload preserve open and manually closed categories', () => {
     let details = [{ dataset: { surveyDetail: 'day:award:motm' }, open: true }, { dataset: { surveyDetail: 'day:award:surprise' }, open: false }];
