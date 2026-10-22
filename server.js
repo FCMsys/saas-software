@@ -1194,7 +1194,16 @@ function landingPage(destination, isAuthenticated) {
 <script>
   const video = document.getElementById('landingVideo');
   const link = document.getElementById('continueLink');
-  video.addEventListener('ended', () => location.replace(link.href), { once: true });
+  let redirected = false;
+  const continueToApp = () => {
+    if (redirected) return;
+    redirected = true;
+    location.replace(link.href);
+  };
+  video.addEventListener('timeupdate', () => {
+    if (video.currentTime >= 4) continueToApp();
+  });
+  video.addEventListener('ended', continueToApp, { once: true });
 </script></body></html>`;
 }
 
