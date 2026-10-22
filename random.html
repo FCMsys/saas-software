@@ -2340,7 +2340,7 @@
                 const inviteDetails = (survey.inviteDetails || []).map(invite => `
                     <div class="flex flex-wrap items-center justify-between gap-2 py-1 text-xs">
                         <span>${escapeHtml(invite.player)} <span class="text-slate-400">· ${escapeHtml(statusLabel(invite))}</span>${!invite.answered && invite.error ? `<span class="block text-rose-600">${escapeHtml(invite.error)}</span>` : ''}</span>
-                        ${!invite.answered && invite.status === 'failed' ? `<button data-act="retrySurveyInvite" data-st="${escapeHtml(day.id)}" data-sp="${escapeHtml(invite.playerId)}" class="rounded border border-slate-300 px-2 py-1 font-semibold hover:bg-slate-50">Erneut senden</button>` : ''}
+                        ${!invite.answered && survey.status === 'open' && ['sent', 'failed'].includes(invite.status) ? `<button data-act="retrySurveyInvite" data-st="${escapeHtml(day.id)}" data-sp="${escapeHtml(invite.playerId)}" class="rounded border border-slate-300 px-2 py-1 font-semibold hover:bg-slate-50">${invite.status === 'sent' ? 'Erinnern' : 'Erneut senden'}</button>` : ''}
                     </div>`).join('');
                 const statusCounts = `${survey.submittedCount} beantwortet / ${Math.max(0, survey.participantCount - survey.submittedCount)} ausstehend`;
                 const aggregates = [
@@ -2437,7 +2437,7 @@
                 const btnCls = 'text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition';
                 const existingSurvey = surveyDays.some(item => item.id === s.id);
                 const admin = isAdmin ? `<div class="flex flex-wrap items-center gap-1.5">
-                    <button data-act="invite" data-st="${sid}" ${me.mailEnabled ? '' : 'disabled'} title="${me.mailEnabled ? 'Mail mit Zusagen-/Absagen-Link an alle Spieler mit bekannter Mail-Adresse' : 'Mail-Versand ist nicht eingerichtet'}" class="${btnCls} disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-envelope mr-1.5 text-blue-500"></i>${s.einladungAt ? 'Erneut einladen' : 'Einladung per Mail'}</button>
+                    <button data-act="invite" data-st="${sid}" ${me.mailEnabled ? '' : 'disabled'} title="${me.mailEnabled ? 'Mail nur an Spieler ohne Zu- oder Absage mit bekannter Mail-Adresse' : 'Mail-Versand ist nicht eingerichtet'}" class="${btnCls} disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-envelope mr-1.5 text-blue-500"></i>${s.einladungAt ? 'Offene Antworten erinnern' : 'Einladung per Mail'}</button>
                     <button data-act="match" data-st="${sid}" class="${btnCls}" title="Mit den Zusagen dieses Spieltags Teams bilden"><i class="fa-solid fa-futbol mr-1.5 text-blue-500"></i>Spiel starten</button>
                     <button data-act="bill" data-st="${sid}" class="${btnCls}" title="Zahlung für diesen Spieltag anfordern"><i class="fa-solid fa-euro-sign mr-1.5 text-blue-500"></i>${isBilled(s) ? 'Abgerechnet · ' + eur(s.betragCent) : 'Abrechnen'}</button>
                     ${existingSurvey ? '' : `<button data-act="delete" data-st="${sid}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>`}
@@ -2488,7 +2488,7 @@
                 }
                 else if (act === 'invite') {
                     const d = spieltage.find(x => x.id === st);
-                    if (!confirm(`Einladung für ${dayText(d)} jetzt per Mail an alle Spieler mit bekannter Mail-Adresse senden?`)) return;
+                    if (!confirm(`Einladung für ${dayText(d)} jetzt per Mail an Spieler ohne Zu- oder Absage mit bekannter Mail-Adresse senden?`)) return;
                     b.disabled = true;
                     const m = (await api('POST', `/api/spieltage/${st}/einladung`)).mail;
                     showToast(m.failed.length ? 'Einladung teilweise gesendet' : 'Einladung gesendet',

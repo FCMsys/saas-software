@@ -798,7 +798,7 @@ async function sendSurveyInvitation(dayId, playerId, retry = false) {
         const saved = surveyData();
         const day = saved.days[dayId];
         const invite = day && day.invites[playerId];
-        if (!invite || invite.status === 'sent' || invite.status === 'sending' || (!retry && invite.status !== 'pending') || (retry && invite.status !== 'failed')) return null;
+        if (!invite || day.submissions[playerId] || isSurveyClosed(day.closesAt) || (!retry && invite.status !== 'pending') || (retry && !['sent', 'failed'].includes(invite.status))) return null;
         invite.status = 'sending';
         invite.attempts = (invite.attempts || 0) + 1;
         invite.updatedAt = new Date().toISOString();
@@ -1040,6 +1040,7 @@ async function mailEinladung(s) {
     const users = Object.values(loadUsers());
     const subject = `Fußball ${fmtDay(s)}: Bist du dabei?`;
     for (const [id, name] of playerNames()) {
+        if (['zu', 'ab'].includes(s.antworten[id]?.status)) continue;
         const email = (users.find(u => u.spielerId === id) || {}).email;
         if (!email || !EMAIL_RE.test(email)) { result.skipped++; continue; }
         const text = `Hallo ${name},\n\nbist du beim nächsten Spieltag dabei?\n\nWann: ${fmtDay(s)}\n${s.ort ? 'Wo: ' + s.ort + '\n' : ''}\nZusagen: ${rsvpLink(s, id, 'zu')}\nAbsagen: ${rsvpLink(s, id, 'ab')}\n\nDeine Antwort kannst du über denselben Link jederzeit noch ändern.\n\nFC M:sys`;
@@ -1400,9 +1401,11 @@ async function handle(req, res) {
     if (retrySurveyInviteApi && method === 'POST') {
         if (!requireAdmin()) return;
         const [, dayId, playerId] = retrySurveyInviteApi;
-        const saved = surveyData(), invite = saved.days[dayId] && saved.days[dayId].invites[playerId];
+        const saved = surveyData(), day = saved.days[dayId], invite = day && day.invites[playerId];
         if (!invite) return sendJson(res, 404, { ok: false, error: 'Einladung nicht gefunden' });
-        if (invite.status !== 'failed') return sendJson(res, 409, { ok: false, error: 'Nur fehlgeschlagene Einladungen können erneut versendet werden' });
+        if (day.submissions[playerId]) return sendJson(res, 409, { ok: false, error: 'Die Umfrage wurde bereits beantwortet' });
+        if (isSurveyClosed(day.closesAt)) return sendJson(res, 410, { ok: false, error: 'Die Umfrage ist abgeschlossen' });
+        if (!['sent', 'failed'].includes(invite.status)) return sendJson(res, 409, { ok: false, error: 'Diese Einladung kann derzeit nicht erneut versendet werden' });
         await sendSurveyInvitation(dayId, playerId, true);
         const updated = surveyData().days[dayId].invites[playerId];
         return sendJson(res, updated.status === 'sent' ? 200 : 502, { ok: updated.status === 'sent', status: updated.status, error: updated.error || null });
