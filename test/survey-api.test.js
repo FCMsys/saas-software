@@ -144,11 +144,11 @@ test('survey API creates stable private forms, accepts each response once, and p
         const appPage = await fetch(`${baseUrl}/?intro=done`, { headers: { Cookie: sessionCookie('admin', 'admin') } });
         assert.match(await appPage.text(), /id="surveyModal"/);
 
-        const day = await call('/api/spieltage', { method: 'POST', body: { datum: '2026-10-20', uhrzeit: '19:00', dauerMinuten: '90' } });
+        const day = await call('/api/spieltage', { method: 'POST', body: { datum: '2026-10-20', uhrzeit: '19:00' } });
         assert.equal(day.response.status, 200);
         const dayId = day.data.id;
         const savedDay = await call('/api/zahlungen');
-        assert.equal(savedDay.data.spieltage.find(item => item.id === dayId).dauerMinuten, 90);
+        assert.equal(savedDay.data.spieltage.find(item => item.id === dayId).uhrzeit, '19:00');
         const playerRows = playerIds.map((id, index) => [id, `Player ${index + 1}`, '1500', 'ZM', '50', '50', '50', '50', '50', '50', ''].join(';'));
         const gameRows = playerIds.map((id, index) => [
             '1', '2026-10-20T18:00:00.000Z', 'match', 'match-1', id, `Player ${index + 1}`,

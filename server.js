@@ -517,12 +517,11 @@ function cashSummary(z) {
 // ---------------------------------------------------------------------------
 const EMAIL_RE = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 const berlinToday = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
-const fmtDay = s => new Date(s.datum + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) + (s.uhrzeit ? ' · ' + s.uhrzeit + ' Uhr' : '') + (s.dauerMinuten ? ' · ' + s.dauerMinuten + ' Min.' : '');
+const fmtDay = s => new Date(s.datum + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) + (s.uhrzeit ? ' · ' + s.uhrzeit + ' Uhr' : '');
 const escHtml = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function normSpieltag(s) {
     s.antworten = s.antworten || {}; s.uhrzeit = s.uhrzeit || ''; s.ort = s.ort || ''; s.titel = s.titel || '';
-    s.dauerMinuten = Number.isInteger(s.dauerMinuten) ? s.dauerMinuten : null;
     if (s.betragCent === undefined) s.betragCent = null;
     s.teilnehmer = s.teilnehmer || []; s.bezahlt = s.bezahlt || {};
     return s;
@@ -1142,7 +1141,7 @@ function zahlungenFor(session) {
         const billed = !!mine && s.betragCent != null && s.teilnehmer.includes(mine);
         const account = billed ? cash.chargeStatus[`${s.id}:${mine}`] : null;
         return {
-            id: s.id, datum: s.datum, uhrzeit: s.uhrzeit, dauerMinuten: s.dauerMinuten, ort: s.ort, titel: s.titel,
+            id: s.id, datum: s.datum, uhrzeit: s.uhrzeit, ort: s.ort, titel: s.titel,
             finishedAt: s.finishedAt, closesAt: s.closesAt, surveyStarted: s.surveyStarted, einladungAt: s.einladungAt || null,
             antworten: Object.fromEntries(Object.entries(s.antworten).map(([id, a]) => [id, { status: a.status }])),
             betragCent: billed ? s.betragCent : null,
@@ -1646,14 +1645,10 @@ async function handle(req, res) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(b.datum || '')) return sendJson(res, 400, { ok: false, error: 'Datum erforderlich' });
         const uhrzeit = String(b.uhrzeit || '').trim();
         if (uhrzeit && !/^([01]\d|2[0-3]):[0-5]\d$/.test(uhrzeit)) return sendJson(res, 400, { ok: false, error: 'Uhrzeit im Format HH:MM' });
-        const dauerMinuten = b.dauerMinuten == null || b.dauerMinuten === '' ? null : Number(b.dauerMinuten);
-        if (dauerMinuten !== null && (!Number.isInteger(dauerMinuten) || dauerMinuten < 1 || dauerMinuten > 1440)) {
-            return sendJson(res, 400, { ok: false, error: 'Dauer muss eine ganze Zahl zwischen 1 und 1440 Minuten sein' });
-        }
         const z = loadZahlungen();
         const spieltag = normSpieltag({
             id: 'st_' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex'),
-            datum: b.datum, uhrzeit, dauerMinuten, ort: String(b.ort || '').trim().slice(0, 80)
+            datum: b.datum, uhrzeit, ort: String(b.ort || '').trim().slice(0, 80)
         });
         z.spieltage.push(spieltag);
         await writeJson('zahlungen.json', z);

@@ -276,8 +276,6 @@
                         <input type="date" id="dayDatum" required class="block mt-1 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
                     <label class="text-xs text-slate-500">Uhrzeit
                         <input type="time" id="dayUhrzeit" value="19:00" class="block mt-1 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
-                    <label class="text-xs text-slate-500">Dauer (Minuten)
-                        <input type="number" id="dayDauerMinuten" min="1" max="1440" step="1" placeholder="z. B. 90" class="block mt-1 w-32 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
                     <label class="text-xs text-slate-500">Ort
                         <input type="text" id="dayOrt" maxlength="80" placeholder="z. B. Halle Nord" class="block mt-1 w-52 bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none"></label>
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition"><i class="fa-solid fa-plus mr-1.5"></i>Spieltag anlegen</button>
@@ -2219,7 +2217,7 @@
         let matchDayId = '';  // Spieltag im Tab "Aktuelles Spiel"
         let matchDayInit = false;
         const todayIso = () => new Date().toLocaleDateString('sv-SE');
-        const dayText = s => `${fmtDate(s.datum)}${s.uhrzeit ? ' · ' + s.uhrzeit + ' Uhr' : ''}${s.dauerMinuten ? ' · ' + s.dauerMinuten + ' Min.' : ''}${s.ort || s.titel ? ' · ' + (s.ort || s.titel) : ''}`;
+        const dayText = s => `${fmtDate(s.datum)}${s.uhrzeit ? ' · ' + s.uhrzeit + ' Uhr' : ''}${s.ort || s.titel ? ' · ' + (s.ort || s.titel) : ''}`;
         const statusOf = (s, id) => (s.antworten && s.antworten[id] && s.antworten[id].status) || '';
         const confirmedIds = s => players.filter(p => statusOf(s, p.id) === 'zu').map(p => p.id);
         const sortedDays = () => [...spieltage].sort((a, b) => (b.datum + (b.uhrzeit || '')).localeCompare(a.datum + (a.uhrzeit || '')));
@@ -2472,7 +2470,7 @@
                 return `<div class="card p-5 ${past ? 'opacity-80' : ''}">
                     <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
                         <div>
-                            <h3 class="font-bold">${escapeHtml(fmtDate(s.datum))}${s.uhrzeit ? ' · ' + escapeHtml(s.uhrzeit) + ' Uhr' : ''}${s.dauerMinuten ? ' · ' + escapeHtml(s.dauerMinuten) + ' Min.' : ''}${past ? ' <span class="ml-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 align-middle">vergangen</span>' : ''}</h3>
+                            <h3 class="font-bold">${escapeHtml(fmtDate(s.datum))}${s.uhrzeit ? ' · ' + escapeHtml(s.uhrzeit) + ' Uhr' : ''}${past ? ' <span class="ml-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 align-middle">vergangen</span>' : ''}</h3>
                             <p class="text-xs text-slate-500 mt-0.5">${s.ort || s.titel ? `<i class="fa-solid fa-location-dot mr-1"></i>${escapeHtml(s.ort || s.titel)} · ` : ''}<b class="text-emerald-700">${zu} zugesagt</b> · ${ab} abgesagt · ${players.length - zu - ab} offen${isAdmin ? ' · ' + invited : ''}</p>
                         </div>${admin}
                     </div>
@@ -2733,11 +2731,9 @@
                 await api('POST', '/api/spieltage', {
                     datum: $('dayDatum').value,
                     uhrzeit: $('dayUhrzeit').value,
-                    dauerMinuten: $('dayDauerMinuten').value,
                     ort: $('dayOrt').value.trim()
                 });
                 $('dayOrt').value = '';
-                $('dayDauerMinuten').value = '';
                 showToast('Spieltag angelegt', 'Jetzt kannst du die Einladung per Mail senden.', 'success');
                 await loadSpieltage();
             } catch (err) { showToast('Fehler', err.message, 'error'); }
