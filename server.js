@@ -1184,7 +1184,7 @@ function appIntro() {
   #appIntro[open]{display:grid;align-items:safe center;justify-items:center}#appIntro::backdrop{background:#fff}
   #appIntro section{box-sizing:border-box;width:100%;max-width:960px;min-width:0;text-align:center}#appIntro h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px);font-weight:700}
   #appIntro video{display:block;width:auto;height:auto;max-width:100%;max-height:calc(100vh - 200px);max-height:calc(100dvh - 200px);object-fit:contain;margin:0 auto;background:#fff;filter:contrast(1.08)}
-  #appIntro button{margin-top:16px;min-height:46px;padding:0 24px;border:0;border-radius:10px;background:#00a0e4;color:#000;font:700 16px var(--font-sans);cursor:pointer}
+  #appIntro button{margin-top:16px;min-height:46px;padding:0 24px;border:0;border-radius:10px;background:#00a0e4;color:#fff;font:700 16px var(--font-sans);cursor:pointer}
 </style>
 <dialog id="appIntro" aria-labelledby="appIntroTitle"><section>
   <h1 id="appIntroTitle">Willkommen beim FC M:sys</h1>
@@ -1224,7 +1224,7 @@ function landingPage(destination, isAuthenticated) {
 <style>
   *{box-sizing:border-box}body{margin:0;min-height:100vh;min-height:100dvh;display:grid;align-items:safe center;justify-items:center;padding:20px;background:#fff;color:#0f172a;font-family:var(--font-sans)}
   main{width:100%;max-width:960px;min-width:0;text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}main video{display:block;width:auto;height:auto;max-width:100%;max-height:calc(100vh - 200px);max-height:calc(100dvh - 200px);object-fit:contain;margin:0 auto;border:0;border-radius:0;background:#fff;filter:contrast(1.08)}
-  .continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:16px;padding:0 24px;border:0;border-radius:10px;background:#00a0e4;color:#000;font-weight:700;text-decoration:none}.continue:hover{background:#00a0e4}.continue:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
+  .continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:16px;padding:0 24px;border:0;border-radius:10px;background:#00a0e4;color:#fff;font-weight:700;text-decoration:none}.continue:hover{background:#00a0e4}.continue:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
 </style></head><body>
 <main><h1>Willkommen beim FC M:sys</h1>
   <video id="landingVideo" src="/img/landing.mp4" autoplay muted playsinline preload="auto"></video>
