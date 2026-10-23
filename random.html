@@ -177,6 +177,16 @@
         .award-surprise .fut-facets i:nth-child(3) { transform:scaleY(-1); }
         .award-surprise .fut-facets i:nth-child(4) { transform:scaleX(-1); }
 
+        /* Keep overview effects idle unless a visible card is being inspected. */
+        #playerCards .fut-shine, #playerCards .fut-holo { animation-play-state:paused; opacity:0; }
+        #playerCards .card-in-view:focus-visible .fut-shine { animation-play-state:running; animation-delay:0s; opacity:1; }
+        #playerCards .card-in-view:focus-visible .fut-holo { animation-play-state:running; opacity:.28; }
+        #playerCards .card-tile:focus-visible { outline:2px solid #00a0e4; outline-offset:6px; border-radius:.5rem; }
+        @media (hover:hover) {
+            #playerCards .card-in-view:hover .fut-shine { animation-play-state:running; animation-delay:0s; opacity:1; }
+            #playerCards .card-in-view:hover .fut-holo { animation-play-state:running; opacity:.28; }
+        }
+
         /* Karten-Raster */
         .card-tile { cursor: pointer; transition: transform .25s cubic-bezier(.2,.8,.2,1); }
         .card-tile:hover { transform: translateY(-.5rem) scale(1.04) rotate(-.6deg); }
@@ -1459,6 +1469,7 @@
         }
 
         // ---- Tab 1: Spieler ----
+        let cardVisibilityObserver;
         function renderPlayersTab() {
             renderedAwardsSignature = JSON.stringify(players.map(player => playerCardAward(player.id)));
             const sorted = [...players].sort((a, b) => b.elo - a.elo);
@@ -1491,14 +1502,29 @@
 
             // Karten-Raster
             const grid = $('playerCards');
+            cardVisibilityObserver?.disconnect();
+            cardVisibilityObserver = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => {
+                entries.forEach(entry => entry.target.classList.toggle('card-in-view', entry.isIntersecting));
+            }) : null;
             grid.innerHTML = '';
             sorted.forEach((p, i) => {
                 const tile = document.createElement('div');
                 tile.className = 'card-tile';
+                tile.tabIndex = 0;
+                tile.setAttribute('role', 'button');
+                tile.setAttribute('aria-label', p.name + ': Karte öffnen');
+                tile.onkeydown = event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openCardModal(p.id);
+                    }
+                };
                 tile.title = 'Karte öffnen';
                 tile.innerHTML = cardHtml(p, { fs: 9.8, delay: (i % 6) * 0.7 });
                 tile.onclick = () => openCardModal(p.id);
                 grid.appendChild(tile);
+                if (cardVisibilityObserver) cardVisibilityObserver.observe(tile);
+                else tile.classList.add('card-in-view');
             });
             if (!sorted.length) grid.innerHTML = '<p class="text-slate-400 text-sm py-10">Noch keine Spieler</p>';
             applyPlayersView();
