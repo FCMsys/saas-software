@@ -2591,6 +2591,16 @@
                         </div>${admin}
                     </div>
                     ${own}
+                    ${isAdmin && canStartDay ? `<details class="mb-3 rounded-lg border border-slate-200 p-3">
+                        <summary class="cursor-pointer text-sm font-semibold">Spieltag bearbeiten</summary>
+                        <form data-edit-day="${sid}" class="mt-3 flex flex-wrap items-end gap-3">
+                            <label class="text-xs">Datum<input name="datum" type="date" required min="${today}" value="${escapeHtml(s.datum)}" class="block border rounded-lg px-3 py-2"></label>
+                            <label class="text-xs">Uhrzeit<input name="uhrzeit" type="time" value="${escapeHtml(s.uhrzeit || '')}" class="block border rounded-lg px-3 py-2"></label>
+                            <label class="text-xs">Austragungsort<input name="ort" maxlength="80" value="${escapeHtml(s.ort || '')}" class="block border rounded-lg px-3 py-2"></label>
+                            <button type="submit" ${me.mailEnabled ? '' : 'disabled'} class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">Speichern &amp; Teilnehmer informieren</button>
+                            <p class="w-full text-xs text-slate-500">${me.mailEnabled ? 'Zugesagte und abgerechnete Teilnehmer erhalten die Änderung per E-Mail. Zusagen und Zahlungen bleiben erhalten.' : 'Bitte zuerst den Mail-Versand einrichten.'}</p>
+                        </form>
+                    </details>` : ''}
                     ${surveySectionHtml(s, isAdmin)}
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">${chips}</div>
                 </div>`;
@@ -2599,6 +2609,25 @@
                 detail.open = surveyDetailState.get(detail.dataset.surveyDetail) === true;
             });
         }
+
+        $('daysList').onsubmit = async e => {
+            const form = e.target.closest('form[data-edit-day]');
+            if (!form) return;
+            e.preventDefault();
+            const button = form.querySelector('button[type="submit"]');
+            if (button.disabled) return;
+            button.disabled = true;
+            try {
+                const result = await api('PATCH', `/api/spieltage/${form.dataset.editDay}`, Object.fromEntries(new FormData(form)));
+                if (result.unchanged) showToast('Keine Änderungen', 'Die Angaben sind unverändert.', 'info');
+                else {
+                    const m = result.mail;
+                    showToast('Spieltag geändert', `${m.sent} Mails gesendet, ${m.skipped} Teilnehmer ohne gültige Mail-Adresse, ${m.failed.length} fehlgeschlagen.`, m.failed.length || m.skipped ? 'error' : 'success');
+                }
+                await loadSpieltage();
+            } catch (err) { showToast('Fehler', err.message, 'error'); }
+            finally { button.disabled = false; }
+        };
 
         $('daysList').onclick = async e => {
             const b = e.target.closest('[data-act]');

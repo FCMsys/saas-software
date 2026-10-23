@@ -1062,6 +1062,21 @@ async function mailEinladung(s) {
     return result;
 }
 
+async function mailSpieltagAenderung(s, vorher) {
+    const result = { sent: 0, failed: [], skipped: 0 };
+    const users = Object.values(loadUsers());
+    const names = playerNames();
+    const ids = new Set([...Object.keys(s.antworten).filter(id => s.antworten[id]?.status === 'zu'), ...s.teilnehmer]);
+    for (const id of ids) {
+        const email = (users.find(u => u.spielerId === id) || {}).email;
+        if (!email || !EMAIL_RE.test(email)) { result.skipped++; continue; }
+        const text = `Hallo ${names.get(id) || 'Sportsfreund'},\n\nder Spieltag wurde geändert. Bitte beachte die aktuellen Angaben:\n\nBisher: ${fmtDay(vorher)}\nOrt bisher: ${vorher.ort || 'nicht angegeben'}\n\nNeu: ${fmtDay(s)}\nNeuer Ort: ${s.ort || 'nicht angegeben'}\n\nDeine Zusage bleibt bestehen. Falls du nicht teilnehmen kannst, kannst du hier absagen:\n${rsvpLink(s, id, 'ab')}\n\nFC M:sys`;
+        try { await sendMail({ to: email, subject: `Spieltag geändert: Fußball ${fmtDay(s)}`, text }); result.sent++; }
+        catch (e) { console.error('Spieltag-Änderungsmail fehlgeschlagen:', e.message); result.failed.push(email + ': ' + e.message); }
+    }
+    return result;
+}
+
 const RSVP_STYLE = `body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#eef3fb,#f7f9fd);font-family:var(--font-sans);color:#0f172a}
   .box{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 24px rgba(15,23,42,.08);padding:28px 24px;width:min(92vw,380px);text-align:center}
   .logo{display:block;height:72px;width:auto;margin:0 auto 12px}
@@ -1737,6 +1752,29 @@ async function handle(req, res) {
             return ok();
         }
         if (!s) return sendJson(res, 404, { ok: false, error: 'Spieltag nicht gefunden' });
+
+        if (!action && method === 'PATCH') {
+            if (!requireAdmin()) return;
+            if (s.datum < berlinToday() || s.finishedAt || s.surveyStarted || surveyData().days[id]) {
+                return sendJson(res, 409, { ok: false, error: 'Vergangene oder abgeschlossene Spieltage können nicht mehr geändert werden' });
+            }
+            const b = await readJsonBody(req, 1e4);
+            const datum = String(b.datum || '');
+            const uhrzeit = String(b.uhrzeit || '').trim();
+            const ort = String(b.ort || '').trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(datum) || !Number.isFinite(Date.parse(datum)) || new Date(datum).toISOString().slice(0, 10) !== datum || datum < berlinToday()) {
+                return sendJson(res, 400, { ok: false, error: 'Gültiges Datum ab heute erforderlich' });
+            }
+            if (uhrzeit && !/^([01]\d|2[0-3]):[0-5]\d$/.test(uhrzeit)) return sendJson(res, 400, { ok: false, error: 'Uhrzeit im Format HH:MM' });
+            if (ort.length > 80) return sendJson(res, 400, { ok: false, error: 'Ort darf höchstens 80 Zeichen enthalten' });
+            const vorher = { ...s };
+            if (datum === s.datum && uhrzeit === (s.uhrzeit || '') && ort === (s.ort || '')) return sendJson(res, 200, { ok: true, unchanged: true });
+            if (!MAIL_ENABLED) return sendJson(res, 400, { ok: false, error: 'Bitte zuerst den Mail-Versand einrichten, damit Teilnehmer über Änderungen informiert werden können' });
+            Object.assign(s, { datum, uhrzeit, ort });
+            await writeJson('zahlungen.json', z);
+            const mail = await mailSpieltagAenderung(s, vorher);
+            return sendJson(res, 200, { ok: true, mail });
+        }
 
         if (action === 'bezahlt' && method === 'POST') {
             if (!requireAdmin()) return;
