@@ -13,3 +13,7 @@ Dockerfile
 docker-compose.yml
 Caddyfile
 *.tmp
+
+# Local browser previews
+.preview/
+debug.log

@@ -5,3 +5,7 @@
 daten/
 node_modules/
 *.tmp
+
+# Local browser previews
+.preview/
+debug.log

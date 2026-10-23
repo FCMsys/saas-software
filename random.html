@@ -81,7 +81,7 @@
         }
         .fut-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; }
         .fut-photo i { font-size: 8em; color: var(--ink); opacity: .22; }
-        .fut-name { position: absolute; left: .65em; right: .65em; top: 10.5em; text-align: center; text-transform: uppercase; font-size: 1.55em; font-weight: 800; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+        .fut-name { position: absolute; left: .65em; right: .65em; top: 10.5em; text-align: center; text-transform: none; font-size: 1.55em; font-weight: 800; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
         .fut-line { position: absolute; left: 3.2em; right: 3.2em; top: 19em; height: .1em; background: var(--ink); opacity: .35; border-radius: 1em; }
         .fut-stats { position: absolute; left: 3.1em; right: 3.1em; top: 19.5em; display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column; column-gap: 1.2em; row-gap: .15em; }
         .fut-stats::before { content: ''; position: absolute; left: 50%; top: .2em; bottom: .2em; width: .1em; background: var(--ink); opacity: .3; }
@@ -123,6 +123,47 @@
         .award-surprise .fut-rating { color: #294585; }
         .fut-award { position: absolute; bottom: 1.8em; left: 2.5em; right: 2.5em; text-align: center; font-size: .7em; line-height: 1.15; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; text-wrap: balance; }
         @media (prefers-reduced-motion: reduce) { .fut-shine, .fut-holo { animation: none; } }
+
+
+        /* Updated club card templates */
+        .fut-card { height:26.5em; color:#f5f5f5; }
+        .fut-shape,.fut-inner,.fut-card[class*="award-"] .fut-shape,.fut-card[class*="award-"] .fut-inner { clip-path:polygon(8% 0,92% 0,100% 6%,100% 92%,92% 100%,8% 100%,0 92%,0 6%); }
+        .fut-shape { background:linear-gradient(135deg,var(--edge2),var(--edge1) 12%,var(--edge2) 28%,var(--edge1) 48%,var(--edge2) 65%,var(--edge1) 88%,var(--edge2)); }
+        .fut-inner,.award-motm .fut-inner { inset:.5em; border:1px solid var(--edge1); box-shadow:inset 0 0 1em var(--edge2); background:linear-gradient(135deg,var(--c1),var(--c2) 55%,var(--c3)); }
+        .fut-pattern,.award-surprise .fut-pattern { opacity:.55; clip-path:none; background:repeating-linear-gradient(137deg,transparent 0 .4em,#ffffff80 .42em .46em,transparent .48em .85em); mask-image:linear-gradient(145deg,#000,transparent 40%,transparent 65%,#000); }
+        .fut-logo { position:absolute; top:.6em; left:.7em; width:4.8em; height:4.8em; padding:0; border:0; background:transparent; box-shadow:none; object-fit:contain; }
+        .fut-rating,.award-surprise .fut-rating { left:auto; right:1em; top:1em; width:3.8em; color:white; }
+        .fut-rating .caption { display:block; font-size:.8em; font-weight:700; border-bottom:1px solid #ffffff90; padding-bottom:.25em; margin-bottom:.25em; }
+        .fut-rating .num { font-size:2.35em; }
+        .fut-photo { left:2.1em; right:2.1em; top:2.5em; width:auto; height:11.6em; mask-image:none; -webkit-mask-image:none; align-items:flex-end; }
+        .fut-photo img { object-fit:contain; object-position:bottom; }
+        .fut-silhouette { width:100%; height:100%; }
+        .fut-name { top:62%; line-height:1.2; }
+        .fut-position { position:absolute; top:70%; left:8.5%; right:8.5%; display:flex; align-items:center; gap:.7em; font-size:.95em; line-height:1; font-weight:700; }
+        .fut-position::before,.fut-position::after { content:''; flex:1; height:1px; background:#ffffff80; }
+        .fut-stats { left:1.7em; right:1.7em; top:73%; height:16%; grid-template-rows:repeat(3,1fr); column-gap:2.5em; row-gap:0; font-size:.95em; }
+        .fut-stats div { flex-direction:row-reverse; justify-content:space-between; border-bottom:1px solid #ffffff30; line-height:1.35; }
+        .fut-stats div:nth-child(3), .fut-stats div:nth-child(6) { border-bottom:0; }
+        .fut-stats b { font-size:1.1em; } .fut-stats i { font-size:.85em; }
+        .fut-award { bottom:.45em; left:8.5%; right:8.5%; font-size:1.15em; color:var(--edge1); border-top:1px solid #ffffff60; padding-top:.2em; }
+        .fut-card[class*="award-"] .fut-award { font-size:.85em; bottom:.6em; }
+        .tier-bronze { --c1:#8e6541; --c2:#725033; --c3:#533a28; --edge1:#dfac80; --edge2:#77503a; }
+        .tier-silber { --c1:#e0e4e5; --c2:#919798; --c3:#c4cacc; --edge1:#f5fcff; --edge2:#727b80; }
+        .tier-gold { --c1:#946000; --c2:#513000; --c3:#2e1a00; --edge1:#ffe58a; --edge2:#b77a0a; }
+        .tier-legende { --c1:#104575; --c2:#061d37; --c3:#073660; --edge1:#c6eeff; --edge2:#2d91d4; --ink:#fff; --glow:95,190,255; }
+        .award-motm { --c1:#780c18; --c2:#39070e; --c3:#1d0306; --edge1:#ffe99e; --edge2:#ba8b22; }
+        .award-motm .fut-shape::after,.award-motm .fut-inner::before { display:none; }
+        .award-motm .fut-pattern { clip-path:none; mask-image:none; opacity:.7; background:radial-gradient(circle at 70% 20%,#ffde7a 0 .07em,transparent .16em),repeating-linear-gradient(137deg,transparent 0 1em,#f7cd7240 1.02em 1.06em,transparent 1.1em 1.5em); background-size:3em 4em,auto; }
+        .award-surprise { --c1:#360559; --c2:#170326; --c3:#290643; --edge1:#e1baff; --edge2:#8d20f3; --glow:170,60,255; }
+        .award-surprise .fut-holo { display:none; }
+
+        /* Angled metallic side tabs from the supplied card references. */
+        .fut-facets { position:absolute; inset:0; z-index:2; pointer-events:none; }
+        .fut-facets i { position:absolute; width:1.35em; height:4.3em; background:linear-gradient(125deg,var(--edge2),var(--edge1) 35%,var(--edge2) 75%,var(--edge1)); clip-path:polygon(0 30%,100% 0,100% 70%,0 100%); filter:drop-shadow(0 .1em .12em #0009); }
+        .fut-facets i:nth-child(1) { left:0; top:5.1em; height:2.6em; }
+        .fut-facets i:nth-child(2) { left:0; top:11.5em; }
+        .fut-facets i:nth-child(3) { right:0; top:5.1em; height:2.6em; transform:rotate(180deg); }
+        .fut-facets i:nth-child(4) { right:0; top:12.1em; transform:rotate(180deg); }
 
         /* Karten-Raster */
         .card-tile { cursor: pointer; transition: transform .25s cubic-bezier(.2,.8,.2,1); }
@@ -957,14 +998,14 @@
         const eloFromStats = stats => eloFromGes(sumOf(stats) / STAT_KEYS.length);
 
         const POSITIONS = ['ST', 'LF', 'RF', 'ZOM', 'ZM', 'ZDM', 'LV', 'RV', 'IV', 'TW'];
-        const TIER_NAMES = { bronze: 'Bronze', silber: 'Silber', gold: 'Gold', ikone: 'Ikone' };
+        const TIER_NAMES = { bronze: 'Bronze', silber: 'Silber', gold: 'Gold', ikone: 'Ikone', legende: 'Vereinslegende' };
 
         // Gesamtwert (GES) aus der Elo, siehe oben
         function ratingFromElo(elo) { return gesFromElo(elo); }
         // Elo-Grenzen der Stufen (vom Admin einstellbar, Standard siehe Server)
         const DEFAULT_TIERS = { silber: 1548, gold: 1838, ikone: 2215 };   // = GES 65 / 75 / 88
         let tiers = { ...DEFAULT_TIERS };
-        function tierFor(elo, t = tiers) { return elo >= t.ikone ? 'ikone' : elo >= t.gold ? 'gold' : elo >= t.silber ? 'silber' : 'bronze'; }
+        function tierFor(elo, t = tiers) { return elo > 2000 ? 'legende' : elo >= t.ikone ? 'ikone' : elo >= t.gold ? 'gold' : elo >= t.silber ? 'silber' : 'bronze'; }
 
         function playerCardAward(playerId, now = Date.now()) {
             const latest = [...surveyDays].filter(day => Number.isFinite(Date.parse(day.finishedAt)))
@@ -980,17 +1021,18 @@
         function cardHtml(p, { fs = 14, reveal = false, delay = 0 } = {}) {
             const rating = ratingFromElo(p.elo), tier = tierFor(p.elo), award = playerCardAward(p.id);
             const val = v => reveal ? 0 : v;
-            const stat = k => { const v = Math.round(statVal(p, k)); return `<div><b data-val="${v}">${val(v)}</b><i>${STAT_LABELS[k]}</i></div>`; };
+            const stat = k => { const v = Math.round(statVal(p, k)); return `<div><b data-val="${v}">${val(v)}</b><i>${({ tem: 'PAC', sch: 'SHO', pas: 'PAS', drl: 'DRI', ver: 'DEF', phy: 'PHY' })[k]}</i></div>`; };
             return `<div class="fut-card tier-${tier}${award ? ` award-${award.kind}` : ''}" style="--fs:${fs}px;--shine-delay:${delay}s">
                 <div class="fut-shape"></div>
+                <div class="fut-facets" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
                 <div class="fut-inner">
                     <div class="fut-pattern"></div>
-                    <div class="fut-rating"><span class="num" data-val="${rating}">${val(rating)}</span><span class="pos">${escapeHtml(p.pos)}</span><span class="bar"></span></div>
-                    <div class="fut-photo">${p.photo ? `<img src="${escapeHtml(p.photo)}" alt="" draggable="false">` : '<i class="fa-solid fa-user"></i>'}</div>
+                    <img class="fut-logo" src="/img/card-logo.svg?v=crest-outline-3" alt="FC M:sys" draggable="false"><div class="fut-rating"><span class="caption">GESAMT</span><span class="num" data-val="${rating}">${val(rating)}</span></div>
+                    <div class="fut-photo">${p.photo ? `<img src="${escapeHtml(p.photo)}" alt="" draggable="false">` : '<svg class="fut-silhouette" viewBox="0 0 200 180" aria-hidden="true"><path fill="#292929" d="M0 180 Q4 145 47 132 L72 119 73 103 Q60 91 61 74 Q54 60 61 56 Q55 9 96 3 Q144 0 140 56 Q148 59 141 76 Q141 94 127 105 L128 120 154 133 Q195 146 200 180Z"/></svg>'}</div>
                     <div class="fut-name">${escapeHtml(p.name)}</div>
-                    <div class="fut-line"></div>
+                    <div class="fut-position">${escapeHtml(p.pos)}</div>
                     <div class="fut-stats">${STAT_KEYS.map(stat).join('')}</div>
-                    ${award ? `<div class="fut-award" title="Bis zum nächsten Spieltagsabschluss, maximal sieben Tage">${escapeHtml(award.label)}</div>` : ''}
+                    ${award ? `<div class="fut-award" title="Bis zum nächsten Spieltagsabschluss, maximal sieben Tage">${escapeHtml(award.label.replace('Überraschungsspieler', 'Überraschung des Tages'))}</div>` : `<div class="fut-award">${escapeHtml(TIER_NAMES[tier])}</div>`}
                     <div class="fut-holo"></div>
                     <div class="fut-shine"></div>
                     <div class="fut-glare"></div>
@@ -1419,7 +1461,7 @@
                         <span class="font-semibold">${escapeHtml(p.name)}</span>
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">${escapeHtml(p.pos)}</span></div></td>
                     <td class="px-4 py-3 text-right whitespace-nowrap"><span class="tabular-nums font-bold text-base">${formatElo(p.elo)}</span>
-                        <span class="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${{ bronze: 'bg-orange-100 text-orange-800', silber: 'bg-slate-200 text-slate-700', gold: 'bg-amber-100 text-amber-800', ikone: 'bg-indigo-100 text-indigo-700' }[tierFor(p.elo)]}" title="${TIER_NAMES[tierFor(p.elo)]}">${rating}</span></td>
+                        <span class="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${{ bronze: 'bg-orange-100 text-orange-800', silber: 'bg-slate-200 text-slate-700', gold: 'bg-amber-100 text-amber-800', legende: 'bg-sky-100 text-sky-800', ikone: 'bg-indigo-100 text-indigo-700' }[tierFor(p.elo)]}" title="${TIER_NAMES[tierFor(p.elo)]}">${rating}</span></td>
                     <td class="px-4 py-3 text-right tabular-nums text-xs font-bold ${deltaClass(d)}">${d ? (d > 0 ? '▲ ' : '▼ ') + formatElo(Math.abs(d)) : '–'}</td>
                     <td class="px-4 py-3 text-right text-slate-600 hidden sm:table-cell">${s.games}</td>
                     <td class="px-4 py-3 text-right text-slate-600 hidden sm:table-cell tabular-nums text-xs">${s.w} / ${s.d} / ${s.l}</td>
@@ -1901,8 +1943,8 @@
             const flipper = $('revealFlipper');
             flipper.className = 'reveal-flipper';
             flipper.innerHTML = `
-                <div class="reveal-face">${cardHtml(p, { fs: Math.min(17, Math.max(10.5, (window.innerHeight - 190) / 28.5)), reveal: animate })}</div>
-                <div class="reveal-face reveal-back"><div class="fut-card tier-${tier}" style="--fs:${Math.min(17, Math.max(10.5, (window.innerHeight - 190) / 28.5))}px">
+                <div class="reveal-face">${cardHtml(p, { fs: Math.min(17, Math.max(10.5, (window.innerHeight - 190) / 26.5)), reveal: animate })}</div>
+                <div class="reveal-face reveal-back"><div class="fut-card tier-${tier}" style="--fs:${Math.min(17, Math.max(10.5, (window.innerHeight - 190) / 26.5))}px">
                     <div class="fut-shape"></div><div class="fut-inner"><div class="fut-pattern"></div>
                     <div class="back-art"><i class="fa-solid fa-futbol"></i><span>FC-M:SYS</span></div><div class="fut-holo"></div><div class="fut-shine"></div></div></div></div>`;
             // Die große Karte soll ruhig und gleichmäßig schimmern
@@ -1910,7 +1952,7 @@
             flipper.querySelector('.fut-inner').insertAdjacentHTML('beforeend', '<div class="reveal-shine-once"></div>');
 
             $('cardInfo').innerHTML = `<div class="font-bold text-base">${escapeHtml(p.name)}</div>
-                <div class="text-white/60">Rating <b class="text-white">${rating}</b> · <span class="font-semibold" style="color:rgb(${{ bronze: '230,160,100', silber: '203,213,225', gold: '252,211,77', ikone: '165,170,255' }[tier]})">${TIER_NAMES[tier]}</span></div>`;
+                <div class="text-white/60">Rating <b class="text-white">${rating}</b> · <span class="font-semibold" style="color:rgb(${{ bronze: '230,160,100', silber: '203,213,225', gold: '252,211,77', legende: '125,211,252', ikone: '165,170,255' }[tier]})">${TIER_NAMES[tier]}</span></div>`;
 
             $('revealBob').className = 'reveal-bob';
             $('revealTilt').style.transform = '';
@@ -1963,7 +2005,7 @@
         }
 
         function buildParticles(tier) {
-            const n = { bronze: 10, silber: 22, gold: 40, ikone: 56 }[tier];
+            const n = { bronze: 10, silber: 22, gold: 40, legende: 64, ikone: 56 }[tier];
             const box = $('revealParticles');
             box.innerHTML = '';
             for (let i = 0; i < n; i++) {
@@ -2009,9 +2051,9 @@
             const t = tierInputs(), ok = tiersValid(t);
             $('tierError').classList.toggle('hidden', ok);
             $('tierError').textContent = 'Werte von 100 bis 3000 und aufsteigend: Silber < Gold < Ikone.';
-            const c = { bronze: 0, silber: 0, gold: 0, ikone: 0 };
+            const c = { bronze: 0, silber: 0, gold: 0, ikone: 0, legende: 0 };
             if (ok) players.forEach(p => c[tierFor(p.elo, t)]++);
-            $('tierPreview').textContent = ok ? `Damit: ${c.ikone} Ikone · ${c.gold} Gold · ${c.silber} Silber · ${c.bronze} Bronze` : 'Vorschau nach gültigen Werten';
+            $('tierPreview').textContent = ok ? `Damit: ${c.legende} Vereinslegende · ${c.ikone} Ikone · ${c.gold} Gold · ${c.silber} Silber · ${c.bronze} Bronze` : 'Vorschau nach gültigen Werten';
         }
         function openSettings() {
             $('tierSilber').value = tiers.silber; $('tierGold').value = tiers.gold; $('tierIkone').value = tiers.ikone;
