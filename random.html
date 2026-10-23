@@ -157,13 +157,25 @@
         .award-surprise { --c1:#360559; --c2:#170326; --c3:#290643; --edge1:#e1baff; --edge2:#8d20f3; --glow:170,60,255; }
         .award-surprise .fut-holo { display:none; }
 
-        /* Angled metallic side tabs from the supplied card references. */
+        /* Tier-specific metallic tabs; award styles take precedence over Elo tiers. */
         .fut-facets { position:absolute; inset:0; z-index:2; pointer-events:none; }
-        .fut-facets i { position:absolute; width:1.35em; height:4.3em; background:linear-gradient(125deg,var(--edge2),var(--edge1) 35%,var(--edge2) 75%,var(--edge1)); clip-path:polygon(0 30%,100% 0,100% 70%,0 100%); filter:drop-shadow(0 .1em .12em #0009); }
-        .fut-facets i:nth-child(1) { left:0; top:5.1em; height:2.6em; }
-        .fut-facets i:nth-child(2) { left:0; top:11.5em; }
-        .fut-facets i:nth-child(3) { right:0; top:5.1em; height:2.6em; transform:rotate(180deg); }
-        .fut-facets i:nth-child(4) { right:0; top:12.1em; transform:rotate(180deg); }
+        .fut-facets i { position:absolute; display:none; width:var(--facet-width,1em); height:var(--facet-height,2.6em); background:linear-gradient(125deg,var(--edge2),var(--edge1) 35%,var(--edge2) 75%,var(--edge1)); clip-path:polygon(0 30%,100% 0,100% 70%,0 100%); filter:drop-shadow(0 .1em .12em #0009); }
+        .fut-facets i:nth-child(odd) { left:0; }
+        .fut-facets i:nth-child(even) { right:0; transform:rotate(180deg); }
+        .fut-facets i:nth-child(-n+2) { display:block; top:11.5em; }
+        .fut-facets i:nth-child(3), .fut-facets i:nth-child(4) { top:5.2em; height:calc(var(--facet-height,2.6em) * .72); }
+        .fut-facets i:nth-child(5), .fut-facets i:nth-child(6) { top:17em; height:calc(var(--facet-height,2.6em) * .55); }
+        .tier-bronze { --facet-width:.85em; --facet-height:2.5em; }
+        .tier-silber { --facet-width:1.05em; --facet-height:3.2em; }
+        .tier-gold { --facet-width:1.35em; --facet-height:4.1em; }
+        .tier-ikone, .tier-legende { --facet-width:1.5em; --facet-height:4.5em; }
+        .tier-silber .fut-facets i:nth-child(-n+4), .tier-gold .fut-facets i:nth-child(-n+4), .tier-ikone .fut-facets i, .tier-legende .fut-facets i { display:block; }
+        .fut-card.award-motm { --facet-width:1.7em; --facet-height:4.7em; }
+        .fut-card.award-surprise { --facet-width:1.4em; --facet-height:3.8em; }
+        .fut-card.award-motm .fut-facets i, .fut-card.award-surprise .fut-facets i { display:block; }
+        .award-motm .fut-facets i:nth-child(even) { transform:scaleX(-1); }
+        .award-surprise .fut-facets i:nth-child(3) { transform:scaleY(-1); }
+        .award-surprise .fut-facets i:nth-child(4) { transform:scaleX(-1); }
 
         /* Karten-Raster */
         .card-tile { cursor: pointer; transition: transform .25s cubic-bezier(.2,.8,.2,1); }
@@ -1024,7 +1036,7 @@
             const stat = k => { const v = Math.round(statVal(p, k)); return `<div><b data-val="${v}">${val(v)}</b><i>${({ tem: 'PAC', sch: 'SHO', pas: 'PAS', drl: 'DRI', ver: 'DEF', phy: 'PHY' })[k]}</i></div>`; };
             return `<div class="fut-card tier-${tier}${award ? ` award-${award.kind}` : ''}" style="--fs:${fs}px;--shine-delay:${delay}s">
                 <div class="fut-shape"></div>
-                <div class="fut-facets" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                <div class="fut-facets" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
                 <div class="fut-inner">
                     <div class="fut-pattern"></div>
                     <img class="fut-logo" src="/img/card-logo.svg?v=crest-outline-3" alt="FC M:sys" draggable="false"><div class="fut-rating"><span class="caption">GESAMT</span><span class="num" data-val="${rating}">${val(rating)}</span></div>
