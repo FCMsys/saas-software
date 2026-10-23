@@ -136,7 +136,7 @@
         .fut-rating .caption { display:block; font-size:.8em; font-weight:700; border-bottom:1px solid #ffffff90; padding-bottom:.25em; margin-bottom:.25em; }
         .fut-rating .num { font-size:2.35em; }
         .fut-photo { left:2.1em; right:2.1em; top:2.5em; width:auto; height:11.6em; mask-image:none; -webkit-mask-image:none; align-items:flex-end; }
-        .fut-photo img { object-fit:contain; object-position:bottom; filter:drop-shadow(0 0 .12em var(--edge1)) drop-shadow(0 0 .4em rgba(var(--glow), .65)); }
+        .fut-photo img { object-fit:contain; object-position:bottom; transform:scale(1.15); transform-origin:center bottom; box-sizing:border-box; padding:.4em .2em 0; filter:drop-shadow(0 0 .12em var(--edge1)) drop-shadow(0 0 .4em rgba(var(--glow), .65)); }
         .fut-silhouette { width:100%; height:100%; }
         .fut-name { top:62%; line-height:1.2; }
         .fut-position { position:absolute; top:70%; left:8.5%; right:8.5%; display:flex; align-items:center; gap:.7em; font-size:.95em; line-height:1; font-weight:700; }
@@ -1853,19 +1853,18 @@
             }
         };
 
-        // Zuschneiden (Cover, leicht nach oben gewichtet) und verkleinern
+        // Vollstaendig einpassen: keine Bildteile abschneiden, oben Platz fuer Haare lassen.
         function fileToPhoto(file) {
             return new Promise((resolve, reject) => {
                 const url = URL.createObjectURL(file);
                 const img = new Image();
                 img.onload = () => {
-                    const W = 420, H = 460, ratio = W / H;
-                    let sw = img.width, sh = img.height;
-                    if (sw / sh > ratio) sw = sh * ratio; else sh = sw / ratio;
-                    const sx = (img.width - sw) / 2, sy = (img.height - sh) * 0.2;
+                    const W = 420, H = 460, topPadding = 16, sidePadding = 8;
+                    const scale = Math.min((W - 2 * sidePadding) / img.width, (H - topPadding) / img.height);
+                    const width = img.width * scale, height = img.height * scale;
                     const canvas = document.createElement('canvas');
                     canvas.width = W; canvas.height = H;
-                    canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+                    canvas.getContext('2d').drawImage(img, (W - width) / 2, H - height, width, height);
                     const alpha = /png|webp|gif/.test(file.type);
                     resolve(canvas.toDataURL(alpha ? 'image/png' : 'image/jpeg', 0.9));
                     URL.revokeObjectURL(url);
