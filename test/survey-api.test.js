@@ -119,22 +119,34 @@ test('survey API creates stable private forms, accepts each response once, and p
         assert.match(guestLandingHtml, /\/login\?returnTo=%2F%3Fumfrage%3Dst_test%26intro%3Ddone/);
         const landingScripts = [...guestLandingHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)];
         assert.equal(landingScripts.length, 1);
-        let onEnded;
-        const redirects = [];
-        new Function('document', 'location', landingScripts[0][1])({
-            getElementById: id => id === 'landingVideo'
-                ? { addEventListener: (event, callback) => { assert.equal(event, 'ended'); onEnded = callback; } }
-                : { href: '/login?returnTo=test' }
-        }, { replace: url => redirects.push(url) });
-        assert.deepEqual(redirects, []);
-        onEnded();
-        assert.deepEqual(redirects, ['/login?returnTo=test']);
+        for (const trigger of ['timeupdate', 'ended']) {
+            const handlers = new Map();
+            const redirects = [];
+            const video = { currentTime: 0, addEventListener: (event, callback) => handlers.set(event, callback) };
+            new Function('document', 'location', landingScripts[0][1])({
+                getElementById: id => id === 'landingVideo' ? video : { href: '/login?returnTo=test' }
+            }, { replace: url => redirects.push(url) });
+            assert.deepEqual([...handlers.keys()].sort(), ['ended', 'timeupdate']);
+            assert.deepEqual(redirects, []);
+            video.currentTime = 3.99;
+            handlers.get('timeupdate')();
+            assert.deepEqual(redirects, []);
+            video.currentTime = 4;
+            handlers.get(trigger)();
+            assert.deepEqual(redirects, ['/login?returnTo=test']);
+            handlers.get('timeupdate')();
+            handlers.get('ended')();
+            assert.equal(redirects.length, 1, 'video events must redirect only once');
+        }
         const landingVideo = await fetch(`${baseUrl}/img/landing.mp4`);
         assert.equal(landingVideo.status, 200);
         assert.equal(landingVideo.headers.get('content-type'), 'video/mp4');
         assert.equal(await landingVideo.text(), 'test-landing-video');
         const loggedInLanding = await fetch(`${baseUrl}/`, { headers: { Cookie: sessionCookie('admin', 'admin') } });
-        assert.match(await loggedInLanding.text(), /href="\/\?intro=done">Weiter zur App/);
+        const loggedInHtml = await loggedInLanding.text();
+        assert.match(loggedInHtml, /<dialog id="appIntro"/);
+        assert.match(loggedInHtml, /<button type="button">Weiter zur App<\/button>/);
+        assert.match(loggedInHtml, /id="surveyModal"/);
         const landingImage = await fetch(`${baseUrl}/img/landing.gif`);
         assert.equal(landingImage.status, 200);
         assert.equal(landingImage.headers.get('content-type'), 'image/gif');
@@ -142,7 +154,9 @@ test('survey API creates stable private forms, accepts each response once, and p
         const removedLandingVideo = await fetch(`${baseUrl}/video/landing.mp4`);
         assert.notEqual(removedLandingVideo.headers.get('content-type'), 'video/mp4');
         const appPage = await fetch(`${baseUrl}/?intro=done`, { headers: { Cookie: sessionCookie('admin', 'admin') } });
-        assert.match(await appPage.text(), /id="surveyModal"/);
+        const appHtml = await appPage.text();
+        assert.match(appHtml, /id="surveyModal"/);
+        assert.doesNotMatch(appHtml, /<dialog id="appIntro"/);
 
         const day = await call('/api/spieltage', { method: 'POST', body: { datum: '2026-10-20', uhrzeit: '19:00' } });
         assert.equal(day.response.status, 200);
