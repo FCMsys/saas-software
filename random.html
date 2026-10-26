@@ -19,6 +19,31 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
+        /* Native accent-color may choose black ticks on bright blue backgrounds. */
+        input[type="checkbox"] {
+            --checkbox-color: rgb(0,160,228);
+            appearance: none; -webkit-appearance: none;
+            display: inline-block; vertical-align: middle; flex-shrink: 0;
+            width: 1rem; height: 1rem; border: 1px solid rgb(85,131,152);
+            border-radius: .2rem; background-color: #fff;
+            background-position: center; background-repeat: no-repeat; background-size: 100%;
+            cursor: pointer;
+        }
+        input[type="checkbox"].accent-rose-600 { --checkbox-color: #e11d48; }
+        input[type="checkbox"].accent-indigo-600 { --checkbox-color: #4f46e5; }
+        input[type="checkbox"]:checked {
+            border-color: var(--checkbox-color); background-color: var(--checkbox-color);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 8 3 3 7-7' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        }
+        input[type="checkbox"]:indeterminate {
+            border-color: var(--checkbox-color); background-color: var(--checkbox-color);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8h8' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+        }
+        input[type="checkbox"]:focus-visible { outline: 2px solid rgb(0,160,228); outline-offset: 2px; }
+        input[type="checkbox"]:disabled { opacity: .45; cursor: not-allowed; }
+        @media (forced-colors: active) {
+            input[type="checkbox"] { appearance: auto; -webkit-appearance: auto; }
+        }
         .tab-btn { color: rgb(85,131,152); border-bottom: 2px solid transparent; }
         .tab-btn:hover { color: rgb(85,131,152); }
         .tab-btn.active { color: rgb(0,160,228); border-bottom-color: rgb(0,160,228); }
