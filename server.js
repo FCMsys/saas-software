@@ -1198,12 +1198,12 @@ function appIntro() {
   #appIntro{box-sizing:border-box;position:fixed;inset:0;width:100%;max-width:none;height:100%;height:100dvh;max-height:none;margin:0;border:0;padding:20px;outline:none;background:#fff;color:#0f172a;font-family:var(--font-sans);overflow:auto}
   #appIntro[open]{display:grid;align-items:safe center;justify-items:center}#appIntro::backdrop{background:#fff}
   #appIntro section{box-sizing:border-box;width:100%;max-width:960px;min-width:0;text-align:center}#appIntro h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px);font-weight:700}
-  #appIntro video{display:block;width:auto;height:auto;max-width:100%;max-height:calc(100vh - 200px);max-height:calc(100dvh - 200px);object-fit:contain;margin:0 auto;background:#fff;filter:contrast(1.08)}
+  #appIntro video{display:block;width:100%;height:auto;max-width:100%;max-height:calc(100vh - 200px);max-height:calc(100dvh - 200px);object-fit:contain;margin:0 auto;background:#fff;filter:contrast(1.08)}
   #appIntro button{margin-top:16px;min-height:46px;padding:0 24px;border:0;border-radius:10px;background:#00a0e4;color:#fff;font:700 16px var(--font-sans);cursor:pointer}
 </style>
 <dialog id="appIntro" aria-labelledby="appIntroTitle"><section>
   <h1 id="appIntroTitle">Willkommen beim FC M:sys</h1>
-  <video src="/img/landing.mp4" autoplay muted playsinline preload="auto"></video>
+  <video src="/img/landing.mp4" poster="/img/landing.gif" autoplay muted playsinline preload="auto"></video>
   <button type="button">Weiter zur App</button>
 </section></dialog>
 <script>
@@ -1238,11 +1238,11 @@ function landingPage(destination, isAuthenticated) {
 <link rel="stylesheet" href="/fonts/fonts.css">
 <style>
   *{box-sizing:border-box}body{margin:0;min-height:100vh;min-height:100dvh;display:grid;align-items:safe center;justify-items:center;padding:20px;background:#fff;color:#0f172a;font-family:var(--font-sans)}
-  main{width:100%;max-width:960px;min-width:0;text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}main video{display:block;width:auto;height:auto;max-width:100%;max-height:calc(100vh - 200px);max-height:calc(100dvh - 200px);object-fit:contain;margin:0 auto;border:0;border-radius:0;background:#fff;filter:contrast(1.08)}
+  main{width:100%;max-width:960px;min-width:0;text-align:center}h1{margin:0 0 16px;font-size:clamp(22px,4vw,36px)}main video{display:block;width:100%;height:auto;max-width:100%;max-height:calc(100vh - 200px);max-height:calc(100dvh - 200px);object-fit:contain;margin:0 auto;border:0;border-radius:0;background:#fff;filter:contrast(1.08)}
   .continue{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:16px;padding:0 24px;border:0;border-radius:10px;background:#00a0e4;color:#fff;font-weight:700;text-decoration:none}.continue:hover{background:#00a0e4}.continue:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
 </style></head><body>
 <main><h1>Willkommen beim FC M:sys</h1>
-  <video id="landingVideo" src="/img/landing.mp4" autoplay muted playsinline preload="auto"></video>
+  <video id="landingVideo" src="/img/landing.mp4" poster="/img/landing.gif" autoplay muted playsinline preload="auto"></video>
   <a class="continue" id="continueLink" href="${escHtml(destination)}">${label}</a>
 </main>
 <script>
@@ -1308,8 +1308,25 @@ async function handle(req, res) {
     const imgFile = method === 'GET' && (url === '/favicon.ico' ? IMAGES['msys.svg'] : IMAGES[url.replace(/^\/img\//, '')]);
     if (imgFile) {
         const contentType = imgFile.endsWith('.png') ? 'image/png' : imgFile.endsWith('.gif') ? 'image/gif' : imgFile.endsWith('.mp4') ? 'video/mp4' : 'image/svg+xml';
-        res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400' });
-        return res.end(fs.readFileSync(path.join(ROOT, 'src', 'img', imgFile)));
+        const data = fs.readFileSync(path.join(ROOT, 'src', 'img', imgFile));
+        const headers = { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400', 'Content-Length': data.length };
+        if (contentType === 'video/mp4') {
+            headers['Accept-Ranges'] = 'bytes';
+            // Safari probes byte ranges before starting inline video playback.
+            const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+            if (range && (range[1] || range[2])) {
+                const start = range[1] ? Number(range[1]) : Math.max(0, data.length - Number(range[2]));
+                const end = range[1] && range[2] ? Math.min(Number(range[2]), data.length - 1) : data.length - 1;
+                if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || start >= data.length) {
+                    res.writeHead(416, { 'Content-Range': `bytes */${data.length}`, 'Accept-Ranges': 'bytes' });
+                    return res.end();
+                }
+                res.writeHead(206, { ...headers, 'Content-Range': `bytes ${start}-${end}/${data.length}`, 'Content-Length': end - start + 1 });
+                return res.end(data.subarray(start, end + 1));
+            }
+        }
+        res.writeHead(200, headers);
+        return res.end(data);
     }
 
     // Zu-/Absage über den Link aus der Mail (signierter Token, kein Login nötig)

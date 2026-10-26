@@ -114,7 +114,7 @@ test('survey API creates stable private forms, accepts each response once, and p
         assert.equal(guestLanding.status, 200);
         assert.match(guestLandingHtml, /Willkommen beim FC M:sys/);
         assert.match(guestLandingHtml, /background:#fff/);
-        assert.match(guestLandingHtml, /<video id="landingVideo" src="\/img\/landing\.mp4" autoplay muted playsinline preload="auto"><\/video>/);
+        assert.match(guestLandingHtml, /<video id="landingVideo" src="\/img\/landing\.mp4" poster="\/img\/landing\.gif" autoplay muted playsinline preload="auto"><\/video>/);
         assert.doesNotMatch(guestLandingHtml, /\bloop\b|setTimeout|box-shadow|video-wrap/);
         assert.match(guestLandingHtml, /\/login\?returnTo=%2F%3Fumfrage%3Dst_test%26intro%3Ddone/);
         const landingScripts = [...guestLandingHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)];
@@ -142,6 +142,26 @@ test('survey API creates stable private forms, accepts each response once, and p
         assert.equal(landingVideo.status, 200);
         assert.equal(landingVideo.headers.get('content-type'), 'video/mp4');
         assert.equal(await landingVideo.text(), 'test-landing-video');
+        assert.equal(landingVideo.headers.get('accept-ranges'), 'bytes');
+        for (const [range, expected, contentRange] of [
+            ['bytes=0-1', 'te', 'bytes 0-1/18'],
+            ['bytes=13-', 'video', 'bytes 13-17/18'],
+            ['bytes=-5', 'video', 'bytes 13-17/18'],
+            ['bytes=13-100', 'video', 'bytes 13-17/18']
+        ]) {
+            const partial = await fetch(baseUrl + '/img/landing.mp4', { headers: { Range: range } });
+            assert.equal(partial.status, 206);
+            assert.equal(partial.headers.get('content-range'), contentRange);
+            assert.equal(Number(partial.headers.get('content-length')), expected.length);
+            assert.equal(await partial.text(), expected);
+        }
+        for (const range of ['bytes=18-', 'bytes=5-2', 'bytes=-0']) {
+            const invalidRange = await fetch(baseUrl + '/img/landing.mp4', { headers: { Range: range } });
+            assert.equal(invalidRange.status, 416);
+            assert.equal(invalidRange.headers.get('content-range'), 'bytes */18');
+            assert.equal(await invalidRange.text(), '');
+        }
+
         const loggedInLanding = await fetch(`${baseUrl}/`, { headers: { Cookie: sessionCookie('admin', 'admin') } });
         const loggedInHtml = await loggedInLanding.text();
         assert.match(loggedInHtml, /<dialog id="appIntro"/);
