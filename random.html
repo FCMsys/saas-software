@@ -12,7 +12,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/fonts/fonts.css">
     <style>
-        body { font-family: var(--font-sans); background: linear-gradient(180deg, #eef3fb 0, #f7f9fd 340px) fixed; color: #0f172a; -webkit-font-smoothing: antialiased; }
+        body { position: relative; isolation: isolate; font-family: var(--font-sans); background: linear-gradient(180deg, #eef3fb 0, #f7f9fd 340px) fixed; color: #0f172a; -webkit-font-smoothing: antialiased; }
+        body::before {
+            content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+            background: url('/img/msys-background.png') center / min(82vw, 1050px) auto no-repeat;
+            opacity: .055;
+        }
         ::selection { background: #bfdbfe; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }

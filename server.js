@@ -25,7 +25,7 @@ try {
 const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'daten');
 const PORT = parseInt(process.env.PORT, 10) || 3000;
-const IMAGES = { 'card-logo.svg': 'card-logo.svg', 'msys.svg': 'Msys-Wappen.svg', 'lm.svg': 'L&M-Logo.svg', 'ramazzotti.svg': 'Ramazzotti-Logo.svg', 'ad-plane-banner.png': 'ad-plane-banner.png', 'landing.gif': 'landing.gif', 'landing.mp4': 'landing.mp4' };
+const IMAGES = { 'msys-background.png': 'msys-background.png', 'card-logo.svg': 'card-logo.svg', 'msys.svg': 'Msys-Wappen.svg', 'lm.svg': 'L&M-Logo.svg', 'ramazzotti.svg': 'Ramazzotti-Logo.svg', 'ad-plane-banner.png': 'ad-plane-banner.png', 'landing.gif': 'landing.gif', 'landing.mp4': 'landing.mp4' };
 const FILES = { spieler: 'spieler.csv', spiele: 'spiele.csv', presets: 'presets.csv' };
 
 const KINDE_DOMAIN = (process.env.KINDE_DOMAIN || '').replace(/\/+$/, '');
