@@ -50,6 +50,16 @@
         #tab-history svg text[fill="#94a3b8"] { fill: rgb(85,131,152); }
         #tab-history svg text[fill="#2563eb"] { fill: rgb(0,160,228); }
         #tab-history button.hover\:text-rose-600:hover { color: #e11d48; }
+        :is(#tab-payments,#tab-advertising) > div > h2 { color: rgb(0,160,228); }
+        :is(#tab-payments,#tab-advertising) :is(.text-slate-300,.text-slate-400,.text-slate-500,.text-slate-600,.text-slate-700) { color: rgb(85,131,152); }
+        :is(#tab-payments,#tab-advertising) :is(.text-blue-500,.text-blue-600,.text-blue-700,.text-blue-800,.text-blue-900) { color: rgb(0,160,228); }
+        :is(#tab-payments,#tab-advertising) :is(input,select,textarea) { color: rgb(0,0,0); }
+        :is(#tab-payments,#tab-advertising) :is(input,textarea)::placeholder { color: rgb(85,131,152); opacity: 1; }
+        :is(#tab-payments,#tab-advertising) :is(input,select,textarea):focus { border-color: rgb(0,160,228); --tw-ring-color: rgb(0 160 228 / .2); }
+        :is(#tab-payments,#tab-advertising) .accent-blue-600 { accent-color: rgb(0,160,228); }
+        :is(#tab-payments,#tab-advertising) button:is(.bg-blue-600,.bg-indigo-600) { background: rgb(0,160,228); color: rgb(255,255,255); }
+        :is(#tab-payments,#tab-advertising) button:is(.bg-blue-600,.bg-indigo-600) i { color: inherit; }
+        :is(#tab-payments,#tab-advertising) button.hover\:text-rose-600:hover { color: #e11d48; }
         .card { background: #fff; border: 1px solid #e3e9f4; border-radius: 1rem; box-shadow: 0 1px 2px rgba(30,58,138,.04), 0 8px 24px -12px rgba(30,58,138,.10); }
         .fade-in { animation: fade .18s ease-out; }
         @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
