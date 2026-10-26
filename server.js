@@ -1292,7 +1292,7 @@ async function handle(req, res) {
     const method = req.method;
 
     // Public font assets are also needed before login; only known files are served.
-    const fontFiles = ['fonts.css', ...['Thin', 'ExtraLight', 'Light', 'Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold', 'Black'].map(weight => `EncodeSans-${weight}.ttf`)];
+    const fontFiles = ['fonts.css', 'Unit-Regular.ttf', 'Unit-Bold.ttf', ...['Thin', 'ExtraLight', 'Light', 'Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold', 'Black'].map(weight => `EncodeSans-${weight}.ttf`)];
     if (method === 'GET' && url.startsWith('/fonts/')) {
         const filename = url.slice('/fonts/'.length);
         if (!fontFiles.includes(filename)) { res.writeHead(404); return res.end(); }

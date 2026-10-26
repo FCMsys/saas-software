@@ -9,6 +9,10 @@
 @font-face { font-family: 'Encode Sans'; font-style: normal; font-weight: 800; font-display: swap; src: url('./EncodeSans-ExtraBold.ttf') format('truetype'); }
 @font-face { font-family: 'Encode Sans'; font-style: normal; font-weight: 900; font-display: swap; src: url('./EncodeSans-Black.ttf') format('truetype'); }
 
+/* Unit wordmark: use the supplied bold file rather than synthetic bold. */
+@font-face { font-family: 'Msys Unit'; font-style: normal; font-weight: 400; font-display: swap; src: url('./Unit-Regular.ttf') format('truetype'); }
+@font-face { font-family: 'Msys Unit'; font-style: normal; font-weight: 700; font-display: swap; src: url('./Unit-Bold.ttf') format('truetype'); }
+
 :root { --font-sans: 'Encode Sans', sans-serif; }
 html { font-family: var(--font-sans); }
 button, input, select, textarea { font-family: inherit; }
