@@ -1725,7 +1725,7 @@
         // ---- Chart ----
         function chartPlayerHistories() {
             const events = new Map();
-            const histories = new Map(players.map(player => [player.id, player.history.filter(point => point.matchId || (point.seq === 0 && point.delta === 0)).map(point => ({ ...point, chartKey: point.matchId || 'start' }))]));
+            const histories = new Map(players.map(player => [player.id, player.history.filter(point => point.matchId || point.delta === 0).map(point => ({ ...point, chartKey: point.matchId || 'start' }))]));
             for (const survey of surveyEloHistory) {
                 for (const change of survey.changes) {
                     if (!histories.has(change.playerId)) continue;
@@ -1792,6 +1792,7 @@
             [...visible].sort((a, b) => a.elo - b.elo).forEach(p => {
                 const color = playerColor(p.id);
                 const pts = chart.histories.get(p.id);
+                if (!pts.length) return;
                 svg += `<path d="${pts.map((h, i) => `${i ? 'L' : 'M'}${x(h.chartIndex).toFixed(1)},${y(h.elo).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
                 pts.forEach(h => {
                     dots.push({ p, h, cx: x(h.chartIndex), cy: y(h.elo), color });

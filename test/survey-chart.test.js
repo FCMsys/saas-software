@@ -50,3 +50,17 @@ test('chart removes X labels and identifies a survey in its hover tooltip', () =
     assert.doesNotMatch(elements.chartTooltip.innerHTML,/manuell/);
     assert.match(elements.chartTooltip.innerHTML,/1530/);
 });
+
+test('chart renders players added after matches and tolerates an empty filtered history', () => {
+    const {context, elements} = fixture();
+    context.players.push({id:'new', name:'New player', elo:1500, history:[
+        {seq:2, t:'2026-10-06T00:00:00Z', elo:1500, delta:0, matchId:null}
+    ]});
+    context.players.push({id:'manual', name:'Manual only', elo:1510, history:[
+        {seq:2, t:'2026-10-06T00:00:00Z', elo:1510, delta:10, matchId:null}
+    ]});
+    assert.equal(context.chartPlayerHistories().histories.get('new').length, 1);
+    assert.doesNotThrow(() => context.renderChart());
+    assert.match(elements.eloChart.innerHTML, /New player/);
+    assert.doesNotMatch(elements.eloChart.innerHTML, /NaN|Infinity/);
+});
