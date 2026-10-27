@@ -1729,6 +1729,128 @@
             }).join('');
         }
 
+        function correctHistoricalMatches(edits) {
+            const changes = new Map();
+            for (const e of edits) {
+                const ids = [...e.teamA, ...e.teamB];
+                const existing = matchHistory.find(m => m.id === e.id);
+                if (!matchHistory.some(m => m.id === e.id) || !e.teamA.length || !e.teamB.length ||
+                    new Set(ids).size !== ids.length || ids.some(id => !players.some(p => p.id === id) && ![...(existing?.teamA || []), ...(existing?.teamB || [])].some(p => p.id === id)) ||
+                    ![e.goalsA, e.goalsB].every(n => Number.isSafeInteger(n) && n >= 0)) {
+                    throw new Error('Beide Teams benötigen Spieler; Tore müssen ganze Zahlen ab 0 sein.');
+                }
+                const sameTeam = (entries, ids) => entries.length === ids.length && entries.every(p => ids.includes(p.id));
+                if (existing.goalsA !== e.goalsA || existing.goalsB !== e.goalsB ||
+                    !sameTeam(existing.teamA, e.teamA) || !sameTeam(existing.teamB, e.teamB)) changes.set(e.id, e);
+            }
+            if (!changes.size) return;
+            const firstSeq = Math.min(...matchHistory.filter(m => changes.has(m.id)).map(m => m.seq));
+            const offsets = new Map();
+            const histories = new Map(players.map(p => [p.id, p.history.map(h => ({ ...h }))]));
+            const events = matchHistory.map(m => ({ seq: m.seq, t: m.iso, match: m }));
+            for (const p of players) for (const h of p.history) {
+                if (!h.matchId) events.push({ seq: h.seq, t: h.t, player: p, point: h });
+            }
+            events.sort((a, b) => a.seq - b.seq || (a.match ? -1 : b.match ? 1 : Date.parse(a.t) - Date.parse(b.t)));
+            for (const event of events) {
+                if (!event.match) { offsets.set(event.player.id, 0); continue; }
+                const m = event.match, edit = changes.get(m.id);
+                if (m.seq < firstSeq) continue;
+                const old = new Map([...m.teamA, ...m.teamB].map(p => [p.id, p]));
+                const idsA = edit ? edit.teamA : m.teamA.map(p => p.id);
+                const idsB = edit ? edit.teamB : m.teamB.map(p => p.id);
+                const beforeFor = id => {
+                    if (old.has(id)) return old.get(id).before;
+                    const history = histories.get(id) || [];
+                    const prior = history.filter(h => h.seq < m.seq || (h.seq === m.seq && Date.parse(h.t) < Date.parse(m.iso)));
+                    const point = prior[prior.length - 1];
+                    let elo = point ? point.elo : (history[0] ? history[0].elo - history[0].delta : players.find(p => p.id === id).elo);
+                    for (const survey of surveyEloHistory) {
+                        if (Date.parse(survey.t) > Date.parse(point?.t || '1970-01-01') && Date.parse(survey.t) < Date.parse(m.iso)) {
+                            elo += survey.changes.find(c => c.playerId === id)?.delta || 0;
+                        }
+                    }
+                    return elo;
+                };
+                const team = ids => ids.map(id => ({ id, elo: beforeFor(id) + (offsets.get(id) || 0) }));
+                const goalsA = edit ? edit.goalsA : m.goalsA, goalsB = edit ? edit.goalsB : m.goalsB;
+                const { result, changeA } = computeChange({ teamA: team(idsA), teamB: team(idsB) }, goalsA, goalsB);
+                const next = (ids, change) => ids.map(id => {
+                    const originalBefore = beforeFor(id), before = originalBefore + (offsets.get(id) || 0);
+                    const after = Math.max(100, before + change);
+                    offsets.set(id, after - (old.get(id)?.after ?? originalBefore));
+                    return { id, name: players.find(p => p.id === id)?.name || old.get(id)?.name || id, before, after, delta: after - before };
+                });
+                const teamA = next(idsA, changeA), teamB = next(idsB, -changeA);
+                for (const entry of old.values()) {
+                    if (![...idsA, ...idsB].includes(entry.id)) offsets.set(entry.id, (offsets.get(entry.id) || 0) - entry.delta);
+                }
+                Object.assign(m, { goalsA, goalsB, result, teamA, teamB });
+            }
+            for (const p of players) {
+                const before = p.elo;
+                p.elo += offsets.get(p.id) || 0;
+                if (p.elo !== before) applyEloToStats(p, before, p.elo);
+                p.history = p.history.filter(h => !h.matchId);
+                for (const m of matchHistory) {
+                    const entry = [...m.teamA, ...m.teamB].find(e => e.id === p.id);
+                    if (entry) p.history.push({ seq: m.seq, t: m.iso, elo: entry.after, delta: entry.delta, matchId: m.id });
+                }
+                p.history.sort((a, b) => a.seq - b.seq || Date.parse(a.t) - Date.parse(b.t));
+            }
+        }
+
+        function openHistoricalEditor(dayId, matchId) {
+            if (me.role !== 'admin') return;
+            const matches = matchHistory.filter(m => matchId ? m.id === matchId : m.matchDayId === dayId);
+            if (!matches.length) return showToast('Keine Spiele', 'Für diesen Spieltag sind keine Spiele gespeichert. Spiele ohne Zuordnung lassen sich im Verlauf bearbeiten.', 'info');
+            const dialog = document.createElement('dialog');
+            dialog.className = 'rounded-xl p-5 w-full max-w-2xl max-h-[90vh] overflow-auto';
+            dialog.innerHTML = `<form><h3 class="font-bold mb-2">Vergangene Spiele bearbeiten</h3>
+                <p class="text-sm text-slate-600 mb-4">Ergebnis und Aufstellung korrigieren. Auch spätere Spiele werden neu berechnet. Zusagen, Zahlungen und bestehende Umfragen bleiben erhalten.</p>
+                ${matches.map(m => `<fieldset data-history-match="${escapeHtml(m.id)}" class="border rounded-lg p-3 mb-3">
+                    <legend class="font-bold">Spiel #${matchHistory.indexOf(m) + 1}</legend>
+                    <div class="flex gap-3 mb-3"><label>Team A <input name="goalsA" type="number" min="0" step="1" required value="${m.goalsA}" class="border rounded w-20 p-2"></label>
+                    <label>Team B <input name="goalsB" type="number" min="0" step="1" required value="${m.goalsB}" class="border rounded w-20 p-2"></label></div>
+                    ${[...players, ...[...m.teamA, ...m.teamB].filter(p => !players.some(current => current.id === p.id))].map(p => `<label class="flex justify-between items-center gap-2 text-sm py-1">${escapeHtml(p.name)}
+                        <select data-player="${escapeHtml(p.id)}" class="border rounded p-1">
+                        <option value="">Nicht gespielt</option><option value="A" ${m.teamA.some(e => e.id === p.id) ? 'selected' : ''}>Team A</option>
+                        <option value="B" ${m.teamB.some(e => e.id === p.id) ? 'selected' : ''}>Team B</option></select></label>`).join('')}
+                </fieldset>`).join('')}
+                <p data-error role="alert" class="text-sm text-rose-600 mb-3"></p>
+                <div class="flex gap-3"><button type="submit" class="bg-blue-600 text-white rounded-lg px-3 py-2">Korrekturen speichern</button>
+                <button type="button" data-cancel class="border rounded-lg px-3 py-2">Abbrechen</button></div></form>`;
+            document.body.appendChild(dialog);
+            dialog.addEventListener('close', () => dialog.remove());
+            dialog.querySelector('[data-cancel]').onclick = () => dialog.close();
+            dialog.querySelector('form').onsubmit = async e => {
+                e.preventDefault();
+                const edits = [...dialog.querySelectorAll('[data-history-match]')].map(field => ({
+                    id: field.dataset.historyMatch,
+                    goalsA: Number(field.querySelector('[name="goalsA"]').value), goalsB: Number(field.querySelector('[name="goalsB"]').value),
+                    teamA: [...field.querySelectorAll('[data-player]')].filter(s => s.value === 'A').map(s => s.dataset.player),
+                    teamB: [...field.querySelectorAll('[data-player]')].filter(s => s.value === 'B').map(s => s.dataset.player)
+                }));
+                const snapshot = JSON.stringify({ players, matchHistory });
+                const button = dialog.querySelector('[type="submit"]'); button.disabled = true;
+                try {
+                    correctHistoricalMatches(edits);
+                    if (serverMode) {
+                        clearTimeout(saveTimer);
+                        const response = await fetch('/api/state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(stateToCsv()) });
+                        if (!response.ok) throw new Error('Korrekturen konnten nicht gespeichert werden.');
+                    }
+                    try { localStorage.setItem('matchmaster_v3', JSON.stringify({ players, squadPresets, matchHistory, surveyEloHistory })); } catch (_) { /* server saved */ }
+                    dialog.close(); renderAll();
+                    showToast('Spiele korrigiert', 'Aufstellungen, Ergebnisse und Elo-Verlauf aktualisiert.', 'success');
+                } catch (err) {
+                    const previous = JSON.parse(snapshot); players = previous.players; matchHistory = previous.matchHistory;
+                    dialog.querySelector('[data-error]').textContent = err.message; button.disabled = false;
+                }
+            };
+            dialog.showModal();
+        }
+
         function renderMatchHistory() {
             const list = $('matchHistoryList');
             if (matchHistory.length === 0) {
@@ -1749,6 +1871,7 @@
                 return `<div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
                     <div class="flex flex-wrap items-center gap-2 mb-2.5">
                         <span class="text-xs font-bold text-slate-400">#${nr}</span>
+                        ${me.role === 'admin' ? `<button data-edit-history="${escapeHtml(m.id)}" class="text-xs text-blue-700 border rounded px-2 py-1">Bearbeiten</button>` : ''}
                         <span class="text-lg font-extrabold tabular-nums tracking-tight"><span class="${aWin ? 'text-blue-700' : 'text-slate-500'}">${m.goalsA}</span><span class="text-slate-300 mx-1">:</span><span class="${bWin ? 'text-rose-700' : 'text-slate-500'}">${m.goalsB}</span></span>
                         <span class="text-[11px] font-semibold ${m.result === 'DRAW' ? 'text-slate-500' : (aWin ? 'text-blue-700' : 'text-rose-700')}">${m.result === 'DRAW' ? 'Unentschieden' : 'Sieg Team ' + m.result}</span>
                         <span class="text-[11px] text-slate-400 sm:ml-auto">${date}</span>
@@ -1761,6 +1884,11 @@
                 </div>`;
             }).join('');
         }
+
+        $('matchHistoryList').onclick = e => {
+            const button = e.target.closest('[data-edit-history]');
+            if (button) openHistoricalEditor('', button.dataset.editHistory);
+        };
 
         // ---- Chart ----
         function chartPlayerHistories() {
@@ -2720,6 +2848,7 @@
                     ${canStartDay ? `<button data-act="invite" data-st="${sid}" ${me.mailEnabled ? '' : 'disabled'} title="${me.mailEnabled ? 'Mail nur an Spieler ohne Zu- oder Absage mit bekannter Mail-Adresse' : 'Mail-Versand ist nicht eingerichtet'}" class="${btnCls} disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-envelope mr-1.5 text-blue-500"></i>${s.einladungAt ? 'Offene Antworten erinnern' : 'Einladung per Mail'}</button>
                     <button data-act="match" data-st="${sid}" class="${btnCls}" title="Mit den Zusagen dieses Spieltags Teams bilden"><i class="fa-solid fa-futbol mr-1.5 text-blue-500"></i>Spiel starten</button>` : ''}
                     <button data-act="bill" data-st="${sid}" class="${btnCls}" title="Zahlung für diesen Spieltag anfordern"><i class="fa-solid fa-euro-sign mr-1.5 text-blue-500"></i>${isBilled(s) ? 'Abgerechnet · ' + eur(s.betragCent) : 'Abrechnen'}</button>
+                    <button data-act="editGames" data-st="${sid}" class="${btnCls}">Spiele bearbeiten</button>
                     ${existingSurvey ? '' : `<button data-act="delete" data-st="${sid}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>`}
                 </div>` : '';
 
@@ -2774,7 +2903,8 @@
             if (!b || b.disabled) return;
             const { act, st, sp, s } = b.dataset;
             try {
-                if (act === 'tn') await api('POST', `/api/spieltage/${st}/teilnahme`, { spielerId: sp, status: s || null });
+                if (act === 'editGames') { openHistoricalEditor(st); return; }
+                else if (act === 'tn') await api('POST', `/api/spieltage/${st}/teilnahme`, { spielerId: sp, status: s || null });
                 else if (act === 'self') await api('POST', `/api/spieltage/${st}/antwort`, { status: s });
                 else if (act === 'finishSurvey') {
                     if (!confirm('Spieltag abschließen? Damit startet die 48-Stunden-Umfrage und die Einladungen werden versendet.')) return;
