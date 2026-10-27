@@ -2754,12 +2754,23 @@
                     ['Attributvergleiche', survey.attributes || []]
                 ].map(([label, items]) => `<details data-survey-detail="${escapeHtml(day.id)}:${escapeHtml(label)}" class="mt-2">
                     <summary class="cursor-pointer text-xs font-semibold text-slate-700">${label} (${items.length})</summary>
-                    <div class="mt-1 space-y-1">${items.length ? items.map(item => `<p class="text-xs text-slate-600">${escapeHtml(item.player)}${item.attribute ? ` · ${escapeHtml(item.attribute)}` : ''}: ${Math.round(item.average * 100)}% aus ${item.votes} ${item.votes === 1 ? 'Vergleich' : 'Vergleichen'}</p>`).join('') : '<p class="text-xs text-slate-400">Noch keine auswertbaren Vergleiche.</p>'}</div>
+                    <div class="mt-2 overflow-x-auto rounded-lg border border-slate-200">${items.length ? `<table class="w-full text-left text-xs text-slate-600">
+                        <caption class="sr-only">${label}</caption>
+                        <thead class="bg-slate-50 text-slate-700"><tr><th scope="col" class="px-3 py-2">Spieler</th>${label === 'Attributvergleiche' ? '<th scope="col" class="px-3 py-2">Attribut</th>' : ''}<th scope="col" class="px-3 py-2 text-right">Durchschnitt</th><th scope="col" class="px-3 py-2 text-right">Vergleiche</th></tr></thead>
+                        <tbody class="divide-y divide-slate-100">${items.map(item => `<tr><th scope="row" class="px-3 py-2 font-medium">${escapeHtml(item.player)}</th>${label === 'Attributvergleiche' ? `<td class="px-3 py-2">${escapeHtml(item.attribute || '')}</td>` : ''}<td class="px-3 py-2 text-right tabular-nums">${Math.round(item.average * 100)}%</td><td class="px-3 py-2 text-right tabular-nums">${item.votes}</td></tr>`).join('')}</tbody>
+                    </table>` : '<p class="p-3 text-xs text-slate-400">Noch keine auswertbaren Vergleiche.</p>'}</div>
                 </details>`).join('');
                 const changes = survey.ratingChanges || [];
                 const changeHistory = `<details data-survey-detail="${escapeHtml(day.id)}:changes" class="mt-2">
                     <summary class="cursor-pointer text-xs font-semibold text-slate-700">Attributänderungen (${changes.length})</summary>
-                    <div class="mt-1 space-y-1">${changes.length ? changes.map(change => `<p class="text-xs text-slate-600">${escapeHtml(change.player)} · ${escapeHtml(change.attribute)}: ${change.before} → ${change.after}</p>`).join('') : '<p class="text-xs text-slate-400">Noch keine Attributänderungen.</p>'}</div>
+                    <div class="mt-2 overflow-x-auto rounded-lg border border-slate-200">${changes.length ? `<table class="w-full text-left text-xs text-slate-600">
+                        <caption class="sr-only">Attributänderungen</caption>
+                        <thead class="bg-slate-50 text-slate-700"><tr><th scope="col" class="px-3 py-2">Spieler</th><th scope="col" class="px-3 py-2">Attribut</th><th scope="col" class="px-3 py-2 text-right">Vorher</th><th scope="col" class="px-3 py-2 text-right">Nachher</th><th scope="col" class="px-3 py-2 text-right">Änderung</th></tr></thead>
+                        <tbody class="divide-y divide-slate-100">${changes.map(change => {
+                            const delta = change.after - change.before;
+                            return `<tr><th scope="row" class="px-3 py-2 font-medium">${escapeHtml(change.player)}</th><td class="px-3 py-2">${escapeHtml(change.attribute)}</td><td class="px-3 py-2 text-right tabular-nums">${change.before}</td><td class="px-3 py-2 text-right tabular-nums">${change.after}</td><td class="px-3 py-2 text-right tabular-nums font-semibold ${delta > 0 ? 'text-emerald-700' : delta < 0 ? 'text-rose-600' : 'text-slate-500'}">${delta > 0 ? '+' : ''}${Number(delta.toFixed(2))}</td></tr>`;
+                        }).join('')}</tbody>
+                    </table>` : '<p class="p-3 text-xs text-slate-400">Noch keine Attributänderungen.</p>'}</div>
                 </details>`;
                 const responseRate = survey.participantCount ? Math.round(survey.submittedCount / survey.participantCount * 100) : 0;
                 return `<div class="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
