@@ -18,6 +18,12 @@ Attributvergleiche verwenden ein regularisiertes Bradley-Terry-Modell mit den vo
 
 Die Tagesleistungsvergleiche werden während der Umfrage aggregiert angezeigt. Nominierungen für **Man of the Match** und **Überraschung des Spieltags** bleiben bis zum Umfrageabschluss serverseitig verborgen. Sobald alle Teilnehmer geantwortet haben oder die Frist abläuft, werden Ranglisten, gleichplatzierte Gewinner und die Datenpunkte der Historie veröffentlicht.
 
+## Elo bei Umfrageänderungen
+
+Der gespeicherte Elo-Wert ist der Ausgangspunkt. Eine Umfrage addiert ausschließlich die tatsächlich angewandte Änderung der sechs Attribute, multipliziert mit 29/6. Der Elo-Wert wird beim Laden nicht aus dem Attributmittelwert neu gebildet. Bei erstmaliger Anwendung dienen die gespeicherten Umfrage-Startattribute als Referenz; danach verhindern die `survey_*`-Marker eine erneute Anwendung. Nachkommastellen bleiben erhalten, und Attributgrenzen werden berücksichtigt.
+
+Neue Antworten speichern ihre tatsächlichen Elo-Differenzen. Neue Umfragepunkte in der Historie verwenden aufgezeichnete Elo-Anker und die bis zum Abschlusszeitpunkt eingegangenen Antworten, auch wenn der Abschluss erst später verarbeitet wird. Alte Antworten ohne gespeicherte Elo-Differenzen werden über das Attributmodell rekonstruiert. Bereits gespeicherte falsche Elo-Werte und Umfragepunkte benötigen eine separate Datenkorrektur; die Codekorrektur überschreibt sie nicht automatisch.
+
 ## Speicherung und Betrieb
 
 - `spiele.csv`: neue Spiele speichern `match_day_id`; ältere Zeilen erhalten die Zuordnung erst nach expliziter Admin-Auswahl in der Historie/Umfrage.

@@ -195,6 +195,9 @@ test('survey API creates stable private forms, accepts each response once, and p
         };
         const saved = await call('/api/state', { method: 'PUT', body: state });
         assert.equal(saved.response.status, 200);
+        const initialState = (await call('/api/state')).data;
+        const initialRows = initialState.spieler.replace(/^\uFEFF/, '').trim().split(/\r?\n/).slice(1);
+        assert.ok(initialRows.every(row => Number(row.split(';')[2]) === 1500), 'loading must preserve Elo before any survey answers');
 
         const started = await call(`/api/spieltage/${dayId}/umfrage/abschliessen`, { method: 'POST' });
         assert.equal(started.response.status, 201);
@@ -255,7 +258,7 @@ test('survey API creates stable private forms, accepts each response once, and p
         assert.ok(updatedRows.slice(1).some(row => row.slice(4, 10).some(value => Number(value) !== 50)));
         for (const row of updatedRows.slice(1)) {
             const mean = row.slice(4, 10).reduce((sum, value) => sum + Number(value), 0) / 6;
-            assert.ok(Math.abs(Number(row[2]) - (29 * mean - 337)) < 1e-9);
+            assert.ok(Math.abs(Number(row[2]) - (1500 + 29 * (mean - 50))) < 1e-9);
         }
         const repeatedState = await call('/api/state');
         assert.equal(repeatedState.data.spieler, updatedState.data.spieler);
@@ -320,6 +323,7 @@ test('survey API creates stable private forms, accepts each response once, and p
         assert.ok(surveyPoint.changes.some(change => Math.abs(change.delta) > 0));
         for (const change of surveyPoint.changes) {
             assert.ok(Math.abs(change.after - change.before - change.delta) < 1e-9);
+            assert.ok(Math.abs(change.before - 1500) < 1e-9, 'survey history must start at the recorded match Elo');
         }
         assert.deepEqual((await call('/api/state')).data.surveyHistory, closedState.surveyHistory);
         const late = await call(`/api/umfragen/${dayId}/antwort`, {

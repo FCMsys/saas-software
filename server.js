@@ -585,7 +585,7 @@ function snapshotSurveyPriors(saved, players) {
     }
 }
 
-function playersCsvWithSurveyRatings(csv, ratings) {
+function playersCsvWithSurveyRatings(csv, ratings, priors = {}) {
     ratings = ratings || {};
     const rows = csvRows(csv);
     if (!rows.length) return csv;
@@ -598,17 +598,28 @@ function playersCsvWithSurveyRatings(csv, ratings) {
         const row = [...source];
         while (row.length < header.length) row.push('');
         const id = row[idIndex];
+        let attributeDelta = 0;
         keys.forEach((key, index) => {
             const value = ratings[ATTRIBUTES[index]] && ratings[ATTRIBUTES[index]][id];
             if (Number.isInteger(value)) {
                 const appliedIndex = header.indexOf('survey_' + key);
                 const attributeIndex = header.indexOf(key);
-                const nextValue = row[appliedIndex] === '' ? value : Number(row[attributeIndex]) + value - Number(row[appliedIndex]);
-                row[attributeIndex] = String(Math.max(1, Math.min(99, nextValue)));
+                const before = parseFloat(row[attributeIndex]) || 50;
+                // First application starts from the survey prior, preserving any
+                // fractional attribute values and the independent stored Elo.
+                const reference = row[appliedIndex] === ''
+                    ? (priors[id]?.[ATTRIBUTES[index]] ?? before)
+                    : Number(row[appliedIndex]);
+                const after = Math.max(1, Math.min(99, before + value - reference));
+                attributeDelta += after - before;
+                row[attributeIndex] = String(after);
                 row[appliedIndex] = String(value);
             }
         });
-        row[header.indexOf('elo')] = String(29 * keys.reduce((sum, key) => sum + (parseFloat(row[header.indexOf(key)]) || 50), 0) / 6 - 337);
+        if (attributeDelta !== 0) {
+            const eloIndex = header.indexOf('elo');
+            row[eloIndex] = String((parseFloat(row[eloIndex]) || 1500) + 29 / 6 * attributeDelta);
+        }
         next.push(row);
     }
     const quote = value => {
@@ -668,8 +679,8 @@ function calculateSurveyAwards(day) {
     ]));
 }
 
-function effectiveSurveyElos(ratings) {
-    const rows = csvRows(playersCsvWithSurveyRatings(readFile('spieler.csv'), ratings));
+function effectiveSurveyElos(ratings, priors = {}) {
+    const rows = csvRows(playersCsvWithSurveyRatings(readFile('spieler.csv'), ratings, priors));
     const index = Object.fromEntries((rows[0] || []).map((key, i) => [key, i]));
     return Object.fromEntries(rows.slice(1).map(row => [row[index.id], Number(row[index.elo])]));
 }
@@ -686,7 +697,7 @@ function replaySurveyEloDeltas(saved) {
         const dayDeltas = deltas[submission.dayId] ||= {};
         const changes = {};
         for (const id of Object.keys(saved.ratings.priors)) {
-            const delta = 29 / 6 * ATTRIBUTES.reduce((sum, key) => sum + (next[key][id] - previous[key][id]), 0);
+            const delta = submission.eloChanges?.[id] ?? 29 / 6 * ATTRIBUTES.reduce((sum, key) => sum + (next[key][id] - previous[key][id]), 0);
             dayDeltas[id] = (dayDeltas[id] || 0) + delta;
             changes[id] = delta;
         }
@@ -699,13 +710,20 @@ function replaySurveyEloDeltas(saved) {
 function historicalSurveyElos(saved, at, replay) {
     const rows = csvRows(readFile('spiele.csv'));
     const index = Object.fromEntries((rows[0] || []).map((key, i) => [key, i]));
-    const anchors = Object.fromEntries(Object.entries(saved.ratings.priors).map(([id, stats]) => [id, {
-        t: -Infinity, elo: 29 / 6 * ATTRIBUTES.reduce((sum, key) => sum + stats[key], 0) - 337
-    }]));
+    const anchors = {};
     const deadline = Date.parse(at);
+    // Use recorded start values even if the player has not played a match.
+    // Attributes are not a reliable source for an historical Elo baseline.
+    for (const row of rows.slice(1)) {
+        const id = row[index.spieler_id], elo = Number(row[index.elo_vorher]);
+        if (!anchors[id] && Number.isFinite(elo)) anchors[id] = { t: -Infinity, elo };
+    }
     for (const row of rows.slice(1)) {
         const id = row[index.spieler_id], t = Date.parse(row[index.zeit]), elo = Number(row[index.elo_nachher]);
         if (Number.isFinite(t) && t <= deadline && Number.isFinite(elo) && (!anchors[id] || t >= anchors[id].t)) anchors[id] = { t, elo };
+    }
+    for (const player of surveyPlayers()) {
+        if (!anchors[player.id]) anchors[player.id] = { t: -Infinity, elo: player.elo };
     }
     return Object.fromEntries(Object.entries(anchors).map(([id, anchor]) => [id,
         anchor.elo + replay.updates.filter(update => Date.parse(update.t) > anchor.t && Date.parse(update.t) <= deadline)
@@ -738,8 +756,8 @@ async function finalizeSurveyDays(saved, now = Date.now(), persist = false) {
         let legacyDeltas;
         for (const day of closedDays) {
             if (day.eloHistory) continue;
-            const replay = day.eloDeltas ? null : (legacyDeltas ||= replaySurveyEloDeltas(saved));
-            const after = replay ? historicalSurveyElos(saved, day.closesAt, replay) : effectiveSurveyElos(saved.ratings.current);
+            const replay = legacyDeltas ||= replaySurveyEloDeltas(saved);
+            const after = historicalSurveyElos(saved, day.closesAt, replay);
             const deltas = day.eloDeltas || replay.deltas[day.id] || {};
             day.eloHistory = {
                 id: 'survey:' + day.id, dayId: day.id, t: day.closesAt,
@@ -772,10 +790,10 @@ function scheduleNextSurveyClose(retryDelay = 0) {
     surveyCloseTimer.unref();
 }
 
-async function recalculateSurveyRatings(saved, dayId) {
+async function recalculateSurveyRatings(saved, dayId, respondentId) {
     const players = surveyPlayers();
     snapshotSurveyPriors(saved, players);
-    const eloBefore = effectiveSurveyElos(saved.ratings.current);
+    const eloBefore = effectiveSurveyElos(saved.ratings.current, saved.ratings.priors);
     const previous = saved.ratings.current;
     const current = updateAttributeRatings(saved.ratings.priors, surveyComparisons(saved));
     const at = new Date().toISOString();
@@ -788,7 +806,12 @@ async function recalculateSurveyRatings(saved, dayId) {
         }
     }
     saved.ratings.current = current;
-    const eloAfter = effectiveSurveyElos(current);
+    const eloAfter = effectiveSurveyElos(current, saved.ratings.priors);
+    if (respondentId) {
+        saved.days[dayId].submissions[respondentId].eloChanges = Object.fromEntries(
+            Object.entries(eloAfter).map(([id, after]) => [id, after - (eloBefore[id] ?? after)])
+        );
+    }
     const day = saved.days[dayId];
     if (!day.eloDeltas && Object.keys(day.submissions).length > 1) {
         day.eloDeltas = replaySurveyEloDeltas(saved).deltas[dayId] || {};
@@ -1429,7 +1452,7 @@ async function handle(req, res) {
                     })
                 }
             };
-            await recalculateSurveyRatings(saved, dayId);
+            await recalculateSurveyRatings(saved, dayId, playerId);
             await finalizeSurveyDays(saved, Date.now(), true);
             return { submittedAt: day.submissions[playerId].submittedAt, ratings: saved.ratings.current };
         });
@@ -1917,7 +1940,7 @@ async function handle(req, res) {
         const state = {};
         for (const [key, file] of Object.entries(FILES)) state[key] = readFile(file);
         const saved = await closeDueSurveys();
-        state.spieler = playersCsvWithSurveyRatings(state.spieler, saved.ratings.current);
+        state.spieler = playersCsvWithSurveyRatings(state.spieler, saved.ratings.current, saved.ratings.priors);
         const matchDays = loadZahlungen().spieltage.slice().sort((a, b) => (a.datum + (a.uhrzeit || '')).localeCompare(b.datum + (b.uhrzeit || '')) || a.id.localeCompare(b.id));
         const days = Object.values(saved.days).sort((a, b) => Date.parse(a.finishedAt) - Date.parse(b.finishedAt) || a.id.localeCompare(b.id));
         state.surveyHistory = days.flatMap((day, index) => day.eloHistory ? [{ ...day.eloHistory, dayNumber: matchDays.findIndex(item => item.id === day.id) + 1 || index + 1 }] : []);
