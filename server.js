@@ -1393,8 +1393,9 @@ async function handle(req, res) {
     }
     // --- ab hier nur mit Login ---
     const session = getSession(req);
-    const landingRoutes = ['/', '/index.html', '/random.html'];
-    if (!session && method === 'GET' && landingRoutes.includes(url) && parsed.searchParams.get('intro') !== 'done') {
+    const landingRoutes = ['/', '/index.html', '/random.html', '/spieler', '/spieltage', '/spiel', '/historie', '/zahlungen', '/werbung'];
+    const appRoute = landingRoutes.includes(url.replace(/\/$/, '') || '/');
+    if (!session && method === 'GET' && appRoute && parsed.searchParams.get('intro') !== 'done') {
         const destination = new URL(parsed);
         destination.searchParams.set('intro', 'done');
         const appPath = destination.pathname + destination.search;
@@ -1405,6 +1406,7 @@ async function handle(req, res) {
     const isApi = url.startsWith('/api/') || url.startsWith('/fotos/');
     if (!session) {
         if (isApi) return sendJson(res, 401, { ok: false, error: 'Nicht angemeldet' });
+        if (method === 'GET' && appRoute && !['/', '/index.html', '/random.html'].includes(url)) return startLogin(res, parsed.pathname + parsed.search);
         if (method === 'GET' && (url === '/' || url === '/index.html' || url === '/random.html')) {
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
             return res.end(LOGIN_PAGE);
@@ -1581,7 +1583,7 @@ async function handle(req, res) {
         return sendJson(res, updated.status === 'sent' ? 200 : 502, { ok: updated.status === 'sent', status: updated.status, error: updated.error || null });
     }
 
-    if (method === 'GET' && (url === '/' || url === '/index.html' || url === '/random.html')) {
+    if (method === 'GET' && appRoute) {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
         let html = fs.readFileSync(path.join(ROOT, 'random.html'), 'utf8');
         if (parsed.searchParams.get('intro') !== 'done') {

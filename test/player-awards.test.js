@@ -15,7 +15,7 @@ test('initial render waits for award data instead of the first polling interval'
         api: () => response, surveyDays: [], players: [],
         initAdFlyer() {}, restoreCurrentGame() {},
         renderAll() { renders++; assert.equal(context.surveyDays[0].id, 'awarded-day'); },
-        localStorage: { getItem: () => null }, showTab() {},
+        localStorage: { getItem: () => null }, showTab() {}, tabFromPath: () => undefined,
         URLSearchParams, location: { search: '' }, setInterval() {}, refreshSurveyState() {},
         showToast() { assert.fail('award loading should succeed'); }
     });

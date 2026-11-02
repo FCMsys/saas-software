@@ -88,6 +88,20 @@ test('survey API creates stable private forms, accepts each response once, and p
 
     try {
         await startServer();
+        for (const route of ['/spieler', '/spieltage', '/spiel', '/historie', '/zahlungen', '/werbung', '/spieler/']) {
+            const page = await fetch(baseUrl + route, { headers: { Cookie: sessionCookie('admin', 'admin') } });
+            assert.equal(page.status, 200, route);
+            assert.match(await page.text(), /const TAB_PATHS/);
+            const guest = await fetch(baseUrl + route);
+            assert.equal(guest.status, 200);
+            assert.ok((await guest.text()).includes(encodeURIComponent(route + '?intro=done')));
+            const login = await fetch(baseUrl + route + '?intro=done', { redirect: 'manual' });
+            assert.equal(login.status, 302);
+            const oauthCookie = login.headers.get('set-cookie');
+            const token = decodeURIComponent(oauthCookie.match(/mm_oauth=([^;]+)/)[1]);
+            const oauth = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString());
+            assert.equal(oauth.returnTo, route + '?intro=done');
+        }
         const photoHeaders = { Cookie: sessionCookie('admin', 'admin') };
         // Exercise the authenticated photo endpoint directly; uploads change the validator.
         const putPhoto = data => fetch(`${baseUrl}/api/foto/p1`, {

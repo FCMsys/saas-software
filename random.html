@@ -313,12 +313,12 @@
             </div>
 
             <nav class="flex items-stretch h-16 gap-1 sm:gap-3 text-sm font-semibold">
-                <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="players"><i class="fa-solid fa-users"></i><span class="hidden sm:inline">Spieler</span></button>
-                <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="days"><i class="fa-solid fa-calendar-days"></i><span class="hidden sm:inline">Spieltage</span></button>
-                <button class="tab-btn admin-only px-2 sm:px-3 flex items-center gap-2 transition" data-tab="match"><i class="fa-solid fa-futbol"></i><span class="hidden sm:inline">Aktuelles Spiel</span></button>
-                <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="history"><i class="fa-solid fa-chart-line"></i><span class="hidden sm:inline">Historie</span></button>
-                <button class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="payments"><i class="fa-solid fa-euro-sign"></i><span class="hidden sm:inline">Zahlungen</span></button>
-                <button class="tab-btn admin-only px-2 sm:px-3 flex items-center gap-2 transition" data-tab="advertising"><i class="fa-solid fa-bullhorn"></i><span class="hidden sm:inline">Werbung</span></button>
+                <a href="/spieler" class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="players"><i class="fa-solid fa-users"></i><span class="hidden sm:inline">Spieler</span></a>
+                <a href="/spieltage" class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="days"><i class="fa-solid fa-calendar-days"></i><span class="hidden sm:inline">Spieltage</span></a>
+                <a href="/spiel" class="tab-btn admin-only px-2 sm:px-3 flex items-center gap-2 transition" data-tab="match"><i class="fa-solid fa-futbol"></i><span class="hidden sm:inline">Aktuelles Spiel</span></a>
+                <a href="/historie" class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="history"><i class="fa-solid fa-chart-line"></i><span class="hidden sm:inline">Historie</span></a>
+                <a href="/zahlungen" class="tab-btn px-2 sm:px-3 flex items-center gap-2 transition" data-tab="payments"><i class="fa-solid fa-euro-sign"></i><span class="hidden sm:inline">Zahlungen</span></a>
+                <a href="/werbung" class="tab-btn admin-only px-2 sm:px-3 flex items-center gap-2 transition" data-tab="advertising"><i class="fa-solid fa-bullhorn"></i><span class="hidden sm:inline">Werbung</span></a>
             </nav>
 
             <div class="flex items-center gap-1.5 shrink-0">
@@ -1996,8 +1996,19 @@
         // =====================================================================
         // 7. Tabs
         // =====================================================================
-        function showTab(name) {
+        const TAB_PATHS = { players: '/spieler', days: '/spieltage', match: '/spiel', history: '/historie', payments: '/zahlungen', advertising: '/werbung' };
+        function tabFromPath() {
+            const pathname = location.pathname.replace(/\/$/, '').toLowerCase();
+            return Object.keys(TAB_PATHS).find(name => TAB_PATHS[name] === pathname);
+        }
+        function showTab(name, navigation = 'push') {
             if (!TABS.includes(name) || (['match', 'advertising'].includes(name) && me.role !== 'admin')) name = 'players';
+            if (navigation !== 'none' && location.pathname !== TAB_PATHS[name]) {
+                const destination = new URL(location.href);
+                destination.pathname = TAB_PATHS[name];
+                destination.searchParams.delete('umfrage');
+                history[navigation === 'replace' ? 'replaceState' : 'pushState'](null, '', destination.pathname + destination.search + destination.hash);
+            }
             activeTab = name;
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('hidden', p.id !== 'tab-' + name));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
@@ -2006,7 +2017,12 @@
             if (['days', 'match', 'payments', 'history'].includes(name)) loadSpieltage();
             window.scrollTo(0, 0);
         }
-        document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+        document.querySelectorAll('.tab-btn').forEach(b => b.onclick = event => {
+            if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button) return;
+            event.preventDefault();
+            showTab(b.dataset.tab);
+        });
+        window.addEventListener('popstate', () => showTab(tabFromPath() || 'players', 'none'));
         window.addEventListener('resize', () => { if (activeTab === 'history') renderChart(); });
 
         // =====================================================================
@@ -3600,7 +3616,8 @@
             renderAll();
             let tab = 'players';
             try { tab = localStorage.getItem('matchmaster_tab') || tab; } catch (e) { }
-            showTab(tab);
+            const routeTab = tabFromPath();
+            showTab(routeTab || tab, routeTab && ['match', 'advertising'].includes(routeTab) && me.role !== 'admin' ? 'replace' : 'none');
             const surveyDayId = new URLSearchParams(location.search).get('umfrage');
             if (surveyDayId) {
                 await loadSpieltage();
