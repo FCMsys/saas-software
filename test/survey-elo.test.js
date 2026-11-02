@@ -76,6 +76,17 @@ test('attribute caps count only the change actually applied', () => {
     near(Number(result.elo), 2000 + 0.5 * 29 / 6);
 });
 
+test('already applied fractional attributes remain exactly unchanged on reload', () => {
+    const { context: c } = fixture();
+    const values = [69, 61.00000000000001, 64.99999999999999, 59.00000000000001, 90.99999999999999, 81];
+    const current = ratings([69, 61, 65, 59, 91, 81]);
+    const header = 'id;elo;tem;sch;pas;drl;ver;phy;survey_tem;survey_sch;survey_pas;survey_drl;survey_ver;survey_phy\n';
+    const input = header + 'p2;1722;' + values.join(';') + ';69;61;65;59;91;81\n';
+    const result = c.playersCsvWithSurveyRatings(input, current, priors);
+    assert.equal(row(c, result).sch, String(values[1]));
+    assert.equal(c.playersCsvWithSurveyRatings(result, current, priors), result);
+});
+
 test('historical surveys use recorded Elo anchors and submission deltas, including capped changes', () => {
     const { context: c, files } = fixture();
     files['spiele.csv'] = 'spieler_id;zeit;elo_vorher;elo_nachher\np2;2026-10-20T10:00:00Z;1700;1648\np2;2026-10-26T10:00:00Z;1672.1666666667;1695.1666666667\n';

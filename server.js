@@ -610,7 +610,7 @@ function playersCsvWithSurveyRatings(csv, ratings, priors = {}) {
                 const reference = row[appliedIndex] === ''
                     ? (priors[id]?.[ATTRIBUTES[index]] ?? before)
                     : Number(row[appliedIndex]);
-                const after = Math.max(1, Math.min(99, before + value - reference));
+                const after = Math.max(1, Math.min(99, before + (value - reference)));
                 attributeDelta += after - before;
                 row[attributeIndex] = String(after);
                 row[appliedIndex] = String(value);
@@ -1152,7 +1152,8 @@ async function handleRsvp(req, res, parsed) {
         else {
             st.antworten[payload.pid] = { status: action, at: new Date().toISOString(), by: 'mail' };
             await writeJson('zahlungen.json', z);
-            note = action === 'zu' ? '<p><b style="color:#059669">Danke, du bist dabei!</b></p>' : '<p><b style="color:#e11d48">Schade, du hast abgesagt.</b></p>';
+            res.writeHead(303, { Location: '/', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+            return res.end();
         }
         pick = action;
     }

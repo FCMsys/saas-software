@@ -306,10 +306,14 @@ test('survey API creates stable private forms, accepts each response once, and p
         assert.equal(unrelatedFinish.data.code, undefined);
         assert.match(unrelatedFinish.data.error, /nicht auf dem Server gespeichert|bereits einem anderen Spieltag zugeordnet/);
 
+        // Pause the server before editing its store so pending invitation jobs
+        // cannot overwrite the test's forced deadline.
+        await stopServer();
         const stored = JSON.parse(fs.readFileSync(path.join(dataDir, 'umfragen.json'), 'utf8'));
         stored.days[dayId].closesAt = new Date(Date.now() - 1).toISOString();
         stored.days[dayId].invites.p5.status = 'sending';
         fs.writeFileSync(path.join(dataDir, 'umfragen.json'), JSON.stringify(stored));
+        await startServer();
         const closed = await call('/api/umfragen');
         const closedDay = closed.data.surveys.find(item => item.id === dayId);
         assert.equal(closedDay.status, 'closed');
