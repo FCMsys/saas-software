@@ -1605,7 +1605,7 @@
         // ---- Tab 2: Aktuelles Spiel ----
         function renderMatchTab() {
             // Spieltag-Auswahl
-            const days = sortedDays();
+            const days = sortedDays().filter(d => !d.cancelledAt);
             $('matchDaySel').innerHTML = '<option value="">— ohne Spieltag (alle Spieler) —</option>' + days.map(d => `<option value="${escapeHtml(d.id)}" ${d.id === matchDayId ? 'selected' : ''}>${escapeHtml(dayText(d))}</option>`).join('');
             const day = days.find(d => d.id === matchDayId);
             $('matchDayInfo').textContent = day
@@ -2643,7 +2643,7 @@
             } catch (e) { showToast('Spieltage konnten nicht geladen werden', e.message, 'error'); return; }
             if (me.role === 'admin' && !matchDayInit && spieltage.length) {
                 matchDayInit = true;   // einmalig: den Spieltag von heute vorauswählen
-                const t = spieltage.find(d => d.datum === todayIso());
+                const t = spieltage.find(d => d.datum === todayIso() && !d.cancelledAt);
                 if (t && !currentTeams) { matchDayId = t.id; selectedPlayerIds = new Set(confirmedIds(t)); }
             }
             renderDays();
@@ -2831,7 +2831,7 @@
 
                 const own = !me.spielerId
                     ? (me.authEnabled ? '<p class="text-xs text-slate-500 mb-3"><i class="fa-solid fa-circle-info text-blue-500 mr-1.5"></i>Sobald der Admin dein Login einem Spieler zugeordnet hat, kannst du hier zu- und absagen.</p>' : '')
-                    : past ? '' : `<div class="flex flex-wrap items-center gap-2 bg-blue-50/60 border border-blue-100 rounded-xl px-3 py-2.5 mb-3">
+                    : past || s.cancelledAt ? '' : `<div class="flex flex-wrap items-center gap-2 bg-blue-50/60 border border-blue-100 rounded-xl px-3 py-2.5 mb-3">
                         <span class="text-sm font-semibold text-slate-700">Bist du dabei?</span>
                         <button data-act="self" data-st="${sid}" data-s="zu" class="px-3 py-1.5 rounded-lg text-sm font-semibold border transition ${mine === 'zu' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'}">Zusagen</button>
                         <button data-act="self" data-st="${sid}" data-s="ab" class="px-3 py-1.5 rounded-lg text-sm font-semibold border transition ${mine === 'ab' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50'}">Absagen</button>
@@ -2841,7 +2841,7 @@
                     const st = statusOf(s, p.id), pid = escapeHtml(p.id);
                     const cls = st === 'zu' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : st === 'ab' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-slate-200 text-slate-500';
                     const icon = st === 'zu' ? '<i class="fa-solid fa-check text-emerald-600 w-3.5"></i>' : st === 'ab' ? '<i class="fa-solid fa-xmark text-rose-500 w-3.5"></i>' : '<i class="fa-regular fa-circle text-slate-300 w-3.5"></i>';
-                    const ctl = isAdmin ? `<span class="ml-auto flex items-center gap-0.5 shrink-0">
+                    const ctl = isAdmin && !s.cancelledAt ? `<span class="ml-auto flex items-center gap-0.5 shrink-0">
                         <button data-act="tn" data-st="${sid}" data-sp="${pid}" data-s="zu" title="Zusagen" class="${small} ${st === 'zu' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-700'}"><i class="fa-solid fa-check text-[11px]"></i></button>
                         <button data-act="tn" data-st="${sid}" data-sp="${pid}" data-s="ab" title="Absagen" class="${small} ${st === 'ab' ? 'bg-rose-100 text-rose-700' : 'text-slate-400 hover:bg-rose-50 hover:text-rose-700'}"><i class="fa-solid fa-xmark text-[11px]"></i></button>
                         ${st ? `<button data-act="tn" data-st="${sid}" data-sp="${pid}" data-s="" title="Zurücksetzen (keine Antwort)" class="${small} text-slate-400 hover:bg-slate-100"><i class="fa-solid fa-rotate-left text-[10px]"></i></button>` : ''}
@@ -2854,11 +2854,12 @@
                     : 'Einladung noch nicht gesendet';
                 const btnCls = 'text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition';
                 const existingSurvey = surveyDays.some(item => item.id === s.id);
-                const canStartDay = !past && !s.finishedAt && !s.surveyStarted && !existingSurvey;
+                const canStartDay = !s.cancelledAt && !past && !s.finishedAt && !s.surveyStarted && !existingSurvey;
                 const admin = isAdmin ? `<div class="flex flex-wrap items-center gap-1.5">
                     ${canStartDay ? `<button data-act="invite" data-st="${sid}" ${me.mailEnabled ? '' : 'disabled'} title="${me.mailEnabled ? 'Mail nur an Spieler ohne Zu- oder Absage mit bekannter Mail-Adresse' : 'Mail-Versand ist nicht eingerichtet'}" class="${btnCls} disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-envelope mr-1.5 text-blue-500"></i>${s.einladungAt ? 'Offene Antworten erinnern' : 'Einladung per Mail'}</button>
+                    ${!isBilled(s) ? `<button data-act="cancel" data-st="${sid}" ${me.mailEnabled ? '' : 'disabled'} class="${btnCls} disabled:opacity-40">Spieltag absagen</button>` : ''}
                     <button data-act="match" data-st="${sid}" class="${btnCls}" title="Mit den Zusagen dieses Spieltags Teams bilden"><i class="fa-solid fa-futbol mr-1.5 text-blue-500"></i>Spiel starten</button>` : ''}
-                    <button data-act="bill" data-st="${sid}" class="${btnCls}" title="Zahlung für diesen Spieltag anfordern"><i class="fa-solid fa-euro-sign mr-1.5 text-blue-500"></i>${isBilled(s) ? 'Abgerechnet · ' + eur(s.betragCent) : 'Abrechnen'}</button>
+                    ${!s.cancelledAt ? `<button data-act="bill" data-st="${sid}" class="${btnCls}" title="Zahlung für diesen Spieltag anfordern"><i class="fa-solid fa-euro-sign mr-1.5 text-blue-500"></i>${isBilled(s) ? 'Abgerechnet · ' + eur(s.betragCent) : 'Abrechnen'}</button>` : ''}
                     <button data-act="editGames" data-st="${sid}" class="${btnCls}">Spiele bearbeiten</button>
                     ${existingSurvey ? '' : `<button data-act="delete" data-st="${sid}" title="Spieltag löschen" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>`}
                 </div>` : '';
@@ -2870,6 +2871,7 @@
                             <p class="text-xs text-slate-500 mt-0.5">${s.ort || s.titel ? `<i class="fa-solid fa-location-dot mr-1"></i>${escapeHtml(s.ort || s.titel)} · ` : ''}<b class="text-emerald-700">${zu} zugesagt</b> · ${ab} abgesagt · ${players.length - zu - ab} offen${isAdmin ? ' · ' + invited : ''}</p>
                         </div>${admin}
                     </div>
+                    ${s.cancelledAt ? '<p class="mb-3 font-semibold text-rose-700">Spieltag abgesagt: es findet kein Spiel statt.</p>' : ''}
                     ${own}
                     ${isAdmin && canStartDay ? `<details class="mb-3 rounded-lg border border-slate-200 p-3">
                         <summary class="cursor-pointer text-sm font-semibold">Spieltag bearbeiten</summary>
@@ -2881,7 +2883,7 @@
                             <p class="w-full text-xs text-slate-500">${me.mailEnabled ? 'Zugesagte und abgerechnete Teilnehmer erhalten die Änderung per E-Mail. Zusagen und Zahlungen bleiben erhalten.' : 'Bitte zuerst den Mail-Versand einrichten.'}</p>
                         </form>
                     </details>` : ''}
-                    ${surveySectionHtml(s, isAdmin)}
+                    ${s.cancelledAt ? '' : surveySectionHtml(s, isAdmin)}
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">${chips}</div>
                 </div>`;
             }).join('') || '<div class="card p-5 text-sm text-slate-400">Noch keine Spieltage angelegt.</div>';
@@ -2915,6 +2917,15 @@
             const { act, st, sp, s } = b.dataset;
             try {
                 if (act === 'editGames') { openHistoricalEditor(st); return; }
+                else if (act === 'cancel') {
+                    if (!confirm('Spieltag absagen? Alle Spieler mit Zusage werden per E-Mail informiert.')) return;
+                    b.disabled = true;
+                    try {
+                        const result = await api('POST', '/api/spieltage/' + st + '/absagen', {});
+                        const m = result.mail;
+                        showToast('Spieltag abgesagt', m ? m.sent + ' Mails gesendet, ' + m.skipped + ' ohne gültige Mail-Adresse, ' + m.failed.length + ' fehlgeschlagen. Bitte nicht erreichte Spieler persönlich informieren.' : 'Bereits abgesagt.', m && (m.failed.length || m.skipped) ? 'error' : 'success');
+                    } finally { b.disabled = false; }
+                }
                 else if (act === 'tn') await api('POST', `/api/spieltage/${st}/teilnahme`, { spielerId: sp, status: s || null });
                 else if (act === 'self') await api('POST', `/api/spieltage/${st}/antwort`, { status: s });
                 else if (act === 'finishSurvey') {
@@ -3278,7 +3289,7 @@
             $('cashEntryPlayerId').value = players.some(p => p.id === selectedCashPlayer) ? selectedCashPlayer : '';
 
             // --- Formular: Zahlung für einen Spieltag anfordern ---
-            const days = sortedDays();
+            const days = sortedDays().filter(d => !d.cancelledAt);
             if (!days.some(d => d.id === payDayId)) {
                 payDayId = (days.find(d => d.datum <= todayIso()) || days[0] || {}).id || '';
                 applyPayDay(true);

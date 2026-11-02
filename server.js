@@ -984,6 +984,7 @@ async function startSurveyForDay(dayId, selectedLegacyMatchIds = null) {
         if (saved.days[dayId]) return { error: 'Für diesen Spieltag wurde die Umfrage bereits gestartet' };
         const dayRecord = loadZahlungen().spieltage.find(day => day.id === dayId);
         if (!dayRecord) return { error: 'Spieltag nicht gefunden', status: 404 };
+        if (dayRecord.cancelledAt) return { error: 'Der Spieltag wurde abgesagt', status: 409 };
         const matches = csvRows(readFile('spiele.csv'));
         const header = matches[0] || [];
         const index = Object.fromEntries(header.map((name, i) => [name, i]));
@@ -1100,6 +1101,22 @@ async function mailSpieltagAenderung(s, vorher) {
     return result;
 }
 
+async function mailSpieltagAbsage(s) {
+    const users = Object.values(loadUsers());
+    const result = { sent: 0, skipped: 0, failed: [] };
+    for (const [id, answer] of Object.entries(s.antworten || {})) {
+        if (answer.status !== 'zu') continue;
+        const email = (users.find(u => u.spielerId === id) || {}).email;
+        if (!email || !EMAIL_RE.test(email)) { result.skipped++; continue; }
+        try {
+            await sendMail({ to: email, subject: 'Spieltag abgesagt: ' + fmtDay(s),
+                text: 'Hallo Sportsfreund,\n\nder Spieltag am ' + fmtDay(s) + (s.ort ? ' (' + s.ort + ')' : '') + ' wurde abgesagt. Es findet kein Spiel statt.\n\nFC M:sys' });
+            result.sent++;
+        } catch (e) { console.error('Absage fehlgeschlagen:', e.message); result.failed.push(email + ': ' + e.message); }
+    }
+    return result;
+}
+
 const RSVP_STYLE = `body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#eef3fb,#f7f9fd);font-family:var(--font-sans);color:#0f172a}
   .box{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 24px rgba(15,23,42,.08);padding:28px 24px;width:min(92vw,380px);text-align:center}
   .logo{display:block;height:72px;width:auto;margin:0 auto 12px}
@@ -1126,6 +1143,7 @@ async function handleRsvp(req, res, parsed) {
     const z = loadZahlungen();
     const st = z.spieltage.find(x => x.id === payload.sid);
     if (!st) return rsvpPage(res, 404, '<h1>Spieltag nicht gefunden</h1><p>Diesen Spieltag gibt es nicht mehr.</p>');
+    if (st.cancelledAt) return rsvpPage(res, 200, '<h1>Spieltag abgesagt</h1><p>Es findet kein Spiel statt.</p>');
     const name = playerNames().get(payload.pid) || 'Spieler';
     const vorbei = st.datum < berlinToday();
     let note = '';
@@ -1775,7 +1793,7 @@ async function handle(req, res) {
         return sendJson(res, 200, { ok: true, id: spieltag.id });
     }
 
-    const stApi = /^\/api\/spieltage\/([\w-]+)(?:\/(bezahlt|einladung|teilnahme|antwort|anwesend|abrechnung|erinnerung))?$/.exec(url);
+    const stApi = /^\/api\/spieltage\/([\w-]+)(?:\/(bezahlt|einladung|teilnahme|antwort|anwesend|abrechnung|erinnerung|absagen))?$/.exec(url);
     if (stApi) {
         const [, id, action] = stApi;
         const z = loadZahlungen();
@@ -1792,6 +1810,17 @@ async function handle(req, res) {
             return ok();
         }
         if (!s) return sendJson(res, 404, { ok: false, error: 'Spieltag nicht gefunden' });
+
+        if (action === 'absagen' && method === 'POST') {
+            if (!requireAdmin()) return;
+            if (s.cancelledAt) return sendJson(res, 200, { ok: true, unchanged: true });
+            if (s.datum < berlinToday() || s.finishedAt || s.surveyStarted || surveyData().days[id] || s.betragCent != null) return sendJson(res, 409, { ok: false, error: 'Vergangene, abgeschlossene oder abgerechnete Spieltage können nicht abgesagt werden' });
+            if (!MAIL_ENABLED) return sendJson(res, 400, { ok: false, error: 'Bitte zuerst den Mail-Versand einrichten' });
+            s.cancelledAt = new Date().toISOString();
+            await writeJson('zahlungen.json', z);
+            return sendJson(res, 200, { ok: true, mail: await mailSpieltagAbsage(s) });
+        }
+        if (s.cancelledAt && (method === 'PATCH' || ['teilnahme', 'antwort', 'anwesend', 'einladung', 'abrechnung'].includes(action))) return sendJson(res, 409, { ok: false, error: 'Der Spieltag wurde abgesagt' });
 
         if (!action && method === 'PATCH') {
             if (!requireAdmin()) return;
