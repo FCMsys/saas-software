@@ -12,7 +12,7 @@ const crypto = require('crypto');
 const net = require('net');
 const tls = require('tls');
 const { exec } = require('child_process');
-const { ATTRIBUTES, OUTCOMES, generateQuestionnaire, normalizeSurveyAnswers, updateAttributeRatings, surveyDeadline, isSurveyClosed, countAwardVotes } = require('./src/logic/survey');
+const { ATTRIBUTES, OUTCOMES, generateSurveyQuestionnaires, normalizeSurveyAnswers, updateAttributeRatings, surveyDeadline, isSurveyClosed, countAwardVotes } = require('./src/logic/survey');
 
 // --- .env laden (optional, ohne Abhängigkeit) ---
 try {
@@ -1044,9 +1044,7 @@ async function startSurveyForDay(dayId, selectedLegacyMatchIds = null) {
 
         const finishedAt = new Date().toISOString();
         const closesAt = surveyDeadline(finishedAt);
-        const comparisonCounts = {};
-        const forms = {};
-        for (const player of eligible) forms[player.id] = generateQuestionnaire(player.id, eligible, comparisonCounts);
+        const forms = generateSurveyQuestionnaires(eligible, saved.days);
         snapshotSurveyPriors(saved, players);
         const invites = Object.fromEntries(eligible.map(player => [player.id, {
             status: 'pending', attempts: 0, updatedAt: finishedAt
