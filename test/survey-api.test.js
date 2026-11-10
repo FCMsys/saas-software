@@ -88,6 +88,33 @@ test('survey API creates stable private forms, accepts each response once, and p
 
     try {
         await startServer();
+        const existingSession = sessionCookie('admin', 'admin');
+        const loginShortcut = await fetch(baseUrl + '/login?returnTo=%2F%3Fumfrage%3Dst_test', {
+            headers: { Cookie: existingSession }, redirect: 'manual'
+        });
+        assert.equal(loginShortcut.status, 302);
+        assert.equal(loginShortcut.headers.get('location'), '/?umfrage=st_test');
+        const renewedCookie = loginShortcut.headers.get('set-cookie');
+        assert.match(renewedCookie, /Max-Age=604800/);
+        const renewed = JSON.parse(Buffer.from(renewedCookie.match(/mm_session=([^;.]+)/)[1], 'base64url').toString());
+        assert.equal(renewed.sub, 'admin');
+        assert.ok(renewed.exp > Date.now() + 6.9 * 24 * 3600 * 1000);
+        const activePage = await fetch(baseUrl + '/?umfrage=st_test', { headers: { Cookie: existingSession } });
+        assert.equal(activePage.status, 200);
+        assert.match(activePage.headers.get('set-cookie'), /mm_session=/);
+        const freshPage = await fetch(baseUrl + '/', { headers: { Cookie: renewedCookie.split(';')[0] } });
+        assert.equal(freshPage.headers.get('set-cookie'), null);
+        const unsafeReturn = await fetch(baseUrl + '/login?returnTo=https%3A%2F%2Fexample.org', {
+            headers: { Cookie: existingSession }, redirect: 'manual'
+        });
+        assert.equal(unsafeReturn.headers.get('location'), '/');
+        const expiredData = Buffer.from(JSON.stringify({ sub: 'admin', role: 'admin', exp: Date.now() - 1000 })).toString('base64url');
+        const expiredSignature = crypto.createHmac('sha256', SECRET).update(expiredData).digest('base64url');
+        const expiredRequest = await fetch(baseUrl + '/api/umfragen', {
+            headers: { Cookie: `mm_session=${expiredData}.${expiredSignature}` }
+        });
+        assert.equal(expiredRequest.status, 401);
+        assert.equal(expiredRequest.headers.get('set-cookie'), null);
         for (const route of ['/spieler', '/spieltage', '/spiel', '/historie', '/zahlungen', '/werbung', '/spieler/']) {
             const page = await fetch(baseUrl + route, { headers: { Cookie: sessionCookie('admin', 'admin') } });
             assert.equal(page.status, 200, route);

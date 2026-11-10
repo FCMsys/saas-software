@@ -261,8 +261,7 @@ function roleFromClaims(...claims) {
 }
 
 function startLogin(res, returnTo = '/') {
-    const safeReturnTo = typeof returnTo === 'string' && returnTo.startsWith('/') &&
-        !returnTo.startsWith('//') && !returnTo.includes('\\') && !/[\r\n]/.test(returnTo) ? returnTo : '/';
+    const safeReturnTo = safeLoginReturnTo(returnTo);
     const state = crypto.randomBytes(16).toString('base64url');
     const verifier = crypto.randomBytes(32).toString('base64url');
     const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
@@ -280,6 +279,19 @@ function startLogin(res, returnTo = '/') {
         'Cache-Control': 'no-store'
     });
     res.end();
+}
+
+function safeLoginReturnTo(returnTo) {
+    return typeof returnTo === 'string' && returnTo.startsWith('/') &&
+        !returnTo.startsWith('//') && !returnTo.includes('\\') && !/[\r\n]/.test(returnTo) ? returnTo : '/';
+}
+
+function renewSession(res, session) {
+    // Refresh at most daily, keeping active users signed in for another seven days.
+    if (AUTH_ENABLED && session && session.exp - Date.now() < SESSION_TTL_MS - 24 * 3600 * 1000) {
+        res.setHeader('Set-Cookie', cookie('mm_session', makeToken({ ...session, exp: Date.now() + SESSION_TTL_MS }), SESSION_TTL_MS / 1000));
+        res.setHeader('Cache-Control', 'no-store');
+    }
 }
 
 async function finishLogin(req, res, query) {
@@ -863,7 +875,7 @@ async function sendSurveyInvitation(dayId, playerId, retry = false) {
         await sendMail({
             to: user.email,
             subject: 'FC M – Bewerte deinen Spieltag! ⚽',
-            text: `Der Spieltag ist vorbei – jetzt seid ihr gefragt!\n\nWer war die Überraschung des Spieltags? Wer war der Man of the Match? Und wie stark sind eure Mitspieler wirklich?\n\nHilf uns, die Spielerkarten zu verbessern und zukünftig noch ausgeglichenere Mannschaften zusammenzustellen.\n\nDie Umfrage dauert nur etwa 60–90 Sekunden und ist noch 48 Stunden nach Spielschluss geöffnet.\n\nZur Spieltagsumfrage:\n${PUBLIC_URL}/login?returnTo=${encodeURIComponent(returnTo)}\n\nViel Spaß!\nDein FC M`
+            text: `Der Spieltag ist vorbei – jetzt seid ihr gefragt!\n\nWer war die Überraschung des Spieltags? Wer war der Man of the Match? Und wie stark sind eure Mitspieler wirklich?\n\nHilf uns, die Spielerkarten zu verbessern und zukünftig noch ausgeglichenere Mannschaften zusammenzustellen.\n\nDie Umfrage dauert nur etwa 60–90 Sekunden und ist noch 48 Stunden nach Spielschluss geöffnet.\n\nZur Spieltagsumfrage:\n${PUBLIC_URL}${returnTo}\n\nViel Spaß!\nDein FC M`
         });
         await mutateSurveys(async () => {
             const saved = surveyData();
@@ -1373,7 +1385,13 @@ async function handle(req, res) {
     if (url === '/rsvp' && (method === 'GET' || method === 'POST')) return handleRsvp(req, res, parsed);
 
     // --- ohne Login erreichbar ---
-    if (AUTH_ENABLED && method === 'GET' && url === '/login') return startLogin(res, parsed.searchParams.get('returnTo') || '/');
+    if (AUTH_ENABLED && method === 'GET' && url === '/login') {
+        const session = getSession(req);
+        if (!session) return startLogin(res, parsed.searchParams.get('returnTo') || '/');
+        renewSession(res, session);
+        res.writeHead(302, { Location: safeLoginReturnTo(parsed.searchParams.get('returnTo') || '/'), 'Cache-Control': 'no-store' });
+        return res.end();
+    }
     if (AUTH_ENABLED && method === 'GET' && url === '/callback') {
         try { return await finishLogin(req, res, parsed.searchParams); }
         catch (e) {
@@ -1391,6 +1409,7 @@ async function handle(req, res) {
     }
     // --- ab hier nur mit Login ---
     const session = getSession(req);
+    renewSession(res, session);
     const landingRoutes = ['/', '/index.html', '/random.html', '/spieler', '/spieltage', '/spiel', '/historie', '/zahlungen', '/werbung'];
     const appRoute = landingRoutes.includes(url.replace(/\/$/, '') || '/');
     if (!session && method === 'GET' && appRoute && parsed.searchParams.get('intro') !== 'done') {
