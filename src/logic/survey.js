@@ -59,43 +59,42 @@ function countAwardVotes(submissions) {
     }));
 }
 
-function comparisonPair(respondentId, participants, usedPairs, comparisonCounts, random) {
-    const candidates = participants.filter(player => player.id !== respondentId);
-    const tiers = [3, 5];
-    for (const maxDiff of tiers) {
-        const available = [];
-        for (let i = 0; i < candidates.length; i++) {
-            for (let j = i + 1; j < candidates.length; j++) {
-                const first = candidates[i], second = candidates[j];
-                const key = pairKey(first.id, second.id);
-                if (usedPairs.has(key) || Math.abs(first.ges - second.ges) > maxDiff) continue;
-                available.push({ first, second, key });
-            }
-        }
-        if (!available.length) continue;
-        const minCount = Math.min(...available.map(pair => comparisonCounts[pair.key] || 0));
-        const balanced = available.filter(pair => (comparisonCounts[pair.key] || 0) === minCount);
-        const selected = balanced[randomIndex(balanced.length, random)];
-        usedPairs.add(selected.key);
-        comparisonCounts[selected.key] = (comparisonCounts[selected.key] || 0) + 1;
-        const [a, b] = random() < 0.5 ? [selected.first, selected.second] : [selected.second, selected.first];
-        return { a: a.id, b: b.id, maxGesDifference: maxDiff };
-    }
-    return null;
+function rankedParticipants(participants) {
+    return participants
+        .filter(player => player && typeof player.id === 'string' && Number.isFinite(player.ges))
+        .map(player => ({ ...player, ges: Math.round(player.ges) }))
+        .sort((a, b) => a.ges - b.ges || a.id.localeCompare(b.id));
 }
 
-function generateQuestionnaire(respondentId, participants, comparisonCounts = {}, random = Math.random) {
-    const valid = participants
-        .filter(player => player && typeof player.id === 'string' && Number.isFinite(player.ges))
-        .map(player => ({ ...player, ges: Math.round(player.ges) }));
+function neighborPairs(participants) {
+    const pairs = [];
+    // Rank in the complete participant list, before excluding the respondent.
+    for (let i = 0; i < participants.length; i++) {
+        for (let j = i + 1; j < Math.min(participants.length, i + 4); j++) {
+            pairs.push({ a: participants[i].id, b: participants[j].id, maxRankDifference: 3 });
+        }
+    }
+    return pairs;
+}
+
+function generateQuestionnaire(respondentId, participants, options = {}, random = Math.random) {
+    const valid = rankedParticipants(participants);
     const eligible = valid.filter(player => player.id !== respondentId);
-    const usedPairs = new Set();
-    const performancePair = comparisonPair(respondentId, valid, usedPairs, comparisonCounts, random);
+    const available = neighborPairs(valid).filter(pair => pair.a !== respondentId && pair.b !== respondentId);
+    const reserved = options.reservedPairs || [];
+    const selected = reserved.map(pair => available.find(candidate => pairKey(candidate.a, candidate.b) === pairKey(pair.a, pair.b)))
+        .filter(Boolean);
+    const used = new Set(selected.map(pair => pairKey(pair.a, pair.b)));
+    const remaining = shuffled(available.filter(pair => !used.has(pairKey(pair.a, pair.b))), random);
+    selected.push(...remaining.slice(0, 4 - selected.length));
+    // Reserved pairs have no fixed question type or left/right position.
+    const pairs = shuffled(selected, random).map(pair => random() < 0.5 ? pair : { ...pair, a: pair.b, b: pair.a });
+    const performancePair = pairs.shift();
     const attributes = shuffled(ATTRIBUTES, random).slice(0, 3);
     const comparisons = [];
     if (performancePair) comparisons.push({ id: 'performance', kind: 'performance', prompt: 'Wer hat heute individuell besser gespielt?', ...performancePair });
     for (const attribute of attributes) {
-        const pair = comparisonPair(respondentId, valid, usedPairs, comparisonCounts, random);
+        const pair = pairs.shift();
         if (pair) comparisons.push({ id: attribute, kind: 'attribute', attribute, prompt: ATTRIBUTE_QUESTIONS[attribute], ...pair });
     }
     return {
@@ -105,6 +104,46 @@ function generateQuestionnaire(respondentId, participants, comparisonCounts = {}
         },
         comparisons
     };
+}
+
+function previouslyUncompared(participants, days, now = Date.now()) {
+    const history = Object.values(days || {}).filter(day => isSurveyClosed(day.closesAt, now))
+        .sort((a, b) => Date.parse(b.finishedAt) - Date.parse(a.finishedAt));
+    return participants.filter(player => {
+        const day = history.find(day => (day.participants || []).includes(player.id));
+        if (!day) return false;
+        return !Object.entries(day.submissions || {}).some(([respondentId, submission]) =>
+            (submission.answers?.comparisons || []).some(answer => {
+                if (!Object.hasOwn(OUTCOMES, answer.value)) return false;
+                const question = day.forms?.[respondentId]?.comparisons?.find(question => question.id === answer.id);
+                return question && (question.a === player.id || question.b === player.id);
+            })
+        );
+    }).map(player => player.id);
+}
+
+function generateSurveyQuestionnaires(participants, days = {}, random = Math.random, now = Date.now()) {
+    const valid = rankedParticipants(participants);
+    const pairs = neighborPairs(valid);
+    const reserved = Object.fromEntries(valid.map(player => [player.id, []]));
+    const covered = new Set();
+    // Reserve at most one appearance per missed player; everything else stays random.
+    for (const playerId of shuffled(previouslyUncompared(valid, days, now), random)) {
+        if (covered.has(playerId)) continue;
+        const choices = pairs.filter(pair => pair.a === playerId || pair.b === playerId).flatMap(pair =>
+            valid.filter(respondent => respondent.id !== pair.a && respondent.id !== pair.b &&
+                reserved[respondent.id].length < 4 && !reserved[respondent.id].some(item => pairKey(item.a, item.b) === pairKey(pair.a, pair.b)))
+                .map(respondent => ({ respondentId: respondent.id, pair }))
+        );
+        if (!choices.length) continue; // Fewer than three participants cannot compare others.
+        const { respondentId, pair } = choices[randomIndex(choices.length, random)];
+        reserved[respondentId].push(pair);
+        covered.add(pair.a);
+        covered.add(pair.b);
+    }
+    return Object.fromEntries(valid.map(player => [player.id,
+        generateQuestionnaire(player.id, valid, { reservedPairs: reserved[player.id] }, random)
+    ]));
 }
 
 function validAnswer(questionnaire, answers) {
@@ -171,4 +210,4 @@ function updateAttributeRatings(priors, comparisons) {
     return ratings;
 }
 
-module.exports = { ATTRIBUTES, ATTRIBUTE_QUESTIONS, COMPARISON_OPTIONS, OUTCOMES, generateQuestionnaire, validAnswer, normalizeSurveyAnswers, updateAttributeRatings, surveyDeadline, isSurveyClosed, countAwardVotes };
+module.exports = { ATTRIBUTES, ATTRIBUTE_QUESTIONS, COMPARISON_OPTIONS, OUTCOMES, generateQuestionnaire, generateSurveyQuestionnaires, previouslyUncompared, validAnswer, normalizeSurveyAnswers, updateAttributeRatings, surveyDeadline, isSurveyClosed, countAwardVotes };
